@@ -64,7 +64,7 @@ function getBusinessDB(): Promise<IDBPDatabase<BusinessDBSchema>> {
   if (!businessDBPromise) {
     const dbName = `rca-app-${currentAccountId}`;
     businessDBPromise = openDB<BusinessDBSchema>(dbName, 2, {
-      upgrade(db, oldVersion) {
+      upgrade(db, oldVersion, _newVersion, transaction) {
         if (oldVersion < 1) {
           const recordStore = db.createObjectStore('records', { keyPath: 'id' });
           recordStore.createIndex('templateId', 'templateId');
@@ -73,12 +73,11 @@ function getBusinessDB(): Promise<IDBPDatabase<BusinessDBSchema>> {
           db.createObjectStore('settings', { keyPath: 'key' });
         }
         if (oldVersion < 2) {
+          // v2：新增 problems store，并用升级事务给已有 records store 补建 problemId 索引
           const problemStore = db.createObjectStore('problems', { keyPath: 'id' });
           problemStore.createIndex('createdAt', 'createdAt');
           problemStore.createIndex('updatedAt', 'updatedAt');
-          // 给已存在的 records store 补建 problemId 索引（问题为导向的关联查询）
-          const recordStore = (db as unknown as { transaction: (stores: string[], mode: string) => { objectStore: (name: string) => { createIndex: (name: string, keyPath: string) => void } } }).transaction(['records'], 'readwrite').objectStore('records');
-          recordStore.createIndex('problemId', 'problemId');
+          transaction.objectStore('records').createIndex('problemId', 'problemId');
         }
       },
     });

@@ -14,7 +14,8 @@ import { getCurrentPhaseIndex, isPhaseCompletionSatisfied, resolveDefaultValue, 
 import { PhaseIndicator } from './PhaseIndicator';
 import { FormTabs } from './form/FormTabs';
 
-function buildDefaultValues(template: FormTemplate, record: FormRecord | undefined, todayISO: string): Record<string, unknown> {
+/** 解析模板默认值：按 section/field 遍历，注入 defaultValue（问题向导页与编辑页共用）。 */
+export function buildDefaultValues(template: FormTemplate, record: FormRecord | undefined, todayISO: string): Record<string, unknown> {
   const data = record?.data ?? {};
   const values: Record<string, unknown> = {};
   for (const section of template.sections) {

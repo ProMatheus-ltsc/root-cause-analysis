@@ -5,11 +5,13 @@
  */
 import { useNavigate } from 'react-router-dom';
 import { FormProvider, useForm } from 'react-hook-form';
+import { format } from 'date-fns';
 import { createProblemDefinitionSection, createProblemSummarySection } from '../templates/shared';
 import type { FormTemplate } from '../types';
 import { useRecords, useSaveProblem } from '../hooks/useDB';
 import { useToast } from '../hooks/useToast';
 import { validateRequiredFields } from '../utils/formValidation';
+import { buildDefaultValues } from '../components/FormRenderer';
 import { FormTabs } from '../components/form/FormTabs';
 
 /** 问题实体表单（问题定义 + 问题整理） */
@@ -27,25 +29,32 @@ export default function ProblemWizardPage() {
   const { showToast } = useToast();
   const { records: historyRecords } = useRecords();
 
-  const methods = useForm<Record<string, unknown>>({ defaultValues: {} });
+  const methods = useForm<Record<string, unknown>>({
+    defaultValues: buildDefaultValues(PROBLEM_TEMPLATE, undefined, format(new Date(), 'yyyy-MM-dd')),
+  });
   const { getValues } = methods;
 
   async function handleSave() {
-    const missing = validateRequiredFields(PROBLEM_TEMPLATE, getValues());
-    if (missing.length > 0) {
-      showToast(`请完善必填项：${missing.slice(0, 5).map((m) => m.label).join('、')}`, 'error');
-      return;
+    try {
+      const missing = validateRequiredFields(PROBLEM_TEMPLATE, getValues());
+      if (missing.length > 0) {
+        showToast(`请完善必填项：${missing.slice(0, 5).map((m) => m.label).join('、')}`, 'error');
+        return;
+      }
+      const values = getValues();
+      const title = typeof values.title === 'string' && values.title.trim() ? values.title.trim() : '未命名问题';
+      const problemStatement = typeof values.problemStatement === 'string' ? (values.problemStatement as string).trim() : '';
+      const saved = await saveProblem({
+        title,
+        problemStatement,
+        data: values,
+      });
+      showToast('问题已保存', 'success');
+      navigate(`/problem/${saved.id}`);
+    } catch (err) {
+      console.error('保存问题失败', err);
+      showToast(`保存失败：${err instanceof Error ? err.message : String(err)}`, 'error');
     }
-    const values = getValues();
-    const title = typeof values.title === 'string' && values.title.trim() ? values.title.trim() : '未命名问题';
-    const problemStatement = typeof values.problemStatement === 'string' ? (values.problemStatement as string).trim() : '';
-    const saved = await saveProblem({
-      title,
-      problemStatement,
-      data: values,
-    });
-    showToast('问题已保存', 'success');
-    navigate(`/problem/${saved.id}`);
   }
 
   return (
