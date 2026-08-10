@@ -3,6 +3,7 @@
  */
 
 export type TemplateId =
+  | 'keyFactor'
   | 'fiveWhy'
   | 'fishbone'
   | 'timeline'
@@ -107,6 +108,8 @@ export interface FormTemplate {
   name: string;
   icon: string;
   description: string;
+  /** 推荐模板：复杂/非量化原因的主推方法（要因分析法 + 帕累托）；其他方法作为可选项 */
+  recommended?: boolean;
   /** 典型使用场景示例，帮助用户判断该选哪个模板 */
   scenarios?: string[];
   /** 分析流程步骤概述，对应 phases 的用户视角描述 */

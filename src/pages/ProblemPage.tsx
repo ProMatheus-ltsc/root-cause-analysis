@@ -74,6 +74,11 @@ export default function ProblemPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-xl">{template.icon}</span>
                   <span className="text-sm font-semibold">{template.name}</span>
+                  {template.recommended && (
+                    <span className="ml-auto shrink-0 rounded bg-amber-200 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                      推荐
+                    </span>
+                  )}
                 </div>
                 <p className="mt-1 text-xs opacity-80">{template.description}</p>
               </button>

@@ -27,6 +27,9 @@ function getOptionLabel(options: { value: string; label: string }[], value: unkn
 export function ProblemSummaryCard({ problem, showLink = false }: ProblemSummaryCardProps) {
   const data = problem.data ?? {};
   const rows = Array.isArray(data['w2hTable']) ? (data['w2hTable'] as Array<{ dimension: string; description: string }>) : [];
+  const brainstorm = Array.isArray(data['brainstorm'])
+    ? (data['brainstorm'] as Array<{ cause?: string; evidence?: string }>).filter((c) => typeof c.cause === 'string' && c.cause.trim())
+    : [];
   const criteriaLabel = getOptionLabel(PROBLEM_CRITERIA_OPTIONS, data['problemCriteria']);
   const typeLabel = getOptionLabel(PROBLEM_TYPE_OPTIONS, data['problemType']);
   const statement = buildGeneratedProblemStatement(data);
@@ -70,6 +73,19 @@ export function ProblemSummaryCard({ problem, showLink = false }: ProblemSummary
       )}
       {statement && statement !== '（填写 4W2H 表格后自动生成）' && (
         <p className="mt-2 rounded bg-white/70 px-2 py-1 text-xs text-slate-700">{statement}</p>
+      )}
+      {brainstorm.length > 0 && (
+        <div className="mt-3 border-t border-sky-200/70 pt-2">
+          <p className="mb-1 text-xs font-medium text-sky-800">原因头脑风暴（{brainstorm.length} 个候选原因）</p>
+          <ol className="max-h-40 list-inside list-decimal overflow-y-auto text-xs text-slate-600">
+            {brainstorm.map((c, idx) => (
+              <li key={idx} className="leading-relaxed">
+                {c.cause}
+                {c.evidence && c.evidence.trim() && <span className="text-slate-400"> —— {c.evidence.trim()}</span>}
+              </li>
+            ))}
+          </ol>
+        </div>
       )}
     </div>
   );

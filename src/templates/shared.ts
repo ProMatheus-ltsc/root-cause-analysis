@@ -294,6 +294,37 @@ export function createProblemDefinitionSection(extraFields: FormField[] = []): F
 }
 
 /**
+ * 原因头脑风暴区（repeatable）：确定问题后、进入分析方法前，先穷尽所有可能原因。
+ * 发散阶段：至少列出 15 个候选原因（先不求对错、不筛选），作为后续确认根本原因的输入清单。
+ */
+export function createBrainstormSection(): FormSection {
+  return {
+    id: 'brainstorm',
+    title: '原因头脑风暴',
+    description:
+      '问题确定后，先穷尽所有可能导致问题的原因（发散思维）：至少列出 15 个。此阶段不求对错、不筛选、不评价，全部写下来；后续分析方法将基于此清单确认根本原因。',
+    repeatable: true,
+    repeatLabel: '原因 {n}',
+    minEntries: 15,
+    fields: [
+      {
+        id: 'cause',
+        label: '可能的原因',
+        type: 'textarea',
+        required: true,
+        placeholder: '任何可能导致问题的原因，先写下来（不必判断对错）…',
+      },
+      {
+        id: 'evidence',
+        label: '相关证据 / 线索（可选）',
+        type: 'textarea',
+        placeholder: '支持该原因的证据、观察、数据或线索…',
+      },
+    ],
+  };
+}
+
+/**
  * 问题整理区：标题与一句话陈述是 4W2H 全面分析之后的"整理输出"，
  * 而不是开头的随手描述。放在鉴别区之后，引导用户先分析、再提炼。
  */
@@ -324,6 +355,194 @@ export function createProblemSummarySection(): FormSection {
 }
 
 /**
+ * 要因分析法（DEMATEL + 帕累托）：用于复杂、非量化问题。
+ * 因素间关系强度标度：0=无关，1=弱（单向弱影响），2=中（双向/强单向），4=强（互为强因果）。
+ * 中心度 = 行和（影响度 outDegree）+ 列和（被影响度 inDegree），帕累托累计达 80% 的因素为关键根因。
+ */
+export const RELATION_LEVEL_OPTIONS = [
+  { value: 0, label: '0 —— 无影响（两因素无关）' },
+  { value: 1, label: '1 —— 弱影响（单向弱关联）' },
+  { value: 2, label: '2 —— 中等影响（双向/单向强关联）' },
+  { value: 4, label: '4 —— 强影响（互为强因果）' },
+];
+
+/** 矩阵最大因子数（用户从头脑风暴清单中筛选 ≤ MAX_FACTORS 个核心因素参与矩阵分析）。 */
+export const KEY_FACTOR_MAX = 8;
+
+/** 矩阵列定义：固定 KEY_FACTOR_MAX × KEY_FACTOR_MAX，第 i 行第 j 列 = 因素 i 对因素 j 的影响强度。 */
+export function keyFactorMatrixColumns(): { id: string; label: string; placeholder: string }[] {
+  return Array.from({ length: KEY_FACTOR_MAX }, (_, j) => ({
+    id: `c${j}`,
+    label: `→ 因素 ${j + 1}`,
+    placeholder: '0/1/2/4',
+  }));
+}
+
+/** 预生成 8×8 默认零矩阵（用户填写前的样子）。 */
+export function buildDefaultKeyFactorMatrix(): Record<string, number>[] {
+  return Array.from({ length: KEY_FACTOR_MAX }, () =>
+    Object.fromEntries(Array.from({ length: KEY_FACTOR_MAX }, (_, j) => [`c${j}`, 0])),
+  );
+}
+
+/**
+ * 要因分析法核心计算（得分法）：
+ * 1. 提取因素列表（repeatable 'factors'）与关系矩阵（table 'matrix'）；
+ * 2. 两两比较：因素 i 对 j 有影响（强度 > 0）→ i 是"因"、j 是"果"；
+ *    因 -1 / 果 +1 累计得分 score = 果次数(inCount) − 因次数(outCount)；
+ * 3. 分类：得分最低 → 根因（最源头）；得分最高 → 表因（最表象）；接近 0（-2~2）→ 过因（中间传导）；
+ * 4. 补充帕累托视角：按中心度（强度加权）降序累计 ≥ 80% 标为关键因素。
+ */
+export type FactorRole = 'root' | 'transit' | 'surface';
+
+export interface KeyFactorResult {
+  index: number;
+  name: string;
+  /** 作为"因"的关系数（影响其他因素） */
+  outCount: number;
+  /** 作为"果"的关系数（被其他因素影响） */
+  inCount: number;
+  /** 得分 = inCount − outCount（因 −1 / 果 +1） */
+  score: number;
+  /** 根因（score 最低）/ 过因（接近 0）/ 表因（score 最高） */
+  role: FactorRole;
+  roleLabel: string;
+  /** 影响度（强度加权行和） */
+  outDegree: number;
+  /** 被影响度（强度加权列和） */
+  inDegree: number;
+  /** 中心度 = outDegree + inDegree（帕累托补充视角） */
+  centrality: number;
+  cumulativePercent: number;
+  isKey: boolean;
+}
+
+export const KEY_FACTOR_THRESHOLD = 0.8;
+/** score < CAUSE_SCORE_ROOT → 根因；score > CAUSE_SCORE_SURFACE → 表因；之间 → 过因 */
+export const CAUSE_SCORE_ROOT = -2;
+export const CAUSE_SCORE_SURFACE = 2;
+
+export function computeKeyFactors(values: Record<string, unknown>): KeyFactorResult[] {
+  const rawFactors = Array.isArray(values['factors']) ? (values['factors'] as Array<Record<string, unknown>>) : [];
+  const factors = rawFactors
+    .slice(0, KEY_FACTOR_MAX)
+    .map((f, i) => ({ index: i, name: typeof f.name === 'string' ? f.name.trim() : '' }))
+    .filter((f) => f.name);
+
+  const rawMatrix = Array.isArray(values['matrix']) ? (values['matrix'] as Array<Record<string, unknown>>) : [];
+  const matrix: number[][] = rawMatrix.slice(0, KEY_FACTOR_MAX).map((row) =>
+    Array.from({ length: KEY_FACTOR_MAX }, (_, j) => {
+      const v = row[`c${j}`];
+      const n = typeof v === 'number' ? v : Number(v);
+      return Number.isFinite(n) ? n : 0;
+    }),
+  );
+
+  const n = factors.length;
+  const outDegree = Array.from({ length: n }, () => 0);
+  const inDegree = Array.from({ length: n }, () => 0);
+  const outCount = Array.from({ length: n }, () => 0);
+  const inCount = Array.from({ length: n }, () => 0);
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      if (i === j) continue;
+      const v = matrix[i]?.[j] ?? 0;
+      if (v > 0) {
+        outDegree[i] += v;
+        outCount[i] += 1; // i 是 j 的因
+        inDegree[j] += v;
+        inCount[j] += 1; // j 是 i 的果
+      }
+    }
+  }
+
+  const rows: KeyFactorResult[] = factors.map((f, i) => {
+    const score = inCount[i] - outCount[i];
+    let role: FactorRole;
+    let roleLabel: string;
+    if (score > CAUSE_SCORE_SURFACE) {
+      role = 'surface';
+      roleLabel = '表因';
+    } else if (score < CAUSE_SCORE_ROOT) {
+      role = 'root';
+      roleLabel = '根因';
+    } else {
+      role = 'transit';
+      roleLabel = '过因';
+    }
+    return {
+      index: f.index,
+      name: f.name,
+      outCount: outCount[i],
+      inCount: inCount[i],
+      score,
+      role,
+      roleLabel,
+      outDegree: outDegree[i],
+      inDegree: inDegree[i],
+      centrality: outDegree[i] + inDegree[i],
+      cumulativePercent: 0,
+      isKey: false,
+    };
+  });
+
+  // 帕累托补充：按中心度（强度加权）降序累计 ≥ 80% 标为关键
+  const sorted = [...rows].sort((a, b) => b.centrality - a.centrality);
+  const total = sorted.reduce((s, r) => s + r.centrality, 0);
+  if (total > 0) {
+    let cum = 0;
+    for (const r of sorted) {
+      cum += r.centrality;
+      r.cumulativePercent = +(cum / total).toFixed(4);
+      r.isKey = r.cumulativePercent <= KEY_FACTOR_THRESHOLD || (r === sorted[sorted.length - 1] && cum / total < 1);
+    }
+  }
+  return rows;
+}
+
+/**
+ * 得分分类结果文本：按得分升序（根因在前）列出，并汇总根因/过因/表因。
+ */
+export function buildCauseScoreText(results: KeyFactorResult[]): string {
+  if (results.length === 0) return '（先填写因素清单与关系矩阵后自动生成）';
+  const sorted = [...results].sort((a, b) => a.score - b.score);
+  const lines = sorted.map(
+    (r, i) => `${i + 1}. ${r.name}：得分 ${r.score}（作为因 ${r.outCount} 次 / 作为果 ${r.inCount} 次）→ ${r.roleLabel}`,
+  );
+  const root = results.filter((r) => r.role === 'root').map((r) => r.name);
+  const transit = results.filter((r) => r.role === 'transit').map((r) => r.name);
+  const surface = results.filter((r) => r.role === 'surface').map((r) => r.name);
+  const summary: string[] = [];
+  if (root.length) summary.push(`根因（得分最低，最源头）：${root.join('、')}`);
+  if (transit.length) summary.push(`过因（得分接近 0，中间传导）：${transit.join('、')}`);
+  if (surface.length) summary.push(`表因（得分最高，最表象）：${surface.join('、')}`);
+  // 相对视角：无论固定阈值是否区分得出，都给出"最源头/最表象"的定位，保证可操作
+  const minRow = sorted[0];
+  const maxRow = sorted[sorted.length - 1];
+  summary.push(`相对视角：得分最低（最源头）→ ${minRow.name}；得分最高（最表象）→ ${maxRow.name}`);
+  if (root.length === 0 && surface.length === 0) {
+    summary.push('注：当前各因素得分均落在过因区间（-2~2），可结合相对视角与证据人工收敛根因。');
+  }
+  return lines.join('\n') + `\n\n${summary.join('\n')}`;
+}
+
+/**
+ * 帕累托补充视角文本：按中心度（强度加权）降序排列，标注累计贡献达 80% 的关键因素。
+ */
+export function buildKeyFactorRankingText(results: KeyFactorResult[]): string {
+  if (results.length === 0) return '（先填写因素清单与关系矩阵后自动生成）';
+  const sorted = [...results].sort((a, b) => b.centrality - a.centrality);
+  const lines = sorted.map(
+    (r, i) => `第 ${i + 1} 名：${r.name}（中心度 ${r.centrality}，累计贡献 ${(r.cumulativePercent * 100).toFixed(1)}%）${r.isKey ? '  ★ 关键' : ''}`,
+  );
+  const keyNames = sorted.filter((r) => r.isKey).map((r) => r.name);
+  const summary = keyNames.length
+    ? `\n\n帕累托关键因素（累计贡献达 ${(KEY_FACTOR_THRESHOLD * 100).toFixed(0)}%，80/20 视角）：\n${keyNames.map((n) => `· ${n}`).join('\n')}`
+    : '';
+  return lines.join('\n') + summary;
+}
+
+/**
  * 根因结论区：症状/根因区分 + MECE 自检 + 验证方式。
  * 强调"对策必须针对根因而非症状"，以及多根因/多措施下的 MECE（相互独立、完全穷尽）。
  */
@@ -332,6 +551,13 @@ export function createRemedySection(): FormSection {
     id: 'remedy',
     title: '根因结论',
     fields: [
+      {
+        id: 'confirmedCause',
+        label: '从头脑风暴清单中确认的原因',
+        type: 'textarea',
+        hint: '对照问题卡片中的"原因头脑风暴"候选清单，结合本方法分析，收敛出最可能的 1-3 个原因（可引用候选清单中的原因编号/描述）。',
+        placeholder: '例如"① 每日 22:00 上游依赖未就绪（清单第 3 条）——经 5 Why 追问确认"',
+      },
       { id: 'rootCauseSummary', label: '根因总结', type: 'textarea', required: true, placeholder: '用一句话概括最终确定的根本原因' },
       { id: 'rootCauseType', label: '根因类型分类', type: 'radio', options: ROOT_CAUSE_TYPE_OPTIONS },
       {

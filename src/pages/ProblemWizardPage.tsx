@@ -6,7 +6,7 @@
 import { useNavigate } from 'react-router-dom';
 import { FormProvider, useForm } from 'react-hook-form';
 import { format } from 'date-fns';
-import { createProblemDefinitionSection, createProblemSummarySection } from '../templates/shared';
+import { createBrainstormSection, createProblemDefinitionSection, createProblemSummarySection } from '../templates/shared';
 import type { FormTemplate } from '../types';
 import { useRecords, useSaveProblem } from '../hooks/useDB';
 import { useToast } from '../hooks/useToast';
@@ -14,14 +14,17 @@ import { validateRequiredFields } from '../utils/formValidation';
 import { buildDefaultValues } from '../components/FormRenderer';
 import { FormTabs } from '../components/form/FormTabs';
 
-/** 问题实体表单（问题定义 + 问题整理） */
+/** 问题实体表单（问题定义 + 问题整理 + 原因头脑风暴） */
 const PROBLEM_TEMPLATE: FormTemplate = {
   id: 'fiveWhy',
   name: '问题定义',
   icon: '🎯',
   description: '问题实体表单',
-  sections: [createProblemDefinitionSection(), createProblemSummarySection()],
+  sections: [createProblemDefinitionSection(), createProblemSummarySection(), createBrainstormSection()],
 };
+
+/** 头脑风暴最少原因数（发散阶段的覆盖度要求） */
+const BRAINSTORM_MIN_COUNT = 15;
 
 export default function ProblemWizardPage() {
   const navigate = useNavigate();
@@ -42,6 +45,11 @@ export default function ProblemWizardPage() {
         return;
       }
       const values = getValues();
+      const brainstorm = Array.isArray(values['brainstorm']) ? (values['brainstorm'] as Record<string, unknown>[]) : [];
+      if (brainstorm.length < BRAINSTORM_MIN_COUNT) {
+        showToast(`头脑风暴至少需要列出 ${BRAINSTORM_MIN_COUNT} 个可能的原因，当前 ${brainstorm.length} 个`, 'error');
+        return;
+      }
       const title = typeof values.title === 'string' && values.title.trim() ? values.title.trim() : '未命名问题';
       const problemStatement = typeof values.problemStatement === 'string' ? (values.problemStatement as string).trim() : '';
       const saved = await saveProblem({
@@ -62,7 +70,7 @@ export default function ProblemWizardPage() {
       <div>
         <h2 className="text-lg font-semibold text-slate-900">新建问题</h2>
         <p className="mt-1 text-sm text-slate-500">
-          先严格定义问题：4W2H 全面分析 → 判定 → 分类 → 目标（问题 = 目标 − 现实）→ 标题与一句话陈述。保存后可在问题下挂多个根因分析。
+          流程：4W2H 全面分析 → 判定 → 分类 → 目标（问题 = 目标 − 现实）→ 标题与一句话陈述 → 原因头脑风暴（至少 {BRAINSTORM_MIN_COUNT} 个候选原因，供后续分析确认根因）。
         </p>
       </div>
       <FormProvider {...methods}>
