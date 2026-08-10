@@ -101,7 +101,7 @@ export const timelineTemplate: FormTemplate = {
       label: '问题鉴别',
       icon: '🎯',
       sectionIndices: [0, 1, 2],
-      completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'summary', 'isWhat', 'isWho', 'isWhen', 'isWhere', 'isHow', 'isExtent', 'gapTarget'],
+      completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'summary', 'gapTarget'],
     },
     {
       id: 'timelineEntries',

@@ -107,7 +107,7 @@ export const technicalFaultTemplate: FormTemplate = {
       label: '故障鉴别',
       icon: '🎯',
       sectionIndices: [0, 1, 2],
-      completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'symptom', 'affectedSystem', 'isWhat', 'isWho', 'isWhen', 'isWhere', 'isHow', 'isExtent', 'gapTarget'],
+      completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'symptom', 'affectedSystem', 'gapTarget'],
     },
     {
       id: 'investigation',

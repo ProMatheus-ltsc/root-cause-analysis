@@ -61,9 +61,22 @@ export const PROBLEM_TYPE_OPTIONS = [
 ];
 
 /**
+ * 4W2H 维度选项（带引导提示词）：表格填写用。
+ */
+export const W2H_OPTIONS = [
+  { value: 'what', label: 'what —— 究竟是什么？' },
+  { value: 'who', label: 'who —— 究竟是谁？' },
+  { value: 'when', label: 'when —— 到底在何时？（持续多久？频率？）' },
+  { value: 'where', label: 'where —— 发生在哪里？（什么位置/环节？）' },
+  { value: 'how', label: 'how —— 如何发生？（过程/方式/链路）' },
+  { value: 'howMany', label: 'how many —— 有多少？（多少？全面/局部？扩大？）' },
+];
+
+/**
  * 问题判定的严格表单字段：先核对"是不是问题"（三标准），再确定"是哪类问题"（三分类），
- * 最后按类型展开专属的界定字段。所有专属字段通过 condition 按类型显示，
- * 不参与引擎必填校验（避免隐藏字段误判），但通过 priority: 'required' 引导用户填写。
+ * 同时勾选"问题不是什么"误区自检，最后按类型展开专属的界定字段。
+ * 所有专属字段通过 condition 按类型显示，不参与引擎必填校验（避免隐藏字段误判），
+ * 但通过 priority: 'required' 引导用户填写。
  */
 export function createProblemCriteriaFields(): FormField[] {
   return [
@@ -82,6 +95,20 @@ export function createProblemCriteriaFields(): FormField[] {
       required: true,
       hint: '恢复原状型重在找到并消除偏差；预防隐患型重在评估风险与触发条件；追求理想型重在明确差距与价值。',
       options: PROBLEM_TYPE_OPTIONS,
+    },
+    {
+      id: 'whatProblemIsNotCheck',
+      label: '问题不是什么（勾选即可）',
+      type: 'checkbox',
+      hint: '问题不是一种判断，也不仅仅是事实罗列；问题 = 目标 − 现实。对照误区逐项确认：',
+      options: [
+        { value: 'notJudgment', label: '不是主观判断 / 评价（如"体验很差"）——需改写为可验证的事实描述' },
+        { value: 'notJustFact', label: '不仅仅是事实罗列——"重启了 5 次"只是事实，加上"目标是不中断服务"才构成问题' },
+        { value: 'notFeeling', label: '不是情绪感受（如"我觉得很焦虑"）——情绪不能作为问题定义' },
+        { value: 'notCause', label: '不是原因 / 归因（如"因为团队不重视"）——归因应留到分析阶段' },
+        { value: 'notSolution', label: '不是解决方案 / 对策（如"应该加个按钮"）——先定义问题，再谈解法' },
+        { value: 'notHope', label: '不是希望 / 愿望（如"我希望它更好"）——希望是期望，不等于问题本身' },
+      ],
     },
     // 恢复原状型专属界定
     {
@@ -165,8 +192,20 @@ export function createProblemDefinitionSection(extraFields: FormField[] = []): F
   return {
     id: 'problemDefinition',
     title: '问题定义',
-    description: '先严格界定问题：对照三标准判定是否是真问题，再确定问题类型，最后按类型明确问题细节。（标题与一句话陈述在 4W2H 分析完成后整理）',
+    description: '先以 4W2H 表格全面分析"现实是什么"（必填，须有数据、来源可靠、可量化），再进行问题判定与分类。标题与一句话陈述在最后的问题整理区完成。',
     fields: [
+      {
+        id: 'w2hTable',
+        label: '4W2H 全面分析（必填）',
+        type: 'table',
+        hint: '逐行完成 6 个维度：在"维度"列选择后，于"具体描述"列填写该维度的已知事实。描述须有数据、来源可靠、可量化。',
+        validation: { min: 6 },
+        defaultValue: W2H_OPTIONS.map((o) => ({ dimension: o.value, description: '' })),
+        tableColumns: [
+          { id: 'dimension', label: '维度', type: 'select', options: W2H_OPTIONS },
+          { id: 'description', label: '具体描述（有数据、来源可靠、可量化）', type: 'text', placeholder: '填写该维度的具体事实…' },
+        ],
+      },
       ...createProblemCriteriaFields(),
       { id: 'occurredAt', label: '发生时间', type: 'date', defaultValue: 'auto_today' },
       { id: 'discoveryMethod', label: '发现方式', type: 'radio', options: DISCOVERY_METHOD_OPTIONS },
@@ -209,76 +248,17 @@ export function createProblemSummarySection(): FormSection {
 }
 
 /**
- * 问题鉴别区（4W2H · IS/IS NOT）：先用强制必填的 4W2H 界定"现实是什么"，
- * 再明确"目标"，系统自动拼接为"标准问题陈述"——因为问题 = 目标 − 现实（二者差距）。
- * 每项描述都要求有数据、数据来源可靠、可量化；"问题不是什么"自检排除
- * 判断/单纯事实/情绪/原因/解决方案/希望等误区。
+ * 问题鉴别收尾区：4W2H 已在问题定义区以表格完成（位于问题判定上方）；
+ * 此处补充"目标状态"，并自动拼接为标准问题陈述——因为问题 = 目标 − 现实。
  */
 export function createProblemIdentificationSection(): FormSection {
   return {
     id: 'problemIdentification',
-    title: '问题鉴别（4W2H · IS/IS NOT）',
+    title: '问题鉴别（目标与差距）',
     description:
-      '问题 = 目标 − 现实（目标与现实之间的差距）。4W2H 六个维度为必填，用来界定"现实是什么"：描述须有数据、来源可靠、可量化；再填写目标状态，系统将自动拼接成标准问题陈述。',
+      '4W2H 已在问题定义区以表格完成。此处明确目标状态：问题 = 目标 − 现实（目标与现实之间的差距）。系统会根据 4W2H 表格与目标自动拼接标准问题陈述。',
     collapsedByDefault: true,
     fields: [
-      // —— 4W2H 强制维度（界定现实：已知事实）——
-      {
-        id: 'isWhat',
-        label: 'what —— 究竟是什么？',
-        type: 'textarea',
-        required: true,
-        hint: '问题现象的具体内容是什么？描述须有数据、来源可靠、可量化。',
-        placeholder: '究竟是什么问题？具体现象是什么？',
-      },
-      {
-        id: 'isWho',
-        label: 'who —— 究竟是谁？',
-        type: 'textarea',
-        required: true,
-        hint: '涉及哪些主体/对象？',
-        placeholder: '究竟是谁遇到/涉及这个问题？用户、角色、团队、系统…',
-      },
-      {
-        id: 'isWhen',
-        label: 'when —— 到底在何时？',
-        type: 'textarea',
-        required: true,
-        hint: '明确时间点、持续多久、发生频率。',
-        placeholder: '到底在何时发生？经过多久？频率如何？',
-      },
-      {
-        id: 'isWhere',
-        label: 'where —— 发生在哪里？',
-        type: 'textarea',
-        required: true,
-        hint: '明确位置/环节/系统。',
-        placeholder: '发生在哪里？出现在什么位置/环节/系统中？',
-      },
-      {
-        id: 'isHow',
-        label: 'how —— 如何发生？',
-        type: 'textarea',
-        required: true,
-        hint: '描述发生过程/方式/链路。',
-        placeholder: '如何发生？经过什么步骤、流程、链路？',
-      },
-      {
-        id: 'isExtent',
-        label: 'how many —— 有多少？',
-        type: 'textarea',
-        required: true,
-        hint: '量化影响：数量/比例；全面还是局部？影响在扩大吗？',
-        placeholder: '有多少？全面还是局部？影响在扩大吗？',
-      },
-      // —— IS / IS NOT 排除侧（推荐）——
-      { id: 'isNotWhat', label: 'what —— 不是什么对象（排除）', type: 'textarea', priority: 'recommended', placeholder: '哪些相似对象 / 场景 / 模块没有出现？' },
-      { id: 'isNotWho', label: 'who —— 不是谁（排除主体）', type: 'textarea', priority: 'recommended', placeholder: '哪些相似主体没有出现该问题？' },
-      { id: 'isNotWhen', label: 'when —— 何时不发生', type: 'textarea', priority: 'recommended', placeholder: '哪些时间段没有出现该问题？' },
-      { id: 'isNotWhere', label: 'where —— 何地 / 哪个环节不发生', type: 'textarea', priority: 'recommended', placeholder: '哪些环节 / 地点 / 系统没有出现？' },
-      { id: 'isNotHow', label: 'how —— 不是这样发生的（对比）', type: 'textarea', priority: 'recommended', placeholder: '正常情况下同样的步骤 / 流程是怎样的？关键差别在哪？' },
-      { id: 'isNotExtent', label: 'how many —— 影响不大的范围', type: 'textarea', priority: 'recommended', placeholder: '哪些范围内影响很小或完全没有？' },
-      // —— 目标（问题 = 目标 − 现实）——
       {
         id: 'gapTarget',
         label: '目标 / 期望状态',
@@ -287,22 +267,26 @@ export function createProblemIdentificationSection(): FormSection {
         hint: '问题 = 目标 − 现实。明确"应该达到什么状态"，目标尽量可量化。',
         placeholder: '应该达到什么状态？目标是什么（尽量量化）？',
       },
-      // —— 标准问题陈述（自动拼接）——
       {
         id: 'generatedProblemStatement',
         label: '标准问题陈述（自动生成）',
         type: 'text',
         computed: {
-          dependsOn: ['isWhat', 'isWho', 'isWhen', 'isWhere', 'isHow', 'isExtent', 'gapTarget'],
+          dependsOn: ['w2hTable', 'gapTarget'],
           formula: (values: Record<string, unknown>) => {
-            const s = (id: string) => (typeof values[id] === 'string' ? (values[id] as string).trim() : '');
-            const what = s('isWhat');
-            const who = s('isWho');
-            const when = s('isWhen');
-            const where = s('isWhere');
-            const how = s('isHow');
-            const extent = s('isExtent');
-            const target = s('gapTarget');
+            const rows = Array.isArray(values['w2hTable']) ? (values['w2hTable'] as Array<Record<string, unknown>>) : [];
+            const dim = (id: string) => {
+              const row = rows.find((r) => r.dimension === id);
+              return typeof row?.description === 'string' ? (row.description as string).trim() : '';
+            };
+            const s = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+            const what = dim('what');
+            const who = dim('who');
+            const when = dim('when');
+            const where = dim('where');
+            const how = dim('how');
+            const extent = dim('howMany');
+            const target = s(values['gapTarget']);
             const seg: string[] = [];
             if (who) seg.push(`对象：${who}`);
             if (what) seg.push(`现象：${what}`);
@@ -310,7 +294,7 @@ export function createProblemIdentificationSection(): FormSection {
             if (where) seg.push(`位置：${where}`);
             if (how) seg.push(`过程：${how}`);
             if (extent) seg.push(`规模：${extent}`);
-            if (seg.length === 0) return '（填写 4W2H 后自动生成）';
+            if (seg.length === 0) return '（填写 4W2H 表格后自动生成）';
             let out = `现实（已知事实）：${seg.join('；')}。`;
             out += target ? `目标：${target}。` : '目标未填写。';
             out += '问题 = 目标 − 现实，二者差距即待分析的问题。';
@@ -318,36 +302,12 @@ export function createProblemIdentificationSection(): FormSection {
           },
         },
       },
-      // —— 问题不是什么（集中判断）——
-      {
-        id: 'isNotStatement',
-        label: '问题不是什么（一句话排除判断）',
-        type: 'textarea',
-        priority: 'recommended',
-        hint: '问题是对客观事实的描述，而不是一种判断。明确写下"这个问题不是……"来排除模糊与主观表述。',
-        placeholder: '例如"这不是体验不好（主观判断），而是支付流程第 3 步超时率 12%（客观事实）"',
-      },
-      {
-        id: 'notJudgmentCheck',
-        label: '问题不是什么——误区自检',
-        type: 'checkbox',
-        hint: '问题不是一种判断，也不仅仅是事实罗列；问题 = 目标 − 现实。对照误区逐项排除：',
-        options: [
-          { value: 'notJudgment', label: '不是主观判断 / 评价（如"体验很差""效率低下"）——需改写为可验证的事实描述' },
-          { value: 'notJustFact', label: '不仅仅是事实罗列——"服务器重启了 5 次"只是事实，加上"目标是不中断服务"才构成问题' },
-          { value: 'notFeeling', label: '不是情绪感受（如"我觉得很焦虑""大家都抱怨"）——情绪不能作为问题定义' },
-          { value: 'notCause', label: '不是原因 / 归因（如"因为团队不重视""系统老旧"）——归因应留到分析阶段' },
-          { value: 'notSolution', label: '不是解决方案 / 对策（如"应该加个按钮""按时解决的办法是……"）——先定义问题，再谈解法' },
-          { value: 'notHope', label: '不是希望 / 愿望（如"我希望它更好"）——希望是期望，不等于问题本身' },
-        ],
-      },
-      // —— 描述质量自检 ——
       {
         id: 'factCheck',
-        label: '描述自检',
+        label: '描述自检（数据质量）',
         type: 'checkbox',
         options: [
-          { value: 'hasData', label: '每条描述都有数据支撑（数量/比例/时间/频次）' },
+          { value: 'hasData', label: '4W2H 每条描述都有数据支撑（数量/比例/时间/频次）' },
           { value: 'dataReliable', label: '数据来源可靠（系统/日志/一手记录，而非道听途说）' },
           { value: 'quantifiable', label: '描述可量化、可验证（不是"大概/差不多"）' },
         ],

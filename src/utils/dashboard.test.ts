@@ -42,12 +42,14 @@ describe('getDisplayStatus', () => {
     problemCriteria: ['deviation'],
     problemType: 'restore',
     symptom: 's',
-    isWhat: 'w',
-    isWho: 'who',
-    isWhen: 'when',
-    isWhere: 'where',
-    isHow: 'how',
-    isExtent: 'many',
+    w2hTable: [
+      { dimension: 'what', description: 'w' },
+      { dimension: 'who', description: 'who' },
+      { dimension: 'when', description: 'when' },
+      { dimension: 'where', description: 'where' },
+      { dimension: 'how', description: 'how' },
+      { dimension: 'howMany', description: 'many' },
+    ],
     gapTarget: 'target',
   };
 
@@ -84,12 +86,14 @@ describe('countByDisplayStatus', () => {
       problemCriteria: ['deviation'],
       problemType: 'restore',
       symptom: 's',
-      isWhat: 'w',
-      isWho: 'who',
-      isWhen: 'when',
-      isWhere: 'where',
-      isHow: 'how',
-      isExtent: 'many',
+      w2hTable: [
+        { dimension: 'what', description: 'w' },
+        { dimension: 'who', description: 'who' },
+        { dimension: 'when', description: 'when' },
+        { dimension: 'where', description: 'where' },
+        { dimension: 'how', description: 'how' },
+        { dimension: 'howMany', description: 'many' },
+      ],
       gapTarget: 'target',
     };
     const records = [

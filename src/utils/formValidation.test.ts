@@ -67,12 +67,14 @@ describe('getCurrentPhaseIndex', () => {
     problemCriteria: ['deviation'],
     problemType: 'restore',
     symptom: '现象描述',
-    isWhat: '批处理超时',
-    isWho: '账单系统',
-    isWhen: '每日 22:00',
-    isWhere: '生产环境',
-    isHow: '队列堆积',
-    isExtent: '影响 30% 用户',
+    w2hTable: [
+      { dimension: 'what', description: '批处理超时' },
+      { dimension: 'who', description: '账单系统' },
+      { dimension: 'when', description: '每日 22:00' },
+      { dimension: 'where', description: '生产环境' },
+      { dimension: 'how', description: '队列堆积' },
+      { dimension: 'howMany', description: '影响 30% 用户' },
+    ],
     gapTarget: '22:00 前完成',
   };
 
@@ -113,12 +115,6 @@ describe('validateRequiredFields', () => {
     expect(fieldIds).toContain('problemCriteria');
     expect(fieldIds).toContain('problemType');
     expect(fieldIds).toContain('symptom');
-    expect(fieldIds).toContain('isWhat');
-    expect(fieldIds).toContain('isWho');
-    expect(fieldIds).toContain('isWhen');
-    expect(fieldIds).toContain('isWhere');
-    expect(fieldIds).toContain('isHow');
-    expect(fieldIds).toContain('isExtent');
     expect(fieldIds).toContain('gapTarget');
     expect(fieldIds).toContain('why');
     expect(fieldIds).toContain('rootCauseSummary');
@@ -131,12 +127,6 @@ describe('validateRequiredFields', () => {
       problemCriteria: ['gap'],
       problemType: 'ideal',
       symptom: 's',
-      isWhat: 'w',
-      isWho: 'who',
-      isWhen: 'when',
-      isWhere: 'where',
-      isHow: 'how',
-      isExtent: 'many',
       gapTarget: 'target',
       whyChain: [{ why: 'a' }],
       rootCauseSummary: 'r',

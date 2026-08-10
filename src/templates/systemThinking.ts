@@ -103,7 +103,7 @@ export const systemThinkingTemplate: FormTemplate = {
       label: '问题鉴别',
       icon: '🎯',
       sectionIndices: [0, 1, 2],
-      completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'isWhat', 'isWho', 'isWhen', 'isWhere', 'isHow', 'isExtent', 'gapTarget'],
+      completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'gapTarget'],
     },
     {
       id: 'causalAnalysis',
