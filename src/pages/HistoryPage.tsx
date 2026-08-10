@@ -2,7 +2,7 @@
  * 历史记录页：按模板/严重程度/根因类型/对策状态/时间范围筛选 + 全文搜索，支持单条/批量导出
  * Markdown 与删除，客户端分页避免记录多了列表过长。打印/导出 PDF 在记录详情页（FormPage）内进行。
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { differenceInCalendarDays, parseISO } from 'date-fns';
 import { useDeleteRecord, useRecords, useSearchRecords } from '../hooks/useDB';
