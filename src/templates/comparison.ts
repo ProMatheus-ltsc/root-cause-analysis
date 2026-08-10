@@ -2,7 +2,7 @@
  * 对比分析法：通过 A/B 对比找出"为什么同样条件下有时出问题有时不出"的关键差异。
  */
 import type { FormTemplate } from '../types';
-import { createActionSection, createProblemCriteriaFields, createProblemIdentificationSection, createProblemSummarySection } from './shared';
+import { createActionSection, createProblemCriteriaFields, createProblemSummarySection, createW2hAnalysisFields } from './shared';
 
 export const comparisonTemplate: FormTemplate = {
   id: 'comparison',
@@ -24,6 +24,7 @@ export const comparisonTemplate: FormTemplate = {
       id: 'definitionAndComparison',
       title: '定义与对比',
       fields: [
+        ...createW2hAnalysisFields(),
         ...createProblemCriteriaFields(),
         { id: 'normalCase', label: '正常情况描述', type: 'textarea', required: true, placeholder: '描述一切正常时的情况：什么时间、什么条件、什么结果？' },
         { id: 'abnormalCase', label: '异常情况描述', type: 'textarea', required: true, placeholder: '描述出问题时的情况：什么时间、什么条件、什么结果？' },
@@ -48,7 +49,6 @@ export const comparisonTemplate: FormTemplate = {
         { id: 'keyDifference', label: '关键差异总结', type: 'textarea', required: true, placeholder: '上述对比中，哪些差异最可能是导致问题的关键因素？' },
       ],
     },
-    createProblemIdentificationSection(),
     createProblemSummarySection(),
     {
       id: 'attributionAndAction',
@@ -67,21 +67,21 @@ export const comparisonTemplate: FormTemplate = {
       id: 'definitionAndComparison',
       label: '问题鉴别',
       icon: '🎯',
-      sectionIndices: [0, 1, 2],
+      sectionIndices: [0, 1],
       completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'normalCase', 'abnormalCase', 'keyDifference', 'gapTarget'],
     },
     {
       id: 'attributionAndAction',
       label: '归因与对策',
       icon: '🛠️',
-      sectionIndices: [3],
+      sectionIndices: [2],
       completionFields: ['mostLikelyCause', 'action'],
     },
     {
       id: 'actionImplementation',
       label: '对策实施',
       icon: '✅',
-      sectionIndices: [4],
+      sectionIndices: [3],
       completionFields: ['measure'],
       completesRecord: true,
     },

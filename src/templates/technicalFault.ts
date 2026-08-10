@@ -2,7 +2,7 @@
  * 技术故障根因分析：面向生产/系统技术故障的排查与归因，覆盖故障定义、技术排查与对策制定。
  */
 import type { FormTemplate } from '../types';
-import { createActionSection, createProblemDefinitionSection, createProblemIdentificationSection, createProblemSummarySection, createRemedySection } from './shared';
+import { createActionSection, createProblemDefinitionSection, createProblemSummarySection, createRemedySection } from './shared';
 
 export const technicalFaultTemplate: FormTemplate = {
   id: 'technicalFault',
@@ -35,7 +35,6 @@ export const technicalFaultTemplate: FormTemplate = {
         ],
       },
     ]),
-    createProblemIdentificationSection(),
     createProblemSummarySection(),
     {
       id: 'technicalInvestigation',
@@ -106,28 +105,28 @@ export const technicalFaultTemplate: FormTemplate = {
       id: 'problemDefinition',
       label: '故障鉴别',
       icon: '🎯',
-      sectionIndices: [0, 1, 2],
+      sectionIndices: [0, 1],
       completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'symptom', 'affectedSystem', 'gapTarget'],
     },
     {
       id: 'investigation',
       label: '技术排查',
       icon: '🔍',
-      sectionIndices: [3, 4, 5],
+      sectionIndices: [2, 3, 4],
       completionFields: ['action', 'rootCauseJudgement'],
     },
     {
       id: 'remedy',
       label: '根因结论',
       icon: '🛠️',
-      sectionIndices: [6],
+      sectionIndices: [5],
       completionFields: ['rootCauseSummary'],
     },
     {
       id: 'action',
       label: '对策实施',
       icon: '✅',
-      sectionIndices: [7],
+      sectionIndices: [6],
       completionFields: ['measure'],
       completesRecord: true,
     },

@@ -2,7 +2,7 @@
  * 时间线分析法：还原事件经过的事后分析（类似 SRE Postmortem）。
  */
 import type { FormTemplate } from '../types';
-import { createActionSection, createProblemCriteriaFields, createProblemIdentificationSection, createProblemSummarySection } from './shared';
+import { createActionSection, createProblemCriteriaFields, createProblemSummarySection, createW2hAnalysisFields } from './shared';
 import { IMPACT_SCOPE_OPTIONS, SEVERITY_OPTIONS } from './shared';
 
 export const timelineTemplate: FormTemplate = {
@@ -26,6 +26,7 @@ export const timelineTemplate: FormTemplate = {
       id: 'eventOverview',
       title: '事件概述',
       fields: [
+        ...createW2hAnalysisFields(),
         ...createProblemCriteriaFields(),
         { id: 'occurredAt', label: '发生时间', type: 'date', defaultValue: 'auto_today' },
         { id: 'duration', label: '持续时长（分钟）', type: 'number' },
@@ -41,7 +42,6 @@ export const timelineTemplate: FormTemplate = {
         },
       ],
     },
-    createProblemIdentificationSection(),
     createProblemSummarySection(),
     {
       id: 'timelineEntries',
@@ -100,28 +100,28 @@ export const timelineTemplate: FormTemplate = {
       id: 'eventOverview',
       label: '问题鉴别',
       icon: '🎯',
-      sectionIndices: [0, 1, 2],
+      sectionIndices: [0, 1],
       completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'summary', 'gapTarget'],
     },
     {
       id: 'timelineEntries',
       label: '时间线还原',
       icon: '🕒',
-      sectionIndices: [3],
+      sectionIndices: [2],
       completionFields: ['eventDesc'],
     },
     {
       id: 'attribution',
       label: '归因与改进',
       icon: '🛠️',
-      sectionIndices: [4],
+      sectionIndices: [3],
       completionFields: ['directCause', 'rootCause', 'lessonsLearned'],
     },
     {
       id: 'action',
       label: '对策实施',
       icon: '✅',
-      sectionIndices: [5],
+      sectionIndices: [4],
       completionFields: ['measure'],
       completesRecord: true,
     },

@@ -188,24 +188,88 @@ export function createProblemCriteriaFields(): FormField[] {
   ];
 }
 
+/**
+ * 4W2H 分析相关字段组：表格 + 目标 + 自动拼接标准问题陈述 + 数据质量自检。
+ * 供 createProblemDefinitionSection 与自定义问题定义区的模板复用。
+ */
+export function createW2hAnalysisFields(): FormField[] {
+  return [
+    {
+      id: 'w2hTable',
+      label: '4W2H 全面分析（必填）',
+      type: 'table',
+      hint: '逐行完成 6 个维度：在"维度"列选择后，于"具体描述"列填写该维度的已知事实。描述须有数据、来源可靠、可量化。',
+      validation: { min: 6 },
+      defaultValue: W2H_OPTIONS.map((o) => ({ dimension: o.value, description: '' })),
+      tableColumns: [
+        { id: 'dimension', label: '维度', type: 'select', options: W2H_OPTIONS },
+        { id: 'description', label: '具体描述（有数据、来源可靠、可量化）', type: 'text', placeholder: '填写该维度的具体事实…' },
+      ],
+    },
+    {
+      id: 'gapTarget',
+      label: '目标 / 期望状态',
+      type: 'textarea',
+      required: true,
+      hint: '问题 = 目标 − 现实。明确"应该达到什么状态"，目标尽量可量化。',
+      placeholder: '应该达到什么状态？目标是什么（尽量量化）？',
+    },
+    {
+      id: 'generatedProblemStatement',
+      label: '标准问题陈述（自动生成）',
+      type: 'text',
+      computed: {
+        dependsOn: ['w2hTable', 'gapTarget'],
+        formula: (values: Record<string, unknown>) => {
+          const rows = Array.isArray(values['w2hTable']) ? (values['w2hTable'] as Array<Record<string, unknown>>) : [];
+          const dim = (id: string) => {
+            const row = rows.find((r) => r.dimension === id);
+            return typeof row?.description === 'string' ? (row.description as string).trim() : '';
+          };
+          const s = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+          const what = dim('what');
+          const who = dim('who');
+          const when = dim('when');
+          const where = dim('where');
+          const how = dim('how');
+          const extent = dim('howMany');
+          const target = s(values['gapTarget']);
+          const seg: string[] = [];
+          if (who) seg.push(`对象：${who}`);
+          if (what) seg.push(`现象：${what}`);
+          if (when) seg.push(`时间：${when}`);
+          if (where) seg.push(`位置：${where}`);
+          if (how) seg.push(`过程：${how}`);
+          if (extent) seg.push(`规模：${extent}`);
+          if (seg.length === 0) return '（填写 4W2H 表格后自动生成）';
+          let out = `现实（已知事实）：${seg.join('；')}。`;
+          out += target ? `目标：${target}。` : '目标未填写。';
+          out += '问题 = 目标 − 现实，二者差距即待分析的问题。';
+          return out;
+        },
+      },
+    },
+    {
+      id: 'factCheck',
+      label: '描述自检（数据质量）',
+      type: 'checkbox',
+      options: [
+        { value: 'hasData', label: '4W2H 每条描述都有数据支撑（数量/比例/时间/频次）' },
+        { value: 'dataReliable', label: '数据来源可靠（系统/日志/一手记录，而非道听途说）' },
+        { value: 'quantifiable', label: '描述可量化、可验证（不是"大概/差不多"）' },
+      ],
+    },
+  ];
+}
+
 export function createProblemDefinitionSection(extraFields: FormField[] = []): FormSection {
   return {
     id: 'problemDefinition',
-    title: '问题定义',
-    description: '先以 4W2H 表格全面分析"现实是什么"（必填，须有数据、来源可靠、可量化），再进行问题判定与分类。标题与一句话陈述在最后的问题整理区完成。',
+    title: '问题定义与鉴别',
+    description:
+      '先以 4W2H 表格全面分析"现实是什么"（必填，须有数据、来源可靠、可量化），再进行问题判定与分类，最后明确目标（问题 = 目标 − 现实），系统自动拼接标准问题陈述。',
     fields: [
-      {
-        id: 'w2hTable',
-        label: '4W2H 全面分析（必填）',
-        type: 'table',
-        hint: '逐行完成 6 个维度：在"维度"列选择后，于"具体描述"列填写该维度的已知事实。描述须有数据、来源可靠、可量化。',
-        validation: { min: 6 },
-        defaultValue: W2H_OPTIONS.map((o) => ({ dimension: o.value, description: '' })),
-        tableColumns: [
-          { id: 'dimension', label: '维度', type: 'select', options: W2H_OPTIONS },
-          { id: 'description', label: '具体描述（有数据、来源可靠、可量化）', type: 'text', placeholder: '填写该维度的具体事实…' },
-        ],
-      },
+      ...createW2hAnalysisFields(),
       ...createProblemCriteriaFields(),
       { id: 'occurredAt', label: '发生时间', type: 'date', defaultValue: 'auto_today' },
       { id: 'discoveryMethod', label: '发现方式', type: 'radio', options: DISCOVERY_METHOD_OPTIONS },
@@ -242,75 +306,6 @@ export function createProblemSummarySection(): FormSection {
         required: true,
         hint: '参考上方"标准问题陈述（自动生成）"优化整理：问题 = 目标 − 现实，客观事实、不含原因猜测与解决方案。',
         placeholder: '把标准问题陈述整理成一句话，例如"账单系统每日 22:00 批处理超时、影响 30% 用户次日账单，目标应在 22:00 前完成，现状与目标存在差距"',
-      },
-    ],
-  };
-}
-
-/**
- * 问题鉴别收尾区：4W2H 已在问题定义区以表格完成（位于问题判定上方）；
- * 此处补充"目标状态"，并自动拼接为标准问题陈述——因为问题 = 目标 − 现实。
- */
-export function createProblemIdentificationSection(): FormSection {
-  return {
-    id: 'problemIdentification',
-    title: '问题鉴别（目标与差距）',
-    description:
-      '4W2H 已在问题定义区以表格完成。此处明确目标状态：问题 = 目标 − 现实（目标与现实之间的差距）。系统会根据 4W2H 表格与目标自动拼接标准问题陈述。',
-    collapsedByDefault: true,
-    fields: [
-      {
-        id: 'gapTarget',
-        label: '目标 / 期望状态',
-        type: 'textarea',
-        required: true,
-        hint: '问题 = 目标 − 现实。明确"应该达到什么状态"，目标尽量可量化。',
-        placeholder: '应该达到什么状态？目标是什么（尽量量化）？',
-      },
-      {
-        id: 'generatedProblemStatement',
-        label: '标准问题陈述（自动生成）',
-        type: 'text',
-        computed: {
-          dependsOn: ['w2hTable', 'gapTarget'],
-          formula: (values: Record<string, unknown>) => {
-            const rows = Array.isArray(values['w2hTable']) ? (values['w2hTable'] as Array<Record<string, unknown>>) : [];
-            const dim = (id: string) => {
-              const row = rows.find((r) => r.dimension === id);
-              return typeof row?.description === 'string' ? (row.description as string).trim() : '';
-            };
-            const s = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
-            const what = dim('what');
-            const who = dim('who');
-            const when = dim('when');
-            const where = dim('where');
-            const how = dim('how');
-            const extent = dim('howMany');
-            const target = s(values['gapTarget']);
-            const seg: string[] = [];
-            if (who) seg.push(`对象：${who}`);
-            if (what) seg.push(`现象：${what}`);
-            if (when) seg.push(`时间：${when}`);
-            if (where) seg.push(`位置：${where}`);
-            if (how) seg.push(`过程：${how}`);
-            if (extent) seg.push(`规模：${extent}`);
-            if (seg.length === 0) return '（填写 4W2H 表格后自动生成）';
-            let out = `现实（已知事实）：${seg.join('；')}。`;
-            out += target ? `目标：${target}。` : '目标未填写。';
-            out += '问题 = 目标 − 现实，二者差距即待分析的问题。';
-            return out;
-          },
-        },
-      },
-      {
-        id: 'factCheck',
-        label: '描述自检（数据质量）',
-        type: 'checkbox',
-        options: [
-          { value: 'hasData', label: '4W2H 每条描述都有数据支撑（数量/比例/时间/频次）' },
-          { value: 'dataReliable', label: '数据来源可靠（系统/日志/一手记录，而非道听途说）' },
-          { value: 'quantifiable', label: '描述可量化、可验证（不是"大概/差不多"）' },
-        ],
       },
     ],
   };

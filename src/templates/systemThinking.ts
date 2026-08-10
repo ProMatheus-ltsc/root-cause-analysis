@@ -2,7 +2,7 @@
  * 系统思考分析（因果回路图）：找出反复出现的系统性问题背后的循环因果关系。
  */
 import type { FormTemplate } from '../types';
-import { createActionSection, createProblemCriteriaFields, createProblemIdentificationSection, createProblemSummarySection } from './shared';
+import { createActionSection, createProblemCriteriaFields, createProblemSummarySection, createW2hAnalysisFields } from './shared';
 
 export const systemThinkingTemplate: FormTemplate = {
   id: 'systemThinking',
@@ -25,6 +25,7 @@ export const systemThinkingTemplate: FormTemplate = {
       id: 'problemDefinition',
       title: '问题定义',
       fields: [
+        ...createW2hAnalysisFields(),
         ...createProblemCriteriaFields(),
         {
           id: 'recurrence',
@@ -40,7 +41,6 @@ export const systemThinkingTemplate: FormTemplate = {
         { id: 'relatedFactors', label: '已知的相关因素列表', type: 'textarea', hint: '每行一个', placeholder: '列出所有你认为与问题相关的因素，每行一个…' },
       ],
     },
-    createProblemIdentificationSection(),
     createProblemSummarySection(),
     {
       id: 'causalChain',
@@ -102,28 +102,28 @@ export const systemThinkingTemplate: FormTemplate = {
       id: 'problemDefinition',
       label: '问题鉴别',
       icon: '🎯',
-      sectionIndices: [0, 1, 2],
+      sectionIndices: [0, 1],
       completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'gapTarget'],
     },
     {
       id: 'causalAnalysis',
       label: '因果链分析',
       icon: '🔄',
-      sectionIndices: [3, 4],
+      sectionIndices: [2, 3],
       completionFields: ['factorA', 'factorB', 'leveragePoint'],
     },
     {
       id: 'intervention',
       label: '干预策略',
       icon: '🛠️',
-      sectionIndices: [5],
+      sectionIndices: [4],
       completionFields: ['interventionPlan'],
     },
     {
       id: 'action',
       label: '对策实施',
       icon: '✅',
-      sectionIndices: [6],
+      sectionIndices: [5],
       completionFields: ['measure'],
       completesRecord: true,
     },

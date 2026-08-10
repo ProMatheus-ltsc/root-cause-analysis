@@ -2,7 +2,7 @@
  * 5 Why 分析法：快速找到单一问题的深层原因。
  */
 import type { FormTemplate } from '../types';
-import { createActionSection, createProblemDefinitionSection, createProblemIdentificationSection, createProblemSummarySection, createRemedySection } from './shared';
+import { createActionSection, createProblemDefinitionSection, createProblemSummarySection, createRemedySection } from './shared';
 
 export const fiveWhyTemplate: FormTemplate = {
   id: 'fiveWhy',
@@ -21,7 +21,6 @@ export const fiveWhyTemplate: FormTemplate = {
   ],
   sections: [
     createProblemDefinitionSection(),
-    createProblemIdentificationSection(),
     createProblemSummarySection(),
     {
       id: 'whyChain',
@@ -88,28 +87,28 @@ export const fiveWhyTemplate: FormTemplate = {
       id: 'problemDefinition',
       label: '问题鉴别',
       icon: '🎯',
-      sectionIndices: [0, 1, 2],
+      sectionIndices: [0, 1],
       completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'symptom', 'gapTarget'],
     },
     {
       id: 'whyChain',
       label: '5 Why 追问',
       icon: '🔍',
-      sectionIndices: [3],
+      sectionIndices: [2],
       completionFields: ['why'],
     },
     {
       id: 'remedy',
       label: '根因结论',
       icon: '🛠️',
-      sectionIndices: [4],
+      sectionIndices: [3],
       completionFields: ['rootCauseSummary'],
     },
     {
       id: 'action',
       label: '对策实施',
       icon: '✅',
-      sectionIndices: [5],
+      sectionIndices: [4],
       completionFields: ['measure'],
       completesRecord: true,
     },
