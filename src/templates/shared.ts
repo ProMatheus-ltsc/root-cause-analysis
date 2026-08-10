@@ -165,17 +165,8 @@ export function createProblemDefinitionSection(extraFields: FormField[] = []): F
   return {
     id: 'problemDefinition',
     title: '问题定义',
-    description: '先严格界定问题：对照三标准判定是否是真问题，再确定问题类型，最后按类型明确问题细节。',
+    description: '先严格界定问题：对照三标准判定是否是真问题，再确定问题类型，最后按类型明确问题细节。（标题与一句话陈述在 4W2H 分析完成后整理）',
     fields: [
-      { id: 'title', label: '问题标题', type: 'text', required: true },
-      {
-        id: 'problemStatement',
-        label: '一句话问题陈述',
-        type: 'textarea',
-        required: true,
-        hint: '鉴别问题的第一原则：先界定问题，再寻找原因。陈述中不包含原因猜测与解决方案。',
-        placeholder: '用一句话客观描述：什么对象、在什么条件下、发生了什么。例如"每日 22:00 批处理任务超时未完成，连续 3 天，影响次日账单生成"',
-      },
       ...createProblemCriteriaFields(),
       { id: 'occurredAt', label: '发生时间', type: 'date', defaultValue: 'auto_today' },
       { id: 'discoveryMethod', label: '发现方式', type: 'radio', options: DISCOVERY_METHOD_OPTIONS },
@@ -183,6 +174,36 @@ export function createProblemDefinitionSection(extraFields: FormField[] = []): F
       { id: 'severity', label: '严重程度', type: 'radio', options: SEVERITY_OPTIONS },
       { id: 'symptom', label: '问题现象描述', type: 'textarea', required: true, placeholder: '补充问题陈述的细节：发生频率、量化数据、关键证据等…' },
       ...extraFields,
+    ],
+  };
+}
+
+/**
+ * 问题整理区：标题与一句话陈述是 4W2H 全面分析之后的"整理输出"，
+ * 而不是开头的随手描述。放在鉴别区之后，引导用户先分析、再提炼。
+ */
+export function createProblemSummarySection(): FormSection {
+  return {
+    id: 'problemSummary',
+    title: '问题整理',
+    description: '先完成上方 4W2H 全面分析，再基于分析结果（标准问题陈述）整理出标题与一句话陈述。',
+    fields: [
+      {
+        id: 'title',
+        label: '问题标题',
+        type: 'text',
+        required: true,
+        hint: '基于 4W2H 分析提炼的简洁标题',
+        placeholder: '例如：每日 22:00 批处理任务超时，影响次日账单生成',
+      },
+      {
+        id: 'problemStatement',
+        label: '一句话问题陈述',
+        type: 'textarea',
+        required: true,
+        hint: '参考上方"标准问题陈述（自动生成）"优化整理：问题 = 目标 − 现实，客观事实、不含原因猜测与解决方案。',
+        placeholder: '把标准问题陈述整理成一句话，例如"账单系统每日 22:00 批处理超时、影响 30% 用户次日账单，目标应在 22:00 前完成，现状与目标存在差距"',
+      },
     ],
   };
 }

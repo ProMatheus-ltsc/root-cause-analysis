@@ -2,7 +2,7 @@
  * 系统思考分析（因果回路图）：找出反复出现的系统性问题背后的循环因果关系。
  */
 import type { FormTemplate } from '../types';
-import { createActionSection, createProblemCriteriaFields, createProblemIdentificationSection } from './shared';
+import { createActionSection, createProblemCriteriaFields, createProblemIdentificationSection, createProblemSummarySection } from './shared';
 
 export const systemThinkingTemplate: FormTemplate = {
   id: 'systemThinking',
@@ -25,15 +25,6 @@ export const systemThinkingTemplate: FormTemplate = {
       id: 'problemDefinition',
       title: '问题定义',
       fields: [
-        { id: 'title', label: '问题标题', type: 'text', required: true },
-        {
-          id: 'problemStatement',
-          label: '一句话问题陈述',
-          type: 'textarea',
-          required: true,
-          hint: '鉴别问题的第一原则：先界定问题，再寻找原因。陈述中不包含原因猜测与解决方案。',
-          placeholder: '用一句话客观描述：什么对象、在什么条件下、发生了什么。',
-        },
         ...createProblemCriteriaFields(),
         {
           id: 'recurrence',
@@ -50,6 +41,7 @@ export const systemThinkingTemplate: FormTemplate = {
       ],
     },
     createProblemIdentificationSection(),
+    createProblemSummarySection(),
     {
       id: 'causalChain',
       title: '因果链分析',
@@ -110,28 +102,28 @@ export const systemThinkingTemplate: FormTemplate = {
       id: 'problemDefinition',
       label: '问题鉴别',
       icon: '🎯',
-      sectionIndices: [0, 1],
+      sectionIndices: [0, 1, 2],
       completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'isWhat', 'isWho', 'isWhen', 'isWhere', 'isHow', 'isExtent', 'gapTarget'],
     },
     {
       id: 'causalAnalysis',
       label: '因果链分析',
       icon: '🔄',
-      sectionIndices: [2, 3],
+      sectionIndices: [3, 4],
       completionFields: ['factorA', 'factorB', 'leveragePoint'],
     },
     {
       id: 'intervention',
       label: '干预策略',
       icon: '🛠️',
-      sectionIndices: [4],
+      sectionIndices: [5],
       completionFields: ['interventionPlan'],
     },
     {
       id: 'action',
       label: '对策实施',
       icon: '✅',
-      sectionIndices: [5],
+      sectionIndices: [6],
       completionFields: ['measure'],
       completesRecord: true,
     },

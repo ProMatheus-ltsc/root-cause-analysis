@@ -2,7 +2,7 @@
  * 鱼骨图分析法（石川图）：从人机料法环测六大维度全面排查多因素系统性问题。
  */
 import type { FormField, FormTemplate } from '../types';
-import { createActionSection, createProblemDefinitionSection, createProblemIdentificationSection, createRemedySection } from './shared';
+import { createActionSection, createProblemDefinitionSection, createProblemIdentificationSection, createProblemSummarySection, createRemedySection } from './shared';
 
 const DIMENSION_OPTIONS = [
   { value: 'man', label: '人 (Man)' },
@@ -65,6 +65,7 @@ export const fishboneTemplate: FormTemplate = {
       },
     ]),
     createProblemIdentificationSection(),
+    createProblemSummarySection(),
     {
       id: 'man',
       title: '人 (Man)',
@@ -147,28 +148,28 @@ export const fishboneTemplate: FormTemplate = {
       id: 'problemDefinition',
       label: '问题鉴别',
       icon: '🎯',
-      sectionIndices: [0, 1],
+      sectionIndices: [0, 1, 2],
       completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'symptom', 'isWhat', 'isWho', 'isWhen', 'isWhere', 'isHow', 'isExtent', 'gapTarget'],
     },
     {
       id: 'sixFactors',
       label: '六大因素排查',
       icon: '🔍',
-      sectionIndices: [2, 3, 4, 5, 6, 7, 8],
+      sectionIndices: [3, 4, 5, 6, 7, 8, 9],
       completionFields: ['rootCauseJudgement'],
     },
     {
       id: 'remedy',
       label: '根因结论',
       icon: '🛠️',
-      sectionIndices: [9],
+      sectionIndices: [10],
       completionFields: ['rootCauseSummary'],
     },
     {
       id: 'action',
       label: '对策实施',
       icon: '✅',
-      sectionIndices: [10],
+      sectionIndices: [11],
       completionFields: ['measure'],
       completesRecord: true,
     },

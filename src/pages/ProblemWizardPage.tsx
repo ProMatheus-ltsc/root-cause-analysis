@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { FormProvider, useForm } from 'react-hook-form';
 import { format } from 'date-fns';
 import { TEMPLATE_LIST } from '../templates';
-import { createProblemDefinitionSection, createProblemIdentificationSection } from '../templates/shared';
+import { createProblemDefinitionSection, createProblemIdentificationSection, createProblemSummarySection } from '../templates/shared';
 import type { FormTemplate } from '../types';
 import { useRecords, useSaveRecord } from '../hooks/useDB';
 import { useToast } from '../hooks/useToast';
@@ -23,7 +23,7 @@ const IDENTIFY_TEMPLATE: FormTemplate = {
   name: '问题鉴别',
   icon: '🎯',
   description: '通用问题鉴别前置',
-  sections: [createProblemDefinitionSection(), createProblemIdentificationSection()],
+  sections: [createProblemDefinitionSection(), createProblemIdentificationSection(), createProblemSummarySection()],
 };
 
 export default function ProblemWizardPage() {

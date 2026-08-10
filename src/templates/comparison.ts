@@ -2,7 +2,7 @@
  * 对比分析法：通过 A/B 对比找出"为什么同样条件下有时出问题有时不出"的关键差异。
  */
 import type { FormTemplate } from '../types';
-import { createActionSection, createProblemCriteriaFields, createProblemIdentificationSection } from './shared';
+import { createActionSection, createProblemCriteriaFields, createProblemIdentificationSection, createProblemSummarySection } from './shared';
 
 export const comparisonTemplate: FormTemplate = {
   id: 'comparison',
@@ -24,15 +24,6 @@ export const comparisonTemplate: FormTemplate = {
       id: 'definitionAndComparison',
       title: '定义与对比',
       fields: [
-        { id: 'title', label: '问题标题', type: 'text', required: true },
-        {
-          id: 'problemStatement',
-          label: '一句话问题陈述',
-          type: 'textarea',
-          required: true,
-          hint: '鉴别问题的第一原则：先界定问题，再寻找原因。陈述中不包含原因猜测与解决方案。',
-          placeholder: '用一句话客观描述：什么对象、在什么条件下、发生了什么。',
-        },
         ...createProblemCriteriaFields(),
         { id: 'normalCase', label: '正常情况描述', type: 'textarea', required: true, placeholder: '描述一切正常时的情况：什么时间、什么条件、什么结果？' },
         { id: 'abnormalCase', label: '异常情况描述', type: 'textarea', required: true, placeholder: '描述出问题时的情况：什么时间、什么条件、什么结果？' },
@@ -58,6 +49,7 @@ export const comparisonTemplate: FormTemplate = {
       ],
     },
     createProblemIdentificationSection(),
+    createProblemSummarySection(),
     {
       id: 'attributionAndAction',
       title: '归因与对策',
@@ -75,21 +67,21 @@ export const comparisonTemplate: FormTemplate = {
       id: 'definitionAndComparison',
       label: '问题鉴别',
       icon: '🎯',
-      sectionIndices: [0, 1],
+      sectionIndices: [0, 1, 2],
       completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'normalCase', 'abnormalCase', 'keyDifference', 'isWhat', 'isWho', 'isWhen', 'isWhere', 'isHow', 'isExtent', 'gapTarget'],
     },
     {
       id: 'attributionAndAction',
       label: '归因与对策',
       icon: '🛠️',
-      sectionIndices: [2],
+      sectionIndices: [3],
       completionFields: ['mostLikelyCause', 'action'],
     },
     {
       id: 'actionImplementation',
       label: '对策实施',
       icon: '✅',
-      sectionIndices: [3],
+      sectionIndices: [4],
       completionFields: ['measure'],
       completesRecord: true,
     },
