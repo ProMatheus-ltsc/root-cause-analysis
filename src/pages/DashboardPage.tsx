@@ -1,73 +1,21 @@
 /**
- * 仪表盘首页：提供带使用场景提示和分析流程概览的模板选择入口、数据备份提醒，并展示统计看板。
+ * 仪表盘首页（以问题为导向）：问题列表入口 + 数据备份提醒 + 统计看板。
+ * 新建问题 → /new；问题详情（含挂分析方法）→ /problem/:id。
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import type { FormTemplate } from '../types';
-import { useRecords } from '../hooks/useDB';
+import { useProblems, useRecords } from '../hooks/useDB';
 import { getSetting } from '../services/db';
 import { daysSinceLastExport } from '../utils/dashboard';
-import { TEMPLATE_LIST, TEMPLATES } from '../templates';
-import { TEMPLATE_COLORS } from '../constants/templateMeta';
+import { TEMPLATES } from '../templates';
 import { DashboardLayout } from '../components/dashboard/DashboardLayout';
 
 const BACKUP_REMINDER_THRESHOLD_DAYS = 30;
 
-function TemplateCard({ template }: { template: FormTemplate }) {
-  const [expanded, setExpanded] = useState(false);
-  const colorClass = TEMPLATE_COLORS[template.id];
-
-  return (
-    <div className={`rounded-lg border ${colorClass} overflow-hidden transition-all`}>
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-3 p-3 text-left text-sm font-medium"
-      >
-        <span className="text-2xl">{template.icon}</span>
-        <div className="min-w-0 flex-1">
-          <div className="font-semibold">{template.name}</div>
-          <div className="mt-0.5 text-xs opacity-75">{template.description}</div>
-        </div>
-        <span className="shrink-0 text-xs opacity-50">{expanded ? '收起' : '展开'}</span>
-      </button>
-      {expanded && (
-        <div className="border-t border-current/10 px-3 pb-3 pt-2 text-xs leading-relaxed">
-          {template.scenarios && template.scenarios.length > 0 && (
-            <div className="mb-2">
-              <p className="mb-1 font-semibold">适用场景</p>
-              <ul className="list-inside list-disc space-y-0.5 opacity-80">
-                {template.scenarios.map((s) => (
-                  <li key={s}>{s}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {template.flowSteps && template.flowSteps.length > 0 && (
-            <div className="mb-3">
-              <p className="mb-1 font-semibold">分析流程</p>
-              <ol className="list-inside list-decimal space-y-0.5 opacity-80">
-                {template.flowSteps.map((s) => (
-                  <li key={s}>{s}</li>
-                ))}
-              </ol>
-            </div>
-          )}
-          <Link
-            to={`/form/${template.id}`}
-            className="inline-block rounded-md bg-current/10 px-3 py-1.5 font-medium transition hover:bg-current/20"
-          >
-            开始分析
-          </Link>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function DashboardPage() {
-  const { records, loading } = useRecords();
+  const { problems, loading } = useProblems();
+  const { records } = useRecords();
   const [lastExportedAt, setLastExportedAt] = useState<string | undefined>(undefined);
 
   useEffect(() => {
@@ -90,37 +38,47 @@ export default function DashboardPage() {
         </div>
       )}
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">新建分析</h2>
-        <div className="mb-6 flex flex-col gap-3 rounded-lg border border-sky-200 bg-sky-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-sm text-sky-900">
-            <p className="font-semibold">先鉴别问题，再选方法</p>
-            <p className="mt-1 text-xs text-sky-700">
-              推荐流程：① 通用问题鉴别（界定"是不是问题、是哪类问题、边界在哪"）→ ② 选择分析方法。也可跳过鉴别直接开始分析。
-            </p>
-          </div>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">问题库（{problems.length}）</h2>
           <Link
             to="/new"
-            className="inline-block shrink-0 rounded-md bg-sky-600 px-4 py-2 text-center text-sm font-medium text-white hover:bg-sky-700"
+            className="inline-block rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
           >
-            ① 先鉴别问题 →
+            + 新建问题
           </Link>
         </div>
+        <p className="mb-4 text-sm text-slate-500">以问题为导向：先定义问题，再在问题下挂一个或多个根因分析方法</p>
+        {loading ? (
+          <p className="text-sm text-slate-400">加载中…</p>
+        ) : problems.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-slate-300 py-12 text-center text-sm text-slate-400">
+            还没有问题，点击"新建问题"开始第一次根因分析
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {problems.map((problem) => {
+              const count = records.filter((r) => r.problemId === problem.id).length;
+              return (
+                <Link
+                  key={problem.id}
+                  to={`/problem/${problem.id}`}
+                  className="rounded-lg border border-slate-200 bg-white p-4 transition hover:shadow-md"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-semibold text-slate-800">{problem.title}</p>
+                    <span className="shrink-0 rounded bg-sky-50 px-2 py-0.5 text-xs text-sky-700">{count} 个分析</span>
+                  </div>
+                  {problem.problemStatement && (
+                    <p className="mt-2 line-clamp-2 text-xs text-slate-500">{problem.problemStatement}</p>
+                  )}
+                  <p className="mt-3 text-xs text-slate-400">更新于 {problem.updatedAt.slice(0, 10)}</p>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </section>
-      <section>
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">选择分析方法</h2>
-        <p className="mb-4 text-sm text-slate-500">展开卡片查看适用场景与分析流程，选择最适合当前问题的方法</p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {TEMPLATE_LIST.map((template) => (
-            <TemplateCard key={template.id} template={template} />
-          ))}
-        </div>
-      </section>
-      {loading ? (
-        <p className="text-sm text-slate-400">加载中…</p>
-      ) : (
-        <DashboardLayout records={records} templates={TEMPLATES} />
-      )}
+      <DashboardLayout records={records} templates={TEMPLATES} />
     </div>
   );
 }
-

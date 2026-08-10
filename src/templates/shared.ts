@@ -192,6 +192,44 @@ export function createProblemCriteriaFields(): FormField[] {
  * 4W2H 分析相关字段组：表格 + 目标 + 自动拼接标准问题陈述 + 数据质量自检。
  * 供 createProblemDefinitionSection 与自定义问题定义区的模板复用。
  */
+/**
+ * 标准问题陈述拼接（纯函数）：供 computed 字段与问题摘要卡片复用。
+ * 4W2H 各维度为短语，自动拼成自然语句；空维度跳过。
+ */
+export function buildGeneratedProblemStatement(values: Record<string, unknown>): string {
+  const rows = Array.isArray(values['w2hTable']) ? (values['w2hTable'] as Array<Record<string, unknown>>) : [];
+  const dim = (id: string) => {
+    const row = rows.find((r) => r.dimension === id);
+    return typeof row?.description === 'string' ? (row.description as string).trim() : '';
+  };
+  const s = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+  const who = dim('who');
+  const what = dim('what');
+  const when = dim('when');
+  const where = dim('where');
+  const how = dim('how');
+  const extent = dim('howMany');
+  const target = s(values['gapTarget']);
+
+  if (!who && !what && !when && !where && !how && !extent) return '（填写 4W2H 表格后自动生成）';
+
+  const lead: string[] = [];
+  if (who) lead.push(who);
+  if (when) lead.push(`自${when}起`);
+  if (where) lead.push(`在${where}中`);
+  let sentence = lead.join('');
+  if (what) sentence += `出现「${what}」`;
+  if (how) sentence += `，其过程为${how}`;
+  if (extent) sentence += `，影响${extent}`;
+  sentence += '。';
+  if (target) {
+    sentence += `目标为${target}，现状与目标存在差距，二者之差即待分析的问题。`;
+  } else {
+    sentence += '目标未填写，请补充以界定差距。';
+  }
+  return sentence;
+}
+
 export function createW2hAnalysisFields(): FormField[] {
   return [
     {
@@ -220,41 +258,7 @@ export function createW2hAnalysisFields(): FormField[] {
       type: 'text',
       computed: {
         dependsOn: ['w2hTable', 'gapTarget'],
-        formula: (values: Record<string, unknown>) => {
-          const rows = Array.isArray(values['w2hTable']) ? (values['w2hTable'] as Array<Record<string, unknown>>) : [];
-          const dim = (id: string) => {
-            const row = rows.find((r) => r.dimension === id);
-            return typeof row?.description === 'string' ? (row.description as string).trim() : '';
-          };
-          const s = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
-          const who = dim('who');
-          const what = dim('what');
-          const when = dim('when');
-          const where = dim('where');
-          const how = dim('how');
-          const extent = dim('howMany');
-          const target = s(values['gapTarget']);
-
-          if (!who && !what && !when && !where && !how && !extent) return '（填写 4W2H 表格后自动生成）';
-
-          // 主句：主体 + 时间 + 地点 + 现象
-          const lead: string[] = [];
-          if (who) lead.push(who);
-          if (when) lead.push(`自${when}起`);
-          if (where) lead.push(`在${where}中`);
-          let sentence = lead.join('');
-          if (what) sentence += `出现「${what}」`;
-          if (how) sentence += `，其过程为${how}`;
-          if (extent) sentence += `，影响${extent}`;
-          sentence += '。';
-          // 目标与差距
-          if (target) {
-            sentence += `目标为${target}，现状与目标存在差距，二者之差即待分析的问题。`;
-          } else {
-            sentence += '目标未填写，请补充以界定差距。';
-          }
-          return sentence;
-        },
+        formula: (values: Record<string, unknown>) => buildGeneratedProblemStatement(values),
       },
     },
     {

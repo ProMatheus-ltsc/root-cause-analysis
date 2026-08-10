@@ -180,7 +180,10 @@ export default function HistoryPage() {
               const template = TEMPLATES[record.templateId];
               return (
                 <div key={record.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                  <Link to={`/form/${record.templateId}/${record.id}`} className="min-w-0 flex-1">
+                  <Link
+                    to={record.problemId ? `/analysis/${record.problemId}/${record.templateId}/${record.id}` : `/analysis/unknown/${record.templateId}/${record.id}`}
+                    className="min-w-0 flex-1"
+                  >
                     <span className={`mr-2 rounded border px-2 py-0.5 text-xs ${TEMPLATE_COLORS[record.templateId]}`}>{template.name}</span>
                     <span className="text-sm font-medium text-slate-800">{record.title}</span>
                     <span className="ml-2 text-xs text-slate-400">更新于 {record.updatedAt.slice(0, 10)}</span>

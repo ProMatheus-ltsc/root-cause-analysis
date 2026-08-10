@@ -60,49 +60,28 @@ describe('isCompletionFieldSatisfied - repeatable section (5 Why chain)', () => 
 
 describe('getCurrentPhaseIndex', () => {
   const base = { todayISO: '2026-08-10', createdAtISO: '2026-08-01' };
-  /** phase 0（问题鉴别）全部必填字段的完整值 */
-  const PHASE0 = {
-    title: '标题',
-    problemStatement: '一句话陈述',
-    problemCriteria: ['deviation'],
-    problemType: 'restore',
-    symptom: '现象描述',
-    w2hTable: [
-      { dimension: 'what', description: '批处理超时' },
-      { dimension: 'who', description: '账单系统' },
-      { dimension: 'when', description: '每日 22:00' },
-      { dimension: 'where', description: '生产环境' },
-      { dimension: 'how', description: '队列堆积' },
-      { dimension: 'howMany', description: '影响 30% 用户' },
-    ],
-    gapTarget: '22:00 前完成',
-  };
+  /** 分析方法（5 Why）完整数据 */
+  const ANALYSIS = { whyChain: [{ why: 'A' }, { why: 'B' }] };
 
   it('returns 0 for a template without phases', () => {
     expect(getCurrentPhaseIndex(PHASELESS_TEMPLATE, {}, base)).toBe(0);
   });
 
-  it('stays on phase 0 until problem definition is complete', () => {
+  it('stays on phase 0 until why chain is complete', () => {
     expect(getCurrentPhaseIndex(fiveWhyTemplate, {}, base)).toBe(0);
   });
 
-  it('advances to phase 1 once phase 0 completion fields are filled', () => {
-    expect(getCurrentPhaseIndex(fiveWhyTemplate, { ...PHASE0 }, base)).toBe(1);
-  });
-
-  it('advances to phase 2 (根因结论) once the why chain has >=2 entries', () => {
-    const values = { ...PHASE0, whyChain: [{ why: 'A' }, { why: 'B' }] };
-    expect(getCurrentPhaseIndex(fiveWhyTemplate, values, base)).toBe(2);
+  it('advances to phase 1 once phase 0 (why chain) completion fields are filled', () => {
+    expect(getCurrentPhaseIndex(fiveWhyTemplate, { ...ANALYSIS }, base)).toBe(1);
   });
 
   it('stays on the last phase (根因结论) when completion fields are not yet filled', () => {
-    const values = { ...PHASE0, whyChain: [{ why: 'A' }, { why: 'B' }] };
-    expect(getCurrentPhaseIndex(fiveWhyTemplate, values, base)).toBe(2);
+    expect(getCurrentPhaseIndex(fiveWhyTemplate, { ...ANALYSIS }, base)).toBe(1);
   });
 
   it('remains on last phase once all fields are complete', () => {
-    const values = { ...PHASE0, whyChain: [{ why: 'A' }, { why: 'B' }], rootCauseSummary: '根因' };
-    expect(getCurrentPhaseIndex(fiveWhyTemplate, values, base)).toBe(2);
+    const values = { ...ANALYSIS, rootCauseSummary: '根因' };
+    expect(getCurrentPhaseIndex(fiveWhyTemplate, values, base)).toBe(1);
   });
 });
 
@@ -110,24 +89,12 @@ describe('validateRequiredFields', () => {
   it('reports missing required fields across normal and repeatable sections', () => {
     const missing = validateRequiredFields(fiveWhyTemplate, { whyChain: [{ why: '' }] });
     const fieldIds = missing.map((m) => m.fieldId);
-    expect(fieldIds).toContain('title');
-    expect(fieldIds).toContain('problemStatement');
-    expect(fieldIds).toContain('problemCriteria');
-    expect(fieldIds).toContain('problemType');
-    expect(fieldIds).toContain('symptom');
-    expect(fieldIds).toContain('gapTarget');
     expect(fieldIds).toContain('why');
     expect(fieldIds).toContain('rootCauseSummary');
   });
 
   it('returns an empty list when all required fields are filled', () => {
     const missing = validateRequiredFields(fiveWhyTemplate, {
-      title: 't',
-      problemStatement: 'p',
-      problemCriteria: ['gap'],
-      problemType: 'ideal',
-      symptom: 's',
-      gapTarget: 'target',
       whyChain: [{ why: 'a' }],
       rootCauseSummary: 'r',
     });

@@ -2,7 +2,6 @@
  * 系统思考分析（因果回路图）：找出反复出现的系统性问题背后的循环因果关系。
  */
 import type { FormTemplate } from '../types';
-import { createProblemCriteriaFields, createProblemSummarySection, createW2hAnalysisFields } from './shared';
 
 export const systemThinkingTemplate: FormTemplate = {
   id: 'systemThinking',
@@ -15,33 +14,24 @@ export const systemThinkingTemplate: FormTemplate = {
     '减肥总是反弹——节食→暴食→自责→再节食，想理清这个循环的因果结构',
   ],
   flowSteps: [
-    '鉴别并清晰描述问题，评估其复发频率',
     '列出已知相关因素，逐条分析因果关系（正/负反馈）与延迟效应',
     '识别增强回路与调节回路，找出系统杠杆点',
     '制定干预方案，提前评估可能的副作用',
   ],
   sections: [
     {
-      id: 'problemDefinition',
-      title: '问题定义',
+      id: 'relatedFactors',
+      title: '相关因素',
       fields: [
-        ...createW2hAnalysisFields(),
-        ...createProblemCriteriaFields(),
-        {
-          id: 'recurrence',
-          label: '这个问题是否反复出现？',
-          type: 'radio',
-          options: [
-            { value: 'first', label: '首次' },
-            { value: 'occasional', label: '偶尔' },
-            { value: 'frequent', label: '经常' },
-            { value: 'always', label: '每次都会' },
-          ],
-        },
-        { id: 'relatedFactors', label: '已知的相关因素列表', type: 'textarea', hint: '每行一个', placeholder: '列出所有你认为与问题相关的因素，每行一个…' },
+        { id: 'recurrence', label: '这个问题是否反复出现？', type: 'radio', options: [
+          { value: 'first', label: '首次' },
+          { value: 'occasional', label: '偶尔' },
+          { value: 'frequent', label: '经常' },
+          { value: 'always', label: '每次都会' },
+        ] },
+        { id: 'knownFactors', label: '已知的相关因素列表', type: 'textarea', hint: '每行一个', placeholder: '列出所有你认为与问题相关的因素，每行一个…' },
       ],
     },
-    createProblemSummarySection(),
     {
       id: 'causalChain',
       title: '因果链分析',
@@ -98,24 +88,17 @@ export const systemThinkingTemplate: FormTemplate = {
   ],
   phases: [
     {
-      id: 'problemDefinition',
-      label: '问题鉴别',
-      icon: '🎯',
-      sectionIndices: [0, 1],
-      completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'gapTarget'],
-    },
-    {
       id: 'causalAnalysis',
       label: '因果链分析',
       icon: '🔄',
-      sectionIndices: [2, 3],
+      sectionIndices: [0, 1, 2],
       completionFields: ['factorA', 'factorB', 'leveragePoint'],
     },
     {
       id: 'intervention',
       label: '干预策略',
       icon: '🛠️',
-      sectionIndices: [4],
+      sectionIndices: [3],
       completionFields: ['interventionPlan'],
       completesRecord: true,
     },

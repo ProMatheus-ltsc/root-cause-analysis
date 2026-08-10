@@ -35,23 +35,8 @@ function makeRecord(overrides: Partial<FormRecord>): FormRecord {
 
 describe('getDisplayStatus', () => {
   const todayISO = '2026-08-10';
-  /** phase 0（问题鉴别）全部必填字段的完整值 */
-  const PHASE0 = {
-    title: 't',
-    problemStatement: 'p',
-    problemCriteria: ['deviation'],
-    problemType: 'restore',
-    symptom: 's',
-    w2hTable: [
-      { dimension: 'what', description: 'w' },
-      { dimension: 'who', description: 'who' },
-      { dimension: 'when', description: 'when' },
-      { dimension: 'where', description: 'where' },
-      { dimension: 'how', description: 'how' },
-      { dimension: 'howMany', description: 'many' },
-    ],
-    gapTarget: 'target',
-  };
+  /** 分析方法（5 Why）第一阶段完成、后续未完成 → 分析中 */
+  const MID_ANALYSIS = { whyChain: [{ why: 'a' }, { why: 'b' }] };
 
   it('draft with no phase progress is 待分析', () => {
     const record = makeRecord({ data: {} });
@@ -59,7 +44,7 @@ describe('getDisplayStatus', () => {
   });
 
   it('draft mid-way through phases is 分析中', () => {
-    const record = makeRecord({ data: { ...PHASE0 } });
+    const record = makeRecord({ data: { ...MID_ANALYSIS } });
     expect(getDisplayStatus(fiveWhyTemplate, record, todayISO)).toBe('分析中');
   });
 
@@ -80,25 +65,10 @@ describe('getDisplayStatus', () => {
 describe('countByDisplayStatus', () => {
   it('aggregates counts across records', () => {
     const todayISO = '2026-08-10';
-    const PHASE0 = {
-      title: 't',
-      problemStatement: 'p',
-      problemCriteria: ['deviation'],
-      problemType: 'restore',
-      symptom: 's',
-      w2hTable: [
-        { dimension: 'what', description: 'w' },
-        { dimension: 'who', description: 'who' },
-        { dimension: 'when', description: 'when' },
-        { dimension: 'where', description: 'where' },
-        { dimension: 'how', description: 'how' },
-        { dimension: 'howMany', description: 'many' },
-      ],
-      gapTarget: 'target',
-    };
+    const MID_ANALYSIS = { whyChain: [{ why: 'a' }, { why: 'b' }] };
     const records = [
       makeRecord({ id: '1', data: {} }),
-      makeRecord({ id: '2', data: { ...PHASE0 } }),
+      makeRecord({ id: '2', data: { ...MID_ANALYSIS } }),
     ];
     const counts = countByDisplayStatus(records, TEMPLATES, todayISO);
     expect(counts.待分析).toBe(1);

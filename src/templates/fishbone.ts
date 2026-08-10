@@ -2,7 +2,7 @@
  * 鱼骨图分析法（石川图）：从人机料法环测六大维度全面排查多因素系统性问题。
  */
 import type { FormField, FormTemplate } from '../types';
-import { createProblemDefinitionSection, createProblemSummarySection, createRemedySection } from './shared';
+import { createRemedySection } from './shared';
 
 const DIMENSION_OPTIONS = [
   { value: 'man', label: '人 (Man)' },
@@ -43,28 +43,11 @@ export const fishboneTemplate: FormTemplate = {
     '公司员工离职率突然升高，想从薪资、文化、管理、发展等多维度排查',
   ],
   flowSteps: [
-    '鉴别并清晰描述问题，界定影响范围',
     '按人/机/料/法/环/测六大维度逐项排查，勾选并记录发现',
     '综合评估各维度影响权重，判定主要根因',
     '确认根因并总结结论',
   ],
   sections: [
-    createProblemDefinitionSection([
-      {
-        id: 'problemDomain',
-        label: '问题领域',
-        type: 'radio',
-        options: [
-          { value: 'technical', label: '技术' },
-          { value: 'management', label: '管理' },
-          { value: 'process', label: '流程' },
-          { value: 'product', label: '产品' },
-          { value: 'operation', label: '运营' },
-          { value: 'other', label: '其他' },
-        ],
-      },
-    ]),
-    createProblemSummarySection(),
     {
       id: 'man',
       title: '人 (Man)',
@@ -143,24 +126,17 @@ export const fishboneTemplate: FormTemplate = {
   ],
   phases: [
     {
-      id: 'problemDefinition',
-      label: '问题鉴别',
-      icon: '🎯',
-      sectionIndices: [0, 1],
-      completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'symptom', 'gapTarget'],
-    },
-    {
       id: 'sixFactors',
       label: '六大因素排查',
       icon: '🔍',
-      sectionIndices: [2, 3, 4, 5, 6, 7, 8],
+      sectionIndices: [0, 1, 2, 3, 4, 5, 6],
       completionFields: ['rootCauseJudgement'],
     },
     {
       id: 'remedy',
       label: '根因结论',
       icon: '🛠️',
-      sectionIndices: [9],
+      sectionIndices: [7],
       completionFields: ['rootCauseSummary'],
       completesRecord: true,
     },

@@ -2,7 +2,6 @@
  * 对比分析法：通过 A/B 对比找出"为什么同样条件下有时出问题有时不出"的关键差异。
  */
 import type { FormTemplate } from '../types';
-import { createProblemCriteriaFields, createProblemSummarySection, createW2hAnalysisFields } from './shared';
 
 export const comparisonTemplate: FormTemplate = {
   id: 'comparison',
@@ -15,7 +14,6 @@ export const comparisonTemplate: FormTemplate = {
     '同一批简历筛选标准，这次招到的人明显不如上次，对比两次流程差异',
   ],
   flowSteps: [
-    '鉴别并清晰描述问题，界定正常与异常的边界',
     '列出对比维度表（至少 3 项），逐项记录差异',
     '总结关键差异，判定最可能的根因并总结结论',
   ],
@@ -24,8 +22,6 @@ export const comparisonTemplate: FormTemplate = {
       id: 'definitionAndComparison',
       title: '定义与对比',
       fields: [
-        ...createW2hAnalysisFields(),
-        ...createProblemCriteriaFields(),
         { id: 'normalCase', label: '正常情况描述', type: 'textarea', required: true, placeholder: '描述一切正常时的情况：什么时间、什么条件、什么结果？' },
         { id: 'abnormalCase', label: '异常情况描述', type: 'textarea', required: true, placeholder: '描述出问题时的情况：什么时间、什么条件、什么结果？' },
         {
@@ -49,7 +45,6 @@ export const comparisonTemplate: FormTemplate = {
         { id: 'keyDifference', label: '关键差异总结', type: 'textarea', required: true, placeholder: '上述对比中，哪些差异最可能是导致问题的关键因素？' },
       ],
     },
-    createProblemSummarySection(),
     {
       id: 'attributionAndAction',
       title: '归因与对策',
@@ -64,16 +59,16 @@ export const comparisonTemplate: FormTemplate = {
   phases: [
     {
       id: 'definitionAndComparison',
-      label: '问题鉴别',
-      icon: '🎯',
-      sectionIndices: [0, 1],
-      completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'normalCase', 'abnormalCase', 'keyDifference', 'gapTarget'],
+      label: '定义与对比',
+      icon: '📋',
+      sectionIndices: [0],
+      completionFields: ['normalCase', 'abnormalCase', 'keyDifference'],
     },
     {
       id: 'attributionAndAction',
       label: '归因与对策',
       icon: '🛠️',
-      sectionIndices: [2],
+      sectionIndices: [1],
       completionFields: ['mostLikelyCause', 'action'],
       completesRecord: true,
     },

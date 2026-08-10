@@ -1,8 +1,9 @@
 /**
  * 5 Why 分析法：快速找到单一问题的深层原因。
+ * 问题定义/鉴别在独立的问题实体（Problem）中维护，此处只做根因分析。
  */
 import type { FormTemplate } from '../types';
-import { createProblemDefinitionSection, createProblemSummarySection, createRemedySection } from './shared';
+import { createRemedySection } from './shared';
 
 export const fiveWhyTemplate: FormTemplate = {
   id: 'fiveWhy',
@@ -15,13 +16,10 @@ export const fiveWhyTemplate: FormTemplate = {
     '家庭开支总是超预算，想追问到底钱花在了哪个环节',
   ],
   flowSteps: [
-    '鉴别并清晰描述问题：一句话陈述 + IS/IS NOT 界定边界',
     '逐层追问"为什么会发生"（建议 5 层），每层附上证据',
     '确认根因并总结结论',
   ],
   sections: [
-    createProblemDefinitionSection(),
-    createProblemSummarySection(),
     {
       id: 'whyChain',
       title: '5 Why 追问',
@@ -83,24 +81,17 @@ export const fiveWhyTemplate: FormTemplate = {
   ],
   phases: [
     {
-      id: 'problemDefinition',
-      label: '问题鉴别',
-      icon: '🎯',
-      sectionIndices: [0, 1],
-      completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'symptom', 'gapTarget'],
-    },
-    {
       id: 'whyChain',
       label: '5 Why 追问',
       icon: '🔍',
-      sectionIndices: [2],
+      sectionIndices: [0],
       completionFields: ['why'],
     },
     {
       id: 'remedy',
       label: '根因结论',
       icon: '🛠️',
-      sectionIndices: [3],
+      sectionIndices: [1],
       completionFields: ['rootCauseSummary'],
       completesRecord: true,
     },

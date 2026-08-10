@@ -116,9 +116,23 @@ export interface FormTemplate {
   timing?: { frequency: string; suggestion: string };
 }
 
+/** 问题实体：以问题为导向，独立存储；一个问题可挂多个根因分析记录（FormRecord.problemId）。 */
+export interface Problem {
+  id: string;
+  title: string;
+  /** 一句话问题陈述（问题整理区的整理输出） */
+  problemStatement: string;
+  /** 问题定义/鉴别/整理的全部字段（4W2H 表格、判定、分类、目标、标准陈述等） */
+  data: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface FormRecord {
   id: string;
   templateId: TemplateId;
+  /** 关联的问题实体 id（问题为导向，一对多） */
+  problemId?: string;
   title: string;
   data: Record<string, unknown>;
   status: 'draft' | 'completed';

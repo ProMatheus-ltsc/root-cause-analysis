@@ -29,19 +29,24 @@ function buildDefaultValues(template: FormTemplate, record: FormRecord | undefin
   return values;
 }
 
-function getRecordTitle(template: FormTemplate, values: Record<string, unknown>): string {
+function getRecordTitle(template: FormTemplate, values: Record<string, unknown>, problemTitle?: string): string {
   const title = values['title'];
   if (typeof title === 'string' && title.trim()) return title.trim();
+  if (problemTitle && problemTitle.trim()) return problemTitle.trim();
   return `${template.name} ${format(new Date(), 'yyyy-MM-dd')}`;
 }
 
 interface FormRendererProps {
   template: FormTemplate;
   record?: FormRecord;
+  /** 关联的问题实体 id（问题为导向） */
+  problemId?: string;
+  /** 问题标题：用作分析记录标题 */
+  problemTitle?: string;
   onFirstSave?: (recordId: string) => void;
 }
 
-export function FormRenderer({ template, record, onFirstSave }: FormRendererProps) {
+export function FormRenderer({ template, record, problemId, problemTitle, onFirstSave }: FormRendererProps) {
   const todayISO = format(new Date(), 'yyyy-MM-dd');
   const saveRecord = useSaveRecord();
   const { showToast } = useToast();
@@ -67,10 +72,11 @@ export function FormRenderer({ template, record, onFirstSave }: FormRendererProp
 
   async function persist(status: 'draft' | 'completed', { commitPhase = false } = {}): Promise<FormRecord> {
     const currentValues = getValues();
-    const title = getRecordTitle(template, currentValues);
+    const title = getRecordTitle(template, currentValues, problemTitle);
     const saved = await saveRecord({
       id: recordIdRef.current,
       templateId: template.id,
+      problemId,
       title,
       data: currentValues,
       status,

@@ -12,6 +12,7 @@ import { ToastProvider } from './hooks/ToastProvider';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const ProblemPage = lazy(() => import('./pages/ProblemPage'));
 const FormPage = lazy(() => import('./pages/FormPage'));
 const HistoryPage = lazy(() => import('./pages/HistoryPage'));
 const DataPage = lazy(() => import('./pages/DataPage'));
@@ -93,7 +94,8 @@ export default function App() {
               >
                 <Route index element={<DashboardPage />} />
                 <Route path="new" element={<ProblemWizardPage />} />
-                <Route path="form/:templateId/:recordId?" element={<FormPage />} />
+                <Route path="problem/:problemId" element={<ProblemPage />} />
+                <Route path="analysis/:problemId/:templateId/:recordId?" element={<FormPage />} />
                 <Route path="history" element={<HistoryPage />} />
                 <Route path="data" element={<DataPage />} />
               </Route>
