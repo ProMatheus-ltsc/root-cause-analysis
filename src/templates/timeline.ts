@@ -2,7 +2,7 @@
  * 时间线分析法：还原事件经过的事后分析（类似 SRE Postmortem）。
  */
 import type { FormTemplate } from '../types';
-import { createProblemIdentificationSection } from './shared';
+import { createActionSection, createProblemCriteriaFields, createProblemIdentificationSection } from './shared';
 import { IMPACT_SCOPE_OPTIONS, SEVERITY_OPTIONS } from './shared';
 
 export const timelineTemplate: FormTemplate = {
@@ -35,6 +35,7 @@ export const timelineTemplate: FormTemplate = {
           hint: '鉴别问题的第一原则：先界定问题，再寻找原因。陈述中不包含原因猜测与解决方案。',
           placeholder: '用一句话客观描述：什么对象、在什么条件下、发生了什么。',
         },
+        ...createProblemCriteriaFields(),
         { id: 'occurredAt', label: '发生时间', type: 'date', defaultValue: 'auto_today' },
         { id: 'duration', label: '持续时长（分钟）', type: 'number' },
         { id: 'impactScope', label: '影响范围', type: 'radio', options: IMPACT_SCOPE_OPTIONS },
@@ -100,6 +101,7 @@ export const timelineTemplate: FormTemplate = {
         { id: 'lessonsLearned', label: '经验教训', type: 'textarea', required: true, autocomplete: true, placeholder: '这次经历有哪些可复用的发现？下次遇到类似情况应该怎么做？' },
       ],
     },
+    createActionSection(),
   ],
   phases: [
     {
@@ -107,7 +109,7 @@ export const timelineTemplate: FormTemplate = {
       label: '问题鉴别',
       icon: '🎯',
       sectionIndices: [0, 1],
-      completionFields: ['title', 'problemStatement', 'summary'],
+      completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'summary'],
     },
     {
       id: 'timelineEntries',
@@ -122,6 +124,13 @@ export const timelineTemplate: FormTemplate = {
       icon: '🛠️',
       sectionIndices: [3],
       completionFields: ['directCause', 'rootCause', 'lessonsLearned'],
+    },
+    {
+      id: 'action',
+      label: '对策实施',
+      icon: '✅',
+      sectionIndices: [4],
+      completionFields: ['measure'],
       completesRecord: true,
     },
   ],

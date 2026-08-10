@@ -12,6 +12,7 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const FormPage = lazy(() => import('./pages/FormPage'));
 const HistoryPage = lazy(() => import('./pages/HistoryPage'));
 const DataPage = lazy(() => import('./pages/DataPage'));
+const ProblemWizardPage = lazy(() => import('./pages/ProblemWizardPage'));
 
 function FullScreenLoading() {
   return <div className="flex min-h-screen items-center justify-center text-sm text-slate-400">加载中…</div>;
@@ -88,6 +89,7 @@ export default function App() {
                 }
               >
                 <Route index element={<DashboardPage />} />
+                <Route path="new" element={<ProblemWizardPage />} />
                 <Route path="form/:templateId/:recordId?" element={<FormPage />} />
                 <Route path="history" element={<HistoryPage />} />
                 <Route path="data" element={<DataPage />} />

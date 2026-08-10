@@ -70,7 +70,13 @@ describe('getCurrentPhaseIndex', () => {
   });
 
   it('advances to phase 1 once phase 0 completion fields are filled', () => {
-    const values = { title: '标题', problemStatement: '一句话陈述', symptom: '现象描述' };
+    const values = {
+      title: '标题',
+      problemStatement: '一句话陈述',
+      problemCriteria: ['deviation'],
+      problemType: 'restore',
+      symptom: '现象描述',
+    };
     expect(getCurrentPhaseIndex(fiveWhyTemplate, values, base)).toBe(1);
   });
 
@@ -78,6 +84,8 @@ describe('getCurrentPhaseIndex', () => {
     const values = {
       title: '标题',
       problemStatement: '一句话陈述',
+      problemCriteria: ['deviation'],
+      problemType: 'restore',
       symptom: '现象',
       whyChain: [{ why: 'A' }, { why: 'B' }],
     };
@@ -88,6 +96,8 @@ describe('getCurrentPhaseIndex', () => {
     const values = {
       title: '标题',
       problemStatement: '一句话陈述',
+      problemCriteria: ['deviation'],
+      problemType: 'restore',
       symptom: '现象',
       whyChain: [{ why: 'A' }, { why: 'B' }],
     };
@@ -98,11 +108,14 @@ describe('getCurrentPhaseIndex', () => {
     const values = {
       title: '标题',
       problemStatement: '一句话陈述',
+      problemCriteria: ['deviation'],
+      problemType: 'restore',
       symptom: '现象',
       whyChain: [{ why: 'A' }, { why: 'B' }],
       rootCauseSummary: '根因',
+      actionItems: [{ measure: '措施' }],
     };
-    expect(getCurrentPhaseIndex(fiveWhyTemplate, values, base)).toBe(2);
+    expect(getCurrentPhaseIndex(fiveWhyTemplate, values, base)).toBe(3);
   });
 });
 
@@ -112,6 +125,8 @@ describe('validateRequiredFields', () => {
     const fieldIds = missing.map((m) => m.fieldId);
     expect(fieldIds).toContain('title');
     expect(fieldIds).toContain('problemStatement');
+    expect(fieldIds).toContain('problemCriteria');
+    expect(fieldIds).toContain('problemType');
     expect(fieldIds).toContain('symptom');
     expect(fieldIds).toContain('why');
     expect(fieldIds).toContain('rootCauseSummary');
@@ -121,6 +136,8 @@ describe('validateRequiredFields', () => {
     const missing = validateRequiredFields(fiveWhyTemplate, {
       title: 't',
       problemStatement: 'p',
+      problemCriteria: ['gap'],
+      problemType: 'ideal',
       symptom: 's',
       whyChain: [{ why: 'a' }],
       rootCauseSummary: 'r',

@@ -2,7 +2,7 @@
  * 鱼骨图分析法（石川图）：从人机料法环测六大维度全面排查多因素系统性问题。
  */
 import type { FormField, FormTemplate } from '../types';
-import { createProblemDefinitionSection, createProblemIdentificationSection, createRemedySection } from './shared';
+import { createActionSection, createProblemDefinitionSection, createProblemIdentificationSection, createRemedySection } from './shared';
 
 const DIMENSION_OPTIONS = [
   { value: 'man', label: '人 (Man)' },
@@ -127,11 +127,12 @@ export const fishboneTemplate: FormTemplate = {
         { id: 'primaryDimensions', label: '主要原因维度', type: 'checkbox', options: DIMENSION_OPTIONS },
         {
           id: 'weightTable',
-          label: '各维度权重评估',
+          label: '各维度权重与影响度评估',
           type: 'table',
+          hint: 'MECE：各维度相互独立、不重叠；评分为 1-10 的量化分（数值越高影响越大）；关键发现要可验证',
           tableColumns: [
             { id: 'dimension', label: '维度', type: 'select', options: DIMENSION_OPTIONS },
-            { id: 'impactLevel', label: '影响程度', type: 'select', options: LEVEL_OPTIONS },
+            { id: 'impactLevel', label: '影响评分（1-10）', type: 'select', options: LEVEL_OPTIONS },
             { id: 'keyFinding', label: '关键发现', type: 'text' },
           ],
         },
@@ -139,6 +140,7 @@ export const fishboneTemplate: FormTemplate = {
       ],
     },
     createRemedySection(),
+    createActionSection(),
   ],
   phases: [
     {
@@ -146,7 +148,7 @@ export const fishboneTemplate: FormTemplate = {
       label: '问题鉴别',
       icon: '🎯',
       sectionIndices: [0, 1],
-      completionFields: ['title', 'problemStatement', 'symptom'],
+      completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'symptom'],
     },
     {
       id: 'sixFactors',
@@ -161,6 +163,13 @@ export const fishboneTemplate: FormTemplate = {
       icon: '🛠️',
       sectionIndices: [9],
       completionFields: ['rootCauseSummary'],
+    },
+    {
+      id: 'action',
+      label: '对策实施',
+      icon: '✅',
+      sectionIndices: [10],
+      completionFields: ['measure'],
       completesRecord: true,
     },
   ],

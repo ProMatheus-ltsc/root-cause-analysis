@@ -90,6 +90,23 @@ export default function DashboardPage() {
         </div>
       )}
       <section>
+        <h2 className="mb-3 text-lg font-semibold text-slate-900">新建分析</h2>
+        <div className="mb-6 flex flex-col gap-3 rounded-lg border border-sky-200 bg-sky-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-sky-900">
+            <p className="font-semibold">先鉴别问题，再选方法</p>
+            <p className="mt-1 text-xs text-sky-700">
+              推荐流程：① 通用问题鉴别（界定"是不是问题、是哪类问题、边界在哪"）→ ② 选择分析方法。也可跳过鉴别直接开始分析。
+            </p>
+          </div>
+          <Link
+            to="/new"
+            className="inline-block shrink-0 rounded-md bg-sky-600 px-4 py-2 text-center text-sm font-medium text-white hover:bg-sky-700"
+          >
+            ① 先鉴别问题 →
+          </Link>
+        </div>
+      </section>
+      <section>
         <h2 className="mb-3 text-lg font-semibold text-slate-900">选择分析方法</h2>
         <p className="mb-4 text-sm text-slate-500">展开卡片查看适用场景与分析流程，选择最适合当前问题的方法</p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
