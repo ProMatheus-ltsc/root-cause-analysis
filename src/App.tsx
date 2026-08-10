@@ -1,8 +1,11 @@
 /**
  * 路由表：登录页独立于认证态；其余页面在 RequireAuth 内渲染。
+ * 使用 HashRouter：GitHub Pages 为纯静态托管，BrowserRouter 的内部路由
+ * （如 /new、/form/:id）在刷新时会请求服务器路径导致 404；Hash 路由
+ * （/#/new）刷新不会向服务器发请求，规避该问题。
  */
 import { Suspense, lazy, type ReactNode } from 'react';
-import { BrowserRouter, Link, Navigate, NavLink, Outlet, Routes, Route, useNavigate } from 'react-router-dom';
+import { HashRouter, Link, Navigate, NavLink, Outlet, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './hooks/AuthProvider';
 import { useAuth } from './hooks/useAuth';
 import { ToastProvider } from './hooks/ToastProvider';
@@ -75,7 +78,7 @@ function AppShell() {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <ToastProvider>
         <AuthProvider>
           <Suspense fallback={<FullScreenLoading />}>
@@ -99,6 +102,6 @@ export default function App() {
           </Suspense>
         </AuthProvider>
       </ToastProvider>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
