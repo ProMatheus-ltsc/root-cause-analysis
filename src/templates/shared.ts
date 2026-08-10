@@ -198,12 +198,12 @@ export function createW2hAnalysisFields(): FormField[] {
       id: 'w2hTable',
       label: '4W2H 全面分析（必填）',
       type: 'table',
-      hint: '逐行完成 6 个维度：在"维度"列选择后，于"具体描述"列填写该维度的已知事实。描述须有数据、来源可靠、可量化。',
+      hint: '每个维度填写"短语"即可（名词短语或短分句，如"广分物理和产品部""近两年""乐力PPT、九年级讲义"），系统会自动拼接成通顺的问题陈述。请勿填写完整长句，否则拼接会僵硬。描述须有数据、来源可靠、可量化。',
       validation: { min: 6 },
       defaultValue: W2H_OPTIONS.map((o) => ({ dimension: o.value, description: '' })),
       tableColumns: [
         { id: 'dimension', label: '维度', type: 'select', options: W2H_OPTIONS },
-        { id: 'description', label: '具体描述（有数据、来源可靠、可量化）', type: 'text', placeholder: '填写该维度的具体事实…' },
+        { id: 'description', label: '短语描述（如：广分物理和产品部 / 近两年 / 乐力PPT、九年级讲义）', type: 'text', placeholder: '填短语，系统自动拼接…' },
       ],
     },
     {
@@ -227,25 +227,33 @@ export function createW2hAnalysisFields(): FormField[] {
             return typeof row?.description === 'string' ? (row.description as string).trim() : '';
           };
           const s = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
-          const what = dim('what');
           const who = dim('who');
+          const what = dim('what');
           const when = dim('when');
           const where = dim('where');
           const how = dim('how');
           const extent = dim('howMany');
           const target = s(values['gapTarget']);
-          const seg: string[] = [];
-          if (who) seg.push(`对象：${who}`);
-          if (what) seg.push(`现象：${what}`);
-          if (when) seg.push(`时间：${when}`);
-          if (where) seg.push(`位置：${where}`);
-          if (how) seg.push(`过程：${how}`);
-          if (extent) seg.push(`规模：${extent}`);
-          if (seg.length === 0) return '（填写 4W2H 表格后自动生成）';
-          let out = `现实（已知事实）：${seg.join('；')}。`;
-          out += target ? `目标：${target}。` : '目标未填写。';
-          out += '问题 = 目标 − 现实，二者差距即待分析的问题。';
-          return out;
+
+          if (!who && !what && !when && !where && !how && !extent) return '（填写 4W2H 表格后自动生成）';
+
+          // 主句：主体 + 时间 + 地点 + 现象
+          const lead: string[] = [];
+          if (who) lead.push(who);
+          if (when) lead.push(`自${when}起`);
+          if (where) lead.push(`在${where}中`);
+          let sentence = lead.join('');
+          if (what) sentence += `出现「${what}」`;
+          if (how) sentence += `，其过程为${how}`;
+          if (extent) sentence += `，影响${extent}`;
+          sentence += '。';
+          // 目标与差距
+          if (target) {
+            sentence += `目标为${target}，现状与目标存在差距，二者之差即待分析的问题。`;
+          } else {
+            sentence += '目标未填写，请补充以界定差距。';
+          }
+          return sentence;
         },
       },
     },
@@ -348,38 +356,6 @@ export function createRemedySection(): FormSection {
         label: '验证方式（怎么确认对策有效）',
         type: 'textarea',
         placeholder: '用什么指标 / 观察 / 数据来判定根因已被消除、对策已生效？例如"上线后连续 7 天监控指标 X 维持 ≤ 阈值 Y"',
-      },
-    ],
-  };
-}
-
-/**
- * 对策实施区（repeatable）：把根因 → 对策 → 验证的闭环显式化为可执行任务列表。
- * 每条措施独立一条，含措施 / 责任人 / 截止日期 / 状态 / 验证方式。
- */
-export function createActionSection(): FormSection {
-  return {
-    id: 'actionItems',
-    title: '对策实施与验证',
-    description: '把根因转成可执行任务，每条措施独立跟踪状态。至少列一条措施。',
-    minEntries: 1,
-    repeatable: true,
-    repeatLabel: '措施 {n}',
-    fields: [
-      { id: 'measure', label: '具体措施', type: 'textarea', required: true, placeholder: '要做什么？怎么做？尽量具体可执行' },
-      { id: 'owner', label: '责任人', type: 'text', placeholder: '谁负责推动落实？' },
-      { id: 'dueDate', label: '截止日期', type: 'date' },
-      { id: 'verification', label: '验证方式', type: 'textarea', placeholder: '如何确认该措施已生效？观察什么指标 / 现象？' },
-      {
-        id: 'status',
-        label: '状态',
-        type: 'radio',
-        options: [
-          { value: 'pending', label: '待实施' },
-          { value: 'inProgress', label: '进行中' },
-          { value: 'done', label: '已完成' },
-          { value: 'ineffective', label: '已实施但未生效' },
-        ],
       },
     ],
   };

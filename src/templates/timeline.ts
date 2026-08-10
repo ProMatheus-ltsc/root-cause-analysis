@@ -2,7 +2,7 @@
  * 时间线分析法：还原事件经过的事后分析（类似 SRE Postmortem）。
  */
 import type { FormTemplate } from '../types';
-import { createActionSection, createProblemCriteriaFields, createProblemSummarySection, createW2hAnalysisFields } from './shared';
+import { createProblemCriteriaFields, createProblemSummarySection, createW2hAnalysisFields } from './shared';
 import { IMPACT_SCOPE_OPTIONS, SEVERITY_OPTIONS } from './shared';
 
 export const timelineTemplate: FormTemplate = {
@@ -93,7 +93,6 @@ export const timelineTemplate: FormTemplate = {
         { id: 'lessonsLearned', label: '经验教训', type: 'textarea', required: true, autocomplete: true, placeholder: '这次经历有哪些可复用的发现？下次遇到类似情况应该怎么做？' },
       ],
     },
-    createActionSection(),
   ],
   phases: [
     {
@@ -116,13 +115,6 @@ export const timelineTemplate: FormTemplate = {
       icon: '🛠️',
       sectionIndices: [3],
       completionFields: ['directCause', 'rootCause', 'lessonsLearned'],
-    },
-    {
-      id: 'action',
-      label: '对策实施',
-      icon: '✅',
-      sectionIndices: [4],
-      completionFields: ['measure'],
       completesRecord: true,
     },
   ],

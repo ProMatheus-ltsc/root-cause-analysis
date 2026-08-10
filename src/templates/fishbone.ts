@@ -2,7 +2,7 @@
  * 鱼骨图分析法（石川图）：从人机料法环测六大维度全面排查多因素系统性问题。
  */
 import type { FormField, FormTemplate } from '../types';
-import { createActionSection, createProblemDefinitionSection, createProblemSummarySection, createRemedySection } from './shared';
+import { createProblemDefinitionSection, createProblemSummarySection, createRemedySection } from './shared';
 
 const DIMENSION_OPTIONS = [
   { value: 'man', label: '人 (Man)' },
@@ -140,7 +140,6 @@ export const fishboneTemplate: FormTemplate = {
       ],
     },
     createRemedySection(),
-    createActionSection(),
   ],
   phases: [
     {
@@ -163,13 +162,6 @@ export const fishboneTemplate: FormTemplate = {
       icon: '🛠️',
       sectionIndices: [9],
       completionFields: ['rootCauseSummary'],
-    },
-    {
-      id: 'action',
-      label: '对策实施',
-      icon: '✅',
-      sectionIndices: [10],
-      completionFields: ['measure'],
       completesRecord: true,
     },
   ],

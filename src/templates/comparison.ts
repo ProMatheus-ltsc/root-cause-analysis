@@ -2,7 +2,7 @@
  * 对比分析法：通过 A/B 对比找出"为什么同样条件下有时出问题有时不出"的关键差异。
  */
 import type { FormTemplate } from '../types';
-import { createActionSection, createProblemCriteriaFields, createProblemSummarySection, createW2hAnalysisFields } from './shared';
+import { createProblemCriteriaFields, createProblemSummarySection, createW2hAnalysisFields } from './shared';
 
 export const comparisonTemplate: FormTemplate = {
   id: 'comparison',
@@ -60,7 +60,6 @@ export const comparisonTemplate: FormTemplate = {
         { id: 'lessonsLearned', label: '经验教训', type: 'textarea', autocomplete: true, placeholder: '这次经历有哪些可复用的发现？下次遇到类似情况应该怎么做？' },
       ],
     },
-    createActionSection(),
   ],
   phases: [
     {
@@ -76,13 +75,6 @@ export const comparisonTemplate: FormTemplate = {
       icon: '🛠️',
       sectionIndices: [2],
       completionFields: ['mostLikelyCause', 'action'],
-    },
-    {
-      id: 'actionImplementation',
-      label: '对策实施',
-      icon: '✅',
-      sectionIndices: [3],
-      completionFields: ['measure'],
       completesRecord: true,
     },
   ],

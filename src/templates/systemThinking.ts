@@ -2,7 +2,7 @@
  * 系统思考分析（因果回路图）：找出反复出现的系统性问题背后的循环因果关系。
  */
 import type { FormTemplate } from '../types';
-import { createActionSection, createProblemCriteriaFields, createProblemSummarySection, createW2hAnalysisFields } from './shared';
+import { createProblemCriteriaFields, createProblemSummarySection, createW2hAnalysisFields } from './shared';
 
 export const systemThinkingTemplate: FormTemplate = {
   id: 'systemThinking',
@@ -95,7 +95,6 @@ export const systemThinkingTemplate: FormTemplate = {
         { id: 'lessonsLearned', label: '经验教训', type: 'textarea', autocomplete: true, placeholder: '这次经历有哪些可复用的发现？下次遇到类似情况应该怎么做？' },
       ],
     },
-    createActionSection(),
   ],
   phases: [
     {
@@ -118,13 +117,6 @@ export const systemThinkingTemplate: FormTemplate = {
       icon: '🛠️',
       sectionIndices: [4],
       completionFields: ['interventionPlan'],
-    },
-    {
-      id: 'action',
-      label: '对策实施',
-      icon: '✅',
-      sectionIndices: [5],
-      completionFields: ['measure'],
       completesRecord: true,
     },
   ],

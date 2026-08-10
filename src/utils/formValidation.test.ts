@@ -101,8 +101,8 @@ describe('getCurrentPhaseIndex', () => {
   });
 
   it('remains on last phase once all fields are complete', () => {
-    const values = { ...PHASE0, whyChain: [{ why: 'A' }, { why: 'B' }], rootCauseSummary: '根因', actionItems: [{ measure: '措施' }] };
-    expect(getCurrentPhaseIndex(fiveWhyTemplate, values, base)).toBe(3);
+    const values = { ...PHASE0, whyChain: [{ why: 'A' }, { why: 'B' }], rootCauseSummary: '根因' };
+    expect(getCurrentPhaseIndex(fiveWhyTemplate, values, base)).toBe(2);
   });
 });
 

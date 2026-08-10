@@ -2,7 +2,7 @@
  * 技术故障根因分析：面向生产/系统技术故障的排查与归因，覆盖故障定义、技术排查与对策制定。
  */
 import type { FormTemplate } from '../types';
-import { createActionSection, createProblemDefinitionSection, createProblemSummarySection, createRemedySection } from './shared';
+import { createProblemDefinitionSection, createProblemSummarySection, createRemedySection } from './shared';
 
 export const technicalFaultTemplate: FormTemplate = {
   id: 'technicalFault',
@@ -98,7 +98,6 @@ export const technicalFaultTemplate: FormTemplate = {
       fields: [{ id: 'rootCauseJudgement', label: '根因判定', type: 'textarea', required: true, placeholder: '综合排查结论，明确判定最终根因是什么' }],
     },
     createRemedySection(),
-    createActionSection(),
   ],
   phases: [
     {
@@ -121,13 +120,6 @@ export const technicalFaultTemplate: FormTemplate = {
       icon: '🛠️',
       sectionIndices: [5],
       completionFields: ['rootCauseSummary'],
-    },
-    {
-      id: 'action',
-      label: '对策实施',
-      icon: '✅',
-      sectionIndices: [6],
-      completionFields: ['measure'],
       completesRecord: true,
     },
   ],
