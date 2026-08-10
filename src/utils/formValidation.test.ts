@@ -70,13 +70,14 @@ describe('getCurrentPhaseIndex', () => {
   });
 
   it('advances to phase 1 once phase 0 completion fields are filled', () => {
-    const values = { title: '标题', symptom: '现象描述' };
+    const values = { title: '标题', problemStatement: '一句话陈述', symptom: '现象描述' };
     expect(getCurrentPhaseIndex(fiveWhyTemplate, values, base)).toBe(1);
   });
 
   it('advances to phase 2 (根因结论) once the why chain has >=2 entries', () => {
     const values = {
       title: '标题',
+      problemStatement: '一句话陈述',
       symptom: '现象',
       whyChain: [{ why: 'A' }, { why: 'B' }],
     };
@@ -86,6 +87,7 @@ describe('getCurrentPhaseIndex', () => {
   it('stays on the last phase (根因结论) when completion fields are not yet filled', () => {
     const values = {
       title: '标题',
+      problemStatement: '一句话陈述',
       symptom: '现象',
       whyChain: [{ why: 'A' }, { why: 'B' }],
     };
@@ -95,6 +97,7 @@ describe('getCurrentPhaseIndex', () => {
   it('remains on last phase once all fields are complete', () => {
     const values = {
       title: '标题',
+      problemStatement: '一句话陈述',
       symptom: '现象',
       whyChain: [{ why: 'A' }, { why: 'B' }],
       rootCauseSummary: '根因',
@@ -108,6 +111,7 @@ describe('validateRequiredFields', () => {
     const missing = validateRequiredFields(fiveWhyTemplate, { whyChain: [{ why: '' }] });
     const fieldIds = missing.map((m) => m.fieldId);
     expect(fieldIds).toContain('title');
+    expect(fieldIds).toContain('problemStatement');
     expect(fieldIds).toContain('symptom');
     expect(fieldIds).toContain('why');
     expect(fieldIds).toContain('rootCauseSummary');
@@ -116,6 +120,7 @@ describe('validateRequiredFields', () => {
   it('returns an empty list when all required fields are filled', () => {
     const missing = validateRequiredFields(fiveWhyTemplate, {
       title: 't',
+      problemStatement: 'p',
       symptom: 's',
       whyChain: [{ why: 'a' }],
       rootCauseSummary: 'r',

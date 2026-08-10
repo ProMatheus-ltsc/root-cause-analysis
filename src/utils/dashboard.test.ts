@@ -42,7 +42,7 @@ describe('getDisplayStatus', () => {
   });
 
   it('draft mid-way through phases is 分析中', () => {
-    const record = makeRecord({ data: { title: 't', symptom: 's' } });
+    const record = makeRecord({ data: { title: 't', problemStatement: 'p', symptom: 's' } });
     expect(getDisplayStatus(fiveWhyTemplate, record, todayISO)).toBe('分析中');
   });
 
@@ -65,7 +65,7 @@ describe('countByDisplayStatus', () => {
     const todayISO = '2026-08-10';
     const records = [
       makeRecord({ id: '1', data: {} }),
-      makeRecord({ id: '2', data: { title: 't', symptom: 's' } }),
+      makeRecord({ id: '2', data: { title: 't', problemStatement: 'p', symptom: 's' } }),
     ];
     const counts = countByDisplayStatus(records, TEMPLATES, todayISO);
     expect(counts.待分析).toBe(1);

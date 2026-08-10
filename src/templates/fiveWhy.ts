@@ -2,7 +2,7 @@
  * 5 Why 分析法：快速找到单一问题的深层原因。
  */
 import type { FormTemplate } from '../types';
-import { createProblemDefinitionSection, createRemedySection } from './shared';
+import { createProblemDefinitionSection, createProblemIdentificationSection, createRemedySection } from './shared';
 
 export const fiveWhyTemplate: FormTemplate = {
   id: 'fiveWhy',
@@ -15,12 +15,13 @@ export const fiveWhyTemplate: FormTemplate = {
     '家庭开支总是超预算，想追问到底钱花在了哪个环节',
   ],
   flowSteps: [
-    '描述问题现象与影响范围',
+    '鉴别并清晰描述问题：一句话陈述 + IS/IS NOT 界定边界',
     '逐层追问"为什么会发生"（建议 5 层），每层附上证据',
     '确认根因并总结结论',
   ],
   sections: [
     createProblemDefinitionSection(),
+    createProblemIdentificationSection(),
     {
       id: 'whyChain',
       title: '5 Why 追问',
@@ -83,23 +84,23 @@ export const fiveWhyTemplate: FormTemplate = {
   phases: [
     {
       id: 'problemDefinition',
-      label: '问题定义',
-      icon: '📋',
-      sectionIndices: [0],
-      completionFields: ['title', 'symptom'],
+      label: '问题鉴别',
+      icon: '🎯',
+      sectionIndices: [0, 1],
+      completionFields: ['title', 'problemStatement', 'symptom'],
     },
     {
       id: 'whyChain',
       label: '5 Why 追问',
       icon: '🔍',
-      sectionIndices: [1],
+      sectionIndices: [2],
       completionFields: ['why'],
     },
     {
       id: 'remedy',
       label: '根因结论',
       icon: '🛠️',
-      sectionIndices: [2],
+      sectionIndices: [3],
       completionFields: ['rootCauseSummary'],
       completesRecord: true,
     },

@@ -2,7 +2,7 @@
  * 技术故障根因分析：面向生产/系统技术故障的排查与归因，覆盖故障定义、技术排查与对策制定。
  */
 import type { FormTemplate } from '../types';
-import { createProblemDefinitionSection, createRemedySection } from './shared';
+import { createProblemDefinitionSection, createProblemIdentificationSection, createRemedySection } from './shared';
 
 export const technicalFaultTemplate: FormTemplate = {
   id: 'technicalFault',
@@ -15,7 +15,7 @@ export const technicalFaultTemplate: FormTemplate = {
     '基础设施（服务器/网络/存储等）故障影响业务运行',
   ],
   flowSteps: [
-    '定义故障现象、所属系统与发现环境',
+    '鉴别并清晰描述故障，界定影响边界',
     '记录排查过程：错误堆栈、变更关联、监控证据',
     '逐条记录排查动作与结论，锁定根因',
     '确认根因并总结结论',
@@ -35,6 +35,7 @@ export const technicalFaultTemplate: FormTemplate = {
         ],
       },
     ]),
+    createProblemIdentificationSection(),
     {
       id: 'technicalInvestigation',
       title: '技术排查',
@@ -101,23 +102,23 @@ export const technicalFaultTemplate: FormTemplate = {
   phases: [
     {
       id: 'problemDefinition',
-      label: '故障定义',
-      icon: '📋',
-      sectionIndices: [0],
-      completionFields: ['title', 'symptom', 'affectedSystem'],
+      label: '故障鉴别',
+      icon: '🎯',
+      sectionIndices: [0, 1],
+      completionFields: ['title', 'problemStatement', 'symptom', 'affectedSystem'],
     },
     {
       id: 'investigation',
       label: '技术排查',
       icon: '🔍',
-      sectionIndices: [1, 2, 3],
+      sectionIndices: [2, 3, 4],
       completionFields: ['action', 'rootCauseJudgement'],
     },
     {
       id: 'remedy',
       label: '根因结论',
       icon: '🛠️',
-      sectionIndices: [4],
+      sectionIndices: [5],
       completionFields: ['rootCauseSummary'],
       completesRecord: true,
     },

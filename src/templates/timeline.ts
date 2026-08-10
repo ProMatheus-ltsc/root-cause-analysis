@@ -2,6 +2,7 @@
  * 时间线分析法：还原事件经过的事后分析（类似 SRE Postmortem）。
  */
 import type { FormTemplate } from '../types';
+import { createProblemIdentificationSection } from './shared';
 import { IMPACT_SCOPE_OPTIONS, SEVERITY_OPTIONS } from './shared';
 
 export const timelineTemplate: FormTemplate = {
@@ -15,7 +16,7 @@ export const timelineTemplate: FormTemplate = {
     '客户投诉升级为舆情事件，需要完整还原从首次反馈到扩散的全过程',
   ],
   flowSteps: [
-    '概述事件标题、持续时长与影响范围',
+    '鉴别并清晰描述事件，界定影响边界',
     '按时间顺序逐个记录关键节点、信息来源与当时的行动',
     '标记转折点，回顾每个行动事后看是否正确',
     '归纳直接原因与根本原因，从检测/响应/预防三个维度提出改进',
@@ -26,6 +27,14 @@ export const timelineTemplate: FormTemplate = {
       title: '事件概述',
       fields: [
         { id: 'title', label: '事件标题', type: 'text', required: true },
+        {
+          id: 'problemStatement',
+          label: '一句话事件陈述',
+          type: 'textarea',
+          required: true,
+          hint: '鉴别问题的第一原则：先界定问题，再寻找原因。陈述中不包含原因猜测与解决方案。',
+          placeholder: '用一句话客观描述：什么对象、在什么条件下、发生了什么。',
+        },
         { id: 'occurredAt', label: '发生时间', type: 'date', defaultValue: 'auto_today' },
         { id: 'duration', label: '持续时长（分钟）', type: 'number' },
         { id: 'impactScope', label: '影响范围', type: 'radio', options: IMPACT_SCOPE_OPTIONS },
@@ -40,6 +49,7 @@ export const timelineTemplate: FormTemplate = {
         },
       ],
     },
+    createProblemIdentificationSection(),
     {
       id: 'timelineEntries',
       title: '时间线还原',
@@ -94,23 +104,23 @@ export const timelineTemplate: FormTemplate = {
   phases: [
     {
       id: 'eventOverview',
-      label: '事件概述',
-      icon: '📋',
-      sectionIndices: [0],
-      completionFields: ['title', 'summary'],
+      label: '问题鉴别',
+      icon: '🎯',
+      sectionIndices: [0, 1],
+      completionFields: ['title', 'problemStatement', 'summary'],
     },
     {
       id: 'timelineEntries',
       label: '时间线还原',
       icon: '🕒',
-      sectionIndices: [1],
+      sectionIndices: [2],
       completionFields: ['eventDesc'],
     },
     {
       id: 'attribution',
       label: '归因与改进',
       icon: '🛠️',
-      sectionIndices: [2],
+      sectionIndices: [3],
       completionFields: ['directCause', 'rootCause', 'lessonsLearned'],
       completesRecord: true,
     },

@@ -2,6 +2,7 @@
  * 系统思考分析（因果回路图）：找出反复出现的系统性问题背后的循环因果关系。
  */
 import type { FormTemplate } from '../types';
+import { createProblemIdentificationSection } from './shared';
 
 export const systemThinkingTemplate: FormTemplate = {
   id: 'systemThinking',
@@ -14,7 +15,7 @@ export const systemThinkingTemplate: FormTemplate = {
     '减肥总是反弹——节食→暴食→自责→再节食，想理清这个循环的因果结构',
   ],
   flowSteps: [
-    '定义问题并评估其复发频率',
+    '鉴别并清晰描述问题，评估其复发频率',
     '列出已知相关因素，逐条分析因果关系（正/负反馈）与延迟效应',
     '识别增强回路与调节回路，找出系统杠杆点',
     '制定干预方案，提前评估可能的副作用',
@@ -25,6 +26,14 @@ export const systemThinkingTemplate: FormTemplate = {
       title: '问题定义',
       fields: [
         { id: 'title', label: '问题标题', type: 'text', required: true },
+        {
+          id: 'problemStatement',
+          label: '一句话问题陈述',
+          type: 'textarea',
+          required: true,
+          hint: '鉴别问题的第一原则：先界定问题，再寻找原因。陈述中不包含原因猜测与解决方案。',
+          placeholder: '用一句话客观描述：什么对象、在什么条件下、发生了什么。',
+        },
         {
           id: 'recurrence',
           label: '这个问题是否反复出现？',
@@ -39,6 +48,7 @@ export const systemThinkingTemplate: FormTemplate = {
         { id: 'relatedFactors', label: '已知的相关因素列表', type: 'textarea', hint: '每行一个', placeholder: '列出所有你认为与问题相关的因素，每行一个…' },
       ],
     },
+    createProblemIdentificationSection(),
     {
       id: 'causalChain',
       title: '因果链分析',
@@ -96,23 +106,23 @@ export const systemThinkingTemplate: FormTemplate = {
   phases: [
     {
       id: 'problemDefinition',
-      label: '问题定义',
-      icon: '📋',
-      sectionIndices: [0],
-      completionFields: ['title'],
+      label: '问题鉴别',
+      icon: '🎯',
+      sectionIndices: [0, 1],
+      completionFields: ['title', 'problemStatement'],
     },
     {
       id: 'causalAnalysis',
       label: '因果链分析',
       icon: '🔄',
-      sectionIndices: [1, 2],
+      sectionIndices: [2, 3],
       completionFields: ['factorA', 'factorB', 'leveragePoint'],
     },
     {
       id: 'intervention',
       label: '干预策略',
       icon: '🛠️',
-      sectionIndices: [3],
+      sectionIndices: [4],
       completionFields: ['interventionPlan'],
       completesRecord: true,
     },
