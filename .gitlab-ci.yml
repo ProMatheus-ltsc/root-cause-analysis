@@ -1,0 +1,54 @@
+stages:
+  - install
+  - verify
+  - build
+
+variables:
+  npm_config_cache: "$CI_PROJECT_DIR/.npm-cache"
+
+default:
+  image: node:22
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm-cache/
+      - node_modules/
+
+install:
+  stage: install
+  script:
+    - npm ci
+  artifacts:
+    paths:
+      - node_modules/
+    expire_in: 1 hour
+
+lint:
+  stage: verify
+  needs: ["install"]
+  script:
+    - npm run lint
+
+typecheck:
+  stage: verify
+  needs: ["install"]
+  script:
+    - npm run typecheck
+
+test:
+  stage: verify
+  needs: ["install"]
+  script:
+    - npm run test
+
+build:
+  stage: build
+  needs: ["lint", "typecheck", "test"]
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 week
