@@ -6,11 +6,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { format } from 'date-fns';
-import type { FormRecord, FormTemplate } from '../types';
+import type { FormRecord, FormTemplate, Problem } from '../types';
 import { useRecords, useSaveRecord } from '../hooks/useDB';
 import { usePhaseLogic } from '../hooks/usePhaseLogic';
 import { useToast } from '../hooks/useToast';
 import { getCurrentPhaseIndex, isPhaseCompletionSatisfied, resolveDefaultValue, validateRequiredFields } from '../utils/formValidation';
+import { buildAnalysisExportJson } from '../utils/exportAnalysis';
 import { PhaseIndicator } from './PhaseIndicator';
 import { FormTabs } from './form/FormTabs';
 
@@ -44,10 +45,12 @@ interface FormRendererProps {
   problemId?: string;
   /** 问题标题：用作分析记录标题 */
   problemTitle?: string;
+  /** 问题实体：用于导出 JSON（问题详情 + 分析结果） */
+  problem?: Problem;
   onFirstSave?: (recordId: string) => void;
 }
 
-export function FormRenderer({ template, record, problemId, problemTitle, onFirstSave }: FormRendererProps) {
+export function FormRenderer({ template, record, problemId, problemTitle, problem, onFirstSave }: FormRendererProps) {
   const todayISO = format(new Date(), 'yyyy-MM-dd');
   const saveRecord = useSaveRecord();
   const { showToast } = useToast();
@@ -176,6 +179,39 @@ export function FormRenderer({ template, record, problemId, problemTitle, onFirs
     showToast(willComplete ? '已保存并标记完成' : '已保存，进入下一阶段', 'success');
   }
 
+  const [copiedJson, setCopiedJson] = useState(false);
+
+  /** 一键复制 JSON：问题详情 + 分析数据 + 根因结论（要因分析法含得分分类与 DEMATEL）。 */
+  async function handleCopyJson() {
+    const recordForExport: FormRecord = record ?? {
+      id: recordIdRef.current ?? 'draft',
+      templateId: template.id,
+      problemId,
+      title: getRecordTitle(template, getValues(), problemTitle),
+      data: getValues(),
+      status: statusRef.current,
+      createdAt: recordCreatedAtRef.current ?? todayISO,
+      updatedAt: new Date().toISOString(),
+    };
+    const json = buildAnalysisExportJson({ problem, record: recordForExport, template, values: getValues() });
+    const text = JSON.stringify(json, null, 2);
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    setCopiedJson(true);
+    window.setTimeout(() => setCopiedJson(false), 1500);
+    showToast('已复制 JSON（问题描述 / 根因 / 果因）', 'success');
+  }
+
   const phases = template.phases;
   const activeSections = phases ? phases[activePhaseIndex].sectionIndices.map((i) => template.sections[i]) : template.sections;
   const disabled = phases ? phaseLogic.isSectionLocked(activePhaseIndex) || phaseLogic.isSectionReadOnly(activePhaseIndex) : false;
@@ -197,13 +233,20 @@ export function FormRenderer({ template, record, problemId, problemTitle, onFirs
         )}
         <FormTabs sections={activeSections} disabled={disabled} templateId={template.id} historyRecords={historyRecords} />
         {!disabled && (
-          <div className="no-print mt-8 flex items-center gap-3 border-t border-slate-200 pt-4">
+          <div className="no-print mt-8 flex flex-wrap items-center gap-3 border-t border-slate-200 pt-4">
             <button
               type="button"
               onClick={handlePrimaryAction}
               className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
             >
               {!phases ? '完成' : activePhase?.completesRecord ? '保存并标记完成' : isLastPhase ? '保存' : '保存并进入下一阶段'}
+            </button>
+            <button
+              type="button"
+              onClick={handleCopyJson}
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-100"
+            >
+              {copiedJson ? '已复制 JSON ✓' : '复制 JSON（问题描述 / 根因 / 果因）'}
             </button>
             <span className="text-xs text-slate-400">
               {lastSavedAt ? `上次自动保存于 ${format(lastSavedAt, 'HH:mm:ss')}` : '系统每 30 秒自动保存草稿'}

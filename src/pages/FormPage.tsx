@@ -49,6 +49,7 @@ export default function FormPage() {
         record={record}
         problemId={problemId}
         problemTitle={problem.title}
+        problem={problem}
         onFirstSave={(newId) => navigate(`/analysis/${problemId}/${templateId}/${newId}`, { replace: true })}
       />
     </div>
