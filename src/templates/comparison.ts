@@ -76,7 +76,7 @@ export const comparisonTemplate: FormTemplate = {
       label: '问题鉴别',
       icon: '🎯',
       sectionIndices: [0, 1],
-      completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'normalCase', 'abnormalCase', 'keyDifference'],
+      completionFields: ['title', 'problemStatement', 'problemCriteria', 'problemType', 'normalCase', 'abnormalCase', 'keyDifference', 'isWhat', 'isWho', 'isWhen', 'isWhere', 'isHow', 'isExtent', 'gapTarget'],
     },
     {
       id: 'attributionAndAction',

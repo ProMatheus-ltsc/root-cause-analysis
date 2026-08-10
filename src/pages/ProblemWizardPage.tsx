@@ -91,7 +91,9 @@ export default function ProblemWizardPage() {
             >
               下一步：选择分析方法
             </button>
-            <span className="text-xs text-slate-400">必填项：问题标题、一句话陈述、问题判定、问题分类、现象描述</span>
+            <span className="text-xs text-slate-400">
+              必填项：问题标题、一句话陈述、问题判定、问题分类、现象描述，以及 4W2H 六维（是什么/是谁/何时/何地/如何/多少）与目标状态
+            </span>
           </div>
         </>
       ) : (

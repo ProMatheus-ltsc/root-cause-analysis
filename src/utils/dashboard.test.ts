@@ -35,6 +35,21 @@ function makeRecord(overrides: Partial<FormRecord>): FormRecord {
 
 describe('getDisplayStatus', () => {
   const todayISO = '2026-08-10';
+  /** phase 0（问题鉴别）全部必填字段的完整值 */
+  const PHASE0 = {
+    title: 't',
+    problemStatement: 'p',
+    problemCriteria: ['deviation'],
+    problemType: 'restore',
+    symptom: 's',
+    isWhat: 'w',
+    isWho: 'who',
+    isWhen: 'when',
+    isWhere: 'where',
+    isHow: 'how',
+    isExtent: 'many',
+    gapTarget: 'target',
+  };
 
   it('draft with no phase progress is 待分析', () => {
     const record = makeRecord({ data: {} });
@@ -42,9 +57,7 @@ describe('getDisplayStatus', () => {
   });
 
   it('draft mid-way through phases is 分析中', () => {
-    const record = makeRecord({
-      data: { title: 't', problemStatement: 'p', problemCriteria: ['deviation'], problemType: 'restore', symptom: 's' },
-    });
+    const record = makeRecord({ data: { ...PHASE0 } });
     expect(getDisplayStatus(fiveWhyTemplate, record, todayISO)).toBe('分析中');
   });
 
@@ -65,9 +78,23 @@ describe('getDisplayStatus', () => {
 describe('countByDisplayStatus', () => {
   it('aggregates counts across records', () => {
     const todayISO = '2026-08-10';
+    const PHASE0 = {
+      title: 't',
+      problemStatement: 'p',
+      problemCriteria: ['deviation'],
+      problemType: 'restore',
+      symptom: 's',
+      isWhat: 'w',
+      isWho: 'who',
+      isWhen: 'when',
+      isWhere: 'where',
+      isHow: 'how',
+      isExtent: 'many',
+      gapTarget: 'target',
+    };
     const records = [
       makeRecord({ id: '1', data: {} }),
-      makeRecord({ id: '2', data: { title: 't', problemStatement: 'p', problemCriteria: ['deviation'], problemType: 'restore', symptom: 's' } }),
+      makeRecord({ id: '2', data: { ...PHASE0 } }),
     ];
     const counts = countByDisplayStatus(records, TEMPLATES, todayISO);
     expect(counts.待分析).toBe(1);

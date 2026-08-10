@@ -188,41 +188,147 @@ export function createProblemDefinitionSection(extraFields: FormField[] = []): F
 }
 
 /**
- * 问题鉴别区（5W2H IS/IS NOT）：用"是什么 vs 不是什么"逐维界定问题边界。
- * 5W2H = who/what/when/where/how/how much，是经典问题描述框架，
- * 配合 IS/IS NOT 对比可以同时暴露"是什么"与"不是什么"的关键差异，
- * 排除无关因素、缩小根因搜索范围。
+ * 问题鉴别区（4W2H · IS/IS NOT）：先用强制必填的 4W2H 界定"现实是什么"，
+ * 再明确"目标"，系统自动拼接为"标准问题陈述"——因为问题 = 目标 − 现实（二者差距）。
+ * 每项描述都要求有数据、数据来源可靠、可量化；"问题不是什么"自检排除
+ * 判断/单纯事实/情绪/原因/解决方案/希望等误区。
  */
 export function createProblemIdentificationSection(): FormSection {
   return {
     id: 'problemIdentification',
-    title: '问题鉴别（5W2H · IS/IS NOT）',
+    title: '问题鉴别（4W2H · IS/IS NOT）',
     description:
-      '按 5W2H 六个维度逐一对照"是什么 vs 不是什么"。对比是暴露关键差异的核心手段——单边描述往往遗漏真相。建议至少完成 who/what/when/how much 四个维度。',
+      '问题 = 目标 − 现实（目标与现实之间的差距）。4W2H 六个维度为必填，用来界定"现实是什么"：描述须有数据、来源可靠、可量化；再填写目标状态，系统将自动拼接成标准问题陈述。',
     collapsedByDefault: true,
     fields: [
-      // —— 5W2H 维度 ——
-      { id: 'isWho', label: 'who —— 谁 / 哪个主体', type: 'textarea', priority: 'recommended', placeholder: '问题涉及谁？哪个用户/角色/团队/系统？' },
-      { id: 'isNotWho', label: 'who —— 不是谁（排除主体）', type: 'textarea', priority: 'recommended', placeholder: '哪些相似主体没有出现该问题？' },
-      { id: 'isWhat', label: 'what —— 什么对象 / 什么内容', type: 'textarea', priority: 'recommended', placeholder: '问题具体发生在什么对象 / 场景 / 模块上？' },
+      // —— 4W2H 强制维度（界定现实：已知事实）——
+      {
+        id: 'isWhat',
+        label: 'what —— 究竟是什么？',
+        type: 'textarea',
+        required: true,
+        hint: '问题现象的具体内容是什么？描述须有数据、来源可靠、可量化。',
+        placeholder: '究竟是什么问题？具体现象是什么？',
+      },
+      {
+        id: 'isWho',
+        label: 'who —— 究竟是谁？',
+        type: 'textarea',
+        required: true,
+        hint: '涉及哪些主体/对象？',
+        placeholder: '究竟是谁遇到/涉及这个问题？用户、角色、团队、系统…',
+      },
+      {
+        id: 'isWhen',
+        label: 'when —— 到底在何时？',
+        type: 'textarea',
+        required: true,
+        hint: '明确时间点、持续多久、发生频率。',
+        placeholder: '到底在何时发生？经过多久？频率如何？',
+      },
+      {
+        id: 'isWhere',
+        label: 'where —— 发生在哪里？',
+        type: 'textarea',
+        required: true,
+        hint: '明确位置/环节/系统。',
+        placeholder: '发生在哪里？出现在什么位置/环节/系统中？',
+      },
+      {
+        id: 'isHow',
+        label: 'how —— 如何发生？',
+        type: 'textarea',
+        required: true,
+        hint: '描述发生过程/方式/链路。',
+        placeholder: '如何发生？经过什么步骤、流程、链路？',
+      },
+      {
+        id: 'isExtent',
+        label: 'how many —— 有多少？',
+        type: 'textarea',
+        required: true,
+        hint: '量化影响：数量/比例；全面还是局部？影响在扩大吗？',
+        placeholder: '有多少？全面还是局部？影响在扩大吗？',
+      },
+      // —— IS / IS NOT 排除侧（推荐）——
       { id: 'isNotWhat', label: 'what —— 不是什么对象（排除）', type: 'textarea', priority: 'recommended', placeholder: '哪些相似对象 / 场景 / 模块没有出现？' },
-      { id: 'isWhen', label: 'when —— 何时发生', type: 'textarea', priority: 'recommended', placeholder: '首次何时出现？最近一次？发生频率与时间规律？' },
+      { id: 'isNotWho', label: 'who —— 不是谁（排除主体）', type: 'textarea', priority: 'recommended', placeholder: '哪些相似主体没有出现该问题？' },
       { id: 'isNotWhen', label: 'when —— 何时不发生', type: 'textarea', priority: 'recommended', placeholder: '哪些时间段没有出现该问题？' },
-      { id: 'isWhere', label: 'where —— 何地 / 哪个环节', type: 'textarea', priority: 'recommended', placeholder: '在哪个环节 / 地点 / 系统中出现？' },
       { id: 'isNotWhere', label: 'where —— 何地 / 哪个环节不发生', type: 'textarea', priority: 'recommended', placeholder: '哪些环节 / 地点 / 系统没有出现？' },
-      { id: 'isHow', label: 'how —— 如何发生 / 过程 / 方式', type: 'textarea', priority: 'recommended', placeholder: '问题是怎么发生的？经过了什么步骤 / 流程 / 链路？' },
       { id: 'isNotHow', label: 'how —— 不是这样发生的（对比）', type: 'textarea', priority: 'recommended', placeholder: '正常情况下同样的步骤 / 流程是怎样的？关键差别在哪？' },
-      { id: 'isExtent', label: 'how much —— 影响程度', type: 'textarea', priority: 'recommended', placeholder: '影响多大：数量 / 比例 / 金额 / 趋势？' },
-      { id: 'isNotExtent', label: 'how much —— 影响不大的范围', type: 'textarea', priority: 'recommended', placeholder: '哪些范围内影响很小或完全没有？' },
+      { id: 'isNotExtent', label: 'how many —— 影响不大的范围', type: 'textarea', priority: 'recommended', placeholder: '哪些范围内影响很小或完全没有？' },
+      // —— 目标（问题 = 目标 − 现实）——
+      {
+        id: 'gapTarget',
+        label: '目标 / 期望状态',
+        type: 'textarea',
+        required: true,
+        hint: '问题 = 目标 − 现实。明确"应该达到什么状态"，目标尽量可量化。',
+        placeholder: '应该达到什么状态？目标是什么（尽量量化）？',
+      },
+      // —— 标准问题陈述（自动拼接）——
+      {
+        id: 'generatedProblemStatement',
+        label: '标准问题陈述（自动生成）',
+        type: 'text',
+        computed: {
+          dependsOn: ['isWhat', 'isWho', 'isWhen', 'isWhere', 'isHow', 'isExtent', 'gapTarget'],
+          formula: (values: Record<string, unknown>) => {
+            const s = (id: string) => (typeof values[id] === 'string' ? (values[id] as string).trim() : '');
+            const what = s('isWhat');
+            const who = s('isWho');
+            const when = s('isWhen');
+            const where = s('isWhere');
+            const how = s('isHow');
+            const extent = s('isExtent');
+            const target = s('gapTarget');
+            const seg: string[] = [];
+            if (who) seg.push(`对象：${who}`);
+            if (what) seg.push(`现象：${what}`);
+            if (when) seg.push(`时间：${when}`);
+            if (where) seg.push(`位置：${where}`);
+            if (how) seg.push(`过程：${how}`);
+            if (extent) seg.push(`规模：${extent}`);
+            if (seg.length === 0) return '（填写 4W2H 后自动生成）';
+            let out = `现实（已知事实）：${seg.join('；')}。`;
+            out += target ? `目标：${target}。` : '目标未填写。';
+            out += '问题 = 目标 − 现实，二者差距即待分析的问题。';
+            return out;
+          },
+        },
+      },
+      // —— 问题不是什么（集中判断）——
+      {
+        id: 'isNotStatement',
+        label: '问题不是什么（一句话排除判断）',
+        type: 'textarea',
+        priority: 'recommended',
+        hint: '问题是对客观事实的描述，而不是一种判断。明确写下"这个问题不是……"来排除模糊与主观表述。',
+        placeholder: '例如"这不是体验不好（主观判断），而是支付流程第 3 步超时率 12%（客观事实）"',
+      },
+      {
+        id: 'notJudgmentCheck',
+        label: '问题不是什么——误区自检',
+        type: 'checkbox',
+        hint: '问题不是一种判断，也不仅仅是事实罗列；问题 = 目标 − 现实。对照误区逐项排除：',
+        options: [
+          { value: 'notJudgment', label: '不是主观判断 / 评价（如"体验很差""效率低下"）——需改写为可验证的事实描述' },
+          { value: 'notJustFact', label: '不仅仅是事实罗列——"服务器重启了 5 次"只是事实，加上"目标是不中断服务"才构成问题' },
+          { value: 'notFeeling', label: '不是情绪感受（如"我觉得很焦虑""大家都抱怨"）——情绪不能作为问题定义' },
+          { value: 'notCause', label: '不是原因 / 归因（如"因为团队不重视""系统老旧"）——归因应留到分析阶段' },
+          { value: 'notSolution', label: '不是解决方案 / 对策（如"应该加个按钮""按时解决的办法是……"）——先定义问题，再谈解法' },
+          { value: 'notHope', label: '不是希望 / 愿望（如"我希望它更好"）——希望是期望，不等于问题本身' },
+        ],
+      },
       // —— 描述质量自检 ——
       {
         id: 'factCheck',
         label: '描述自检',
         type: 'checkbox',
         options: [
-          { value: 'noAssumption', label: '以上描述均为已发生的事实，不含原因猜测' },
-          { value: 'verifiable', label: '每条描述都有可验证的依据（数据/日志/观察）' },
-          { value: 'noSolutionJump', label: '没有把"解决方案"或"想要的结果"当作"问题定义"' },
+          { value: 'hasData', label: '每条描述都有数据支撑（数量/比例/时间/频次）' },
+          { value: 'dataReliable', label: '数据来源可靠（系统/日志/一手记录，而非道听途说）' },
+          { value: 'quantifiable', label: '描述可量化、可验证（不是"大概/差不多"）' },
         ],
       },
     ],
