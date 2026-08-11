@@ -2,6 +2,7 @@
  * 系统思考分析（因果回路图）：找出反复出现的系统性问题背后的循环因果关系。
  */
 import type { FormTemplate } from '../types';
+import { detectLoopsText } from '../utils/loopDetection';
 
 export const systemThinkingTemplate: FormTemplate = {
   id: 'systemThinking',
@@ -74,10 +75,7 @@ export const systemThinkingTemplate: FormTemplate = {
           type: 'text',
           computed: {
             dependsOn: ['causalChain'],
-            formula: (values) => {
-              const { detectLoopsText } = require('../utils/loopDetection');
-              return detectLoopsText(values);
-            },
+            formula: (values) => detectLoopsText(values),
           },
         },
         { id: 'leveragePoint', label: '系统杠杆点在哪里？', type: 'textarea', required: true, placeholder: '参考上方自动检测的回路，在哪个环节施加最小干预能产生最大系统改变？' },
