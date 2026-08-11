@@ -17,6 +17,7 @@ import {
   TextInput,
   TextareaInput,
 } from './form/FieldInputs';
+import { MatrixGuidedInput } from './form/MatrixGuidedInput';
 
 /** 计算字段的快速复制按钮：点击把生成内容复制到剪贴板，便于在后续流程中粘贴修改。 */
 function CopyButton({ text }: { text: string }) {
@@ -134,6 +135,9 @@ function FieldInput({ field, name, disabled, suggestions }: FieldRendererProps) 
     case 'rating':
       return <RatingInput field={field} name={name} disabled={disabled} />;
     case 'table':
+      if (field.id === 'matrix') {
+        return <MatrixGuidedInput field={field} name={name} disabled={disabled} />;
+      }
       return <TableFieldInput field={field} name={name} disabled={disabled} />;
     case 'text':
     default:
