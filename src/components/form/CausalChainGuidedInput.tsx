@@ -32,7 +32,7 @@ interface PairData {
 
 export function CausalChainGuidedInput({ disabled, problem }: CausalChainGuidedInputProps) {
   const { control, watch, setValue } = useFormContext();
-  const { fields: entries, append, remove } = useFieldArray({ control, name: 'causalChain' });
+  const { append } = useFieldArray({ control, name: 'causalChain' });
   const causalChainValues = watch('causalChain') as PairData[] | undefined;
 
   const brainstormCauses = useMemo(() => {
