@@ -1,105 +1,115 @@
 /**
- * 系统思考分析（因果回路图）：找出反复出现的系统性问题背后的循环因果关系。
+ * 技术故障根因分析：面向生产/系统技术故障的排查与归因，覆盖故障定义、技术排查与对策制定。
  */
 import type { FormTemplate } from '../types';
+import { createRemedySection } from './shared';
 
-export const systemThinkingTemplate: FormTemplate = {
-  id: 'systemThinking',
-  name: '系统思考分析',
-  icon: '🔄',
-  description: '绘制因果回路，找到反复出现的系统性问题的杠杆点',
+export const technicalFaultTemplate: FormTemplate = {
+  id: 'technicalFault',
+  name: '技术故障根因分析',
+  icon: '🔧',
+  description: '面向生产/系统技术故障的排查与根因归因',
   scenarios: [
-    '夫妻/情侣之间"越吵越冷、越冷越吵"的恶性循环，想找到打破僵局的切入点',
-    '公司"加班→离职→人手不够→更加班"的死循环，想找到系统层面的杠杆解',
-    '减肥总是反弹——节食→暴食→自责→再节食，想理清这个循环的因果结构',
+    '线上服务告警，接口/数据库出现异常需要系统性排查',
+    '发布变更后用户反馈功能异常，需要记录排查过程并归因',
+    '基础设施（服务器/网络/存储等）故障影响业务运行',
   ],
   flowSteps: [
-    '列出已知相关因素，逐条分析因果关系（正/负反馈）与延迟效应',
-    '识别增强回路与调节回路，找出系统杠杆点',
-    '制定干预方案，提前评估可能的副作用',
+    '记录排查过程：错误堆栈、变更关联、监控证据',
+    '逐条记录排查动作与结论，锁定根因',
+    '确认根因并总结结论',
   ],
   sections: [
     {
-      id: 'relatedFactors',
-      title: '相关因素',
+      id: 'technicalInvestigation',
+      title: '技术排查',
       fields: [
-        { id: 'recurrence', label: '这个问题是否反复出现？', type: 'radio', options: [
-          { value: 'first', label: '首次' },
-          { value: 'occasional', label: '偶尔' },
-          { value: 'frequent', label: '经常' },
-          { value: 'always', label: '每次都会' },
-        ] },
-        { id: 'knownFactors', label: '已知的相关因素列表', type: 'textarea', hint: '每行一个', placeholder: '列出所有你认为与问题相关的因素，每行一个…' },
+        { id: 'affectedSystem', label: '故障所属系统/服务', type: 'text', required: true, autocomplete: true, placeholder: '如 order-service、MySQL 主库、CDN 节点…' },
+        {
+          id: 'environment',
+          label: '发现环境',
+          type: 'radio',
+          options: [
+            { value: 'production', label: '生产' },
+            { value: 'staging', label: '预发' },
+            { value: 'testing', label: '测试' },
+            { value: 'development', label: '开发' },
+          ],
+        },
+        { id: 'errorSignature', label: '错误信息/异常堆栈', type: 'textarea', placeholder: '粘贴关键错误信息、异常堆栈或告警内容…' },
+        { id: 'affectedComponents', label: '受影响的组件/服务', type: 'textarea', placeholder: '列出受影响的上下游服务、中间件或基础设施组件…' },
+        {
+          id: 'hasRecentChange',
+          label: '故障前是否有相关变更',
+          type: 'radio',
+          options: [
+            { value: 'yes', label: '是' },
+            { value: 'no', label: '否' },
+          ],
+        },
+        {
+          id: 'changeDetail',
+          label: '变更详情',
+          type: 'textarea',
+          hint: '发布/配置/扩缩容等',
+          condition: { dependsOn: 'hasRecentChange', showWhen: 'yes' },
+        },
+        { id: 'monitoringEvidence', label: '监控/日志证据', type: 'textarea', placeholder: '监控截图链接、日志片段或指标异常描述…' },
+        {
+          id: 'reproducibility',
+          label: '是否可复现',
+          type: 'radio',
+          options: [
+            { value: 'reproducible', label: '可复现' },
+            { value: 'notReproducible', label: '不可复现' },
+            { value: 'intermittent', label: '间歇性' },
+          ],
+        },
       ],
     },
     {
-      id: 'causalChain',
-      title: '因果链分析',
+      id: 'diagnosisSteps',
+      title: '排查记录',
       repeatable: true,
-      repeatLabel: '因果链 {n}',
+      repeatLabel: '排查记录 {n}',
       minEntries: 1,
       fields: [
-        { id: 'factorA', label: '因素 A', type: 'text', required: true },
+        { id: 'time', label: '时间', type: 'text', placeholder: '自动填入当前时间', autoTimestamp: true },
+        { id: 'action', label: '排查动作', type: 'textarea', required: true, hint: '做了什么排查', placeholder: '具体执行了什么操作？查看了哪些日志/监控？' },
+        { id: 'finding', label: '排查发现', type: 'textarea', placeholder: '这次排查得到了什么结论或线索？' },
         {
-          id: 'relationType',
-          label: '关系类型',
+          id: 'conclusion',
+          label: '结论',
           type: 'radio',
           options: [
-            { value: 'reinforcing', label: 'A 增加 → B 增加（正反馈）' },
-            { value: 'balancing', label: 'A 增加 → B 减少（负反馈）' },
-            { value: 'causal', label: 'A 触发 → B 发生（因果链）' },
+            { value: 'rootCause', label: '是根因' },
+            { value: 'excluded', label: '已排除' },
+            { value: 'continue', label: '需继续排查' },
           ],
         },
-        { id: 'factorB', label: '因素 B', type: 'text', required: true },
-        {
-          id: 'delayEffect',
-          label: '延迟效应',
-          type: 'radio',
-          options: [
-            { value: 'immediate', label: '即时' },
-            { value: 'shortTerm', label: '短期（天）' },
-            { value: 'midTerm', label: '中期（周-月）' },
-            { value: 'longTerm', label: '长期（季-年）' },
-          ],
-        },
-        { id: 'evidence', label: '这条因果关系的证据', type: 'textarea', placeholder: '有什么数据或观察能证明这条因果关系存在？' },
       ],
     },
     {
-      id: 'loopAnalysis',
-      title: '回路与杠杆点',
-      fields: [
-        { id: 'hasReinforcingLoop', label: '是否存在增强回路？', type: 'checkbox' },
-        { id: 'hasBalancingLoop', label: '是否存在调节回路？', type: 'checkbox' },
-        { id: 'leveragePoint', label: '系统杠杆点在哪里？', type: 'textarea', required: true, placeholder: '在哪个环节施加最小干预能产生最大系统改变？' },
-      ],
+      id: 'comprehensiveAnalysis',
+      title: '综合分析',
+      fields: [{ id: 'rootCauseJudgement', label: '根因判定', type: 'textarea', required: true, placeholder: '综合排查结论，明确判定最终根因是什么' }],
     },
-    {
-      id: 'intervention',
-      title: '干预策略',
-      fields: [
-        { id: 'leveragePointSummary', label: '系统杠杆点总结', type: 'textarea', placeholder: '回顾上面的因果链分析，总结系统的关键杠杆点…' },
-        { id: 'interventionPlan', label: '干预方案', type: 'textarea', required: true, placeholder: '具体要在杠杆点上做什么干预？分几步实施？' },
-        { id: 'sideEffects', label: '预期副作用', type: 'textarea', hint: '系统干预常有意外后果，提前想清楚', placeholder: '这个干预可能在其他环节引发什么意外后果？' },
-        { id: 'monitorPlan', label: '如何监测干预效果', type: 'textarea', placeholder: '用什么指标或方式来判断干预是否有效？' },
-        { id: 'lessonsLearned', label: '经验教训', type: 'textarea', autocomplete: true, placeholder: '这次经历有哪些可复用的发现？下次遇到类似情况应该怎么做？' },
-      ],
-    },
+    createRemedySection(),
   ],
   phases: [
     {
-      id: 'causalAnalysis',
-      label: '因果链分析',
-      icon: '🔄',
+      id: 'investigation',
+      label: '技术排查',
+      icon: '🔍',
       sectionIndices: [0, 1, 2],
-      completionFields: ['factorA', 'factorB', 'leveragePoint'],
+      completionFields: ['action', 'affectedSystem', 'rootCauseJudgement'],
     },
     {
-      id: 'intervention',
-      label: '干预策略',
+      id: 'remedy',
+      label: '根因结论',
       icon: '🛠️',
       sectionIndices: [3],
-      completionFields: ['interventionPlan'],
+      completionFields: ['rootCauseSummary'],
       completesRecord: true,
     },
   ],
