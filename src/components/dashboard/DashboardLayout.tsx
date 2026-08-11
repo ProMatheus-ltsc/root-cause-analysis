@@ -33,7 +33,7 @@ export function DashboardLayout({ records, templates }: DashboardLayoutProps) {
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <StatCard label="待分析" value={statusCounts.待分析} />
         <StatCard label="分析中" value={statusCounts.分析中} />
-        <StatCard label="已关闭" value={statusCounts.已关闭} accentClassName="text-emerald-600" />
+        <StatCard label="已完成" value={statusCounts.已完成} accentClassName="text-emerald-600" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
