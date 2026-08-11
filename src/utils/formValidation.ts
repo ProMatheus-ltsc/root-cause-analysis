@@ -34,7 +34,20 @@ function findFieldSection(template: FormTemplate, fieldId: string): { section: F
   return undefined;
 }
 
-/** 判断某个 completionFields 中列出的字段 id 在当前数据下是否已满足（非重复段=非空；重复段=至少 minEntries 条目该字段非空）。 */
+/** 判断 table 类型字段是否有实际内容（至少有一个非零/非空值）。 */
+function isTableFieldFilled(value: unknown): boolean {
+  if (!Array.isArray(value) || value.length === 0) return false;
+  return value.some((row) => {
+    if (typeof row !== 'object' || row === null) return false;
+    return Object.values(row as Record<string, unknown>).some((cell) => {
+      if (typeof cell === 'number') return cell !== 0;
+      if (typeof cell === 'string') return cell.trim() !== '';
+      return cell !== undefined && cell !== null;
+    });
+  });
+}
+
+/** 判断某个 completionFields 中列出的字段 id 在当前数据下是否已满足（非重复段=非空；重复段=至少 minEntries 条目该字段非空；table=至少有一个非零值）。 */
 export function isCompletionFieldSatisfied(template: FormTemplate, fieldId: string, values: Record<string, unknown>): boolean {
   const found = findFieldSection(template, fieldId);
   if (!found) return false;
@@ -44,6 +57,10 @@ export function isCompletionFieldSatisfied(template: FormTemplate, fieldId: stri
     const minEntries = section.minEntries ?? 1;
     const filledCount = entries.filter((entry) => !isEmptyValue(entry[fieldId])).length;
     return filledCount >= minEntries;
+  }
+  const field = section.fields.find((f) => f.id === fieldId);
+  if (field?.type === 'table') {
+    return isTableFieldFilled(values[fieldId]);
   }
   return !isEmptyValue(values[fieldId]);
 }
@@ -89,6 +106,10 @@ export function validateRequiredFields(template: FormTemplate, values: Record<st
     if (requiredFields.length === 0) continue;
     if (section.repeatable) {
       const entries = (values[section.id] as Record<string, unknown>[] | undefined) ?? [];
+      const minEntries = section.minEntries ?? 1;
+      if (entries.length < minEntries) {
+        missing.push({ sectionId: section.id, fieldId: section.fields[0].id, label: `${section.title}（至少需要 ${minEntries} 条）` });
+      }
       entries.forEach((entry, idx) => {
         requiredFields.forEach((f) => {
           if (isEmptyValue(entry[f.id])) {
