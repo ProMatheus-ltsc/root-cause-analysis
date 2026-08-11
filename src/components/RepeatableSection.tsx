@@ -146,7 +146,8 @@ export function RepeatableSection({ section, disabled, templateId, historyRecord
   })();
 
   const brainstormCauses = (() => {
-    if (section.id !== 'factors' || !problem) return [];
+    if (section.id !== 'factors' && section.id !== 'causalChain') return [];
+    if (!problem) return [];
     const brainstorm = problem.data?.['brainstorm'];
     if (!Array.isArray(brainstorm)) return [];
     return brainstorm
@@ -156,16 +157,32 @@ export function RepeatableSection({ section, disabled, templateId, historyRecord
 
   const existingNames = (() => {
     const sectionEntries = (values[section.id] as Record<string, unknown>[] | undefined) ?? [];
+    if (section.id === 'causalChain') {
+      const names: string[] = [];
+      for (const entry of sectionEntries) {
+        if (typeof entry?.factorA === 'string' && entry.factorA.trim()) names.push(entry.factorA);
+        if (typeof entry?.factorB === 'string' && entry.factorB.trim()) names.push(entry.factorB);
+      }
+      return names;
+    }
     return sectionEntries
       .map((entry) => (typeof entry?.name === 'string' ? entry.name : ''))
       .filter((n) => n.trim().length > 0);
   })();
 
   function handleBrainstormPick(causes: string[]) {
-    for (const cause of causes) {
-      const newEntry = Object.fromEntries(section.fields.map((f) => [f.id, '']));
-      newEntry['name'] = cause;
-      append(newEntry);
+    if (section.id === 'causalChain') {
+      for (const cause of causes) {
+        const newEntry = Object.fromEntries(section.fields.map((f) => [f.id, '']));
+        newEntry['factorA'] = cause;
+        append(newEntry);
+      }
+    } else {
+      for (const cause of causes) {
+        const newEntry = Object.fromEntries(section.fields.map((f) => [f.id, '']));
+        newEntry['name'] = cause;
+        append(newEntry);
+      }
     }
   }
 
