@@ -98,12 +98,11 @@ export interface MissingField {
   label: string;
 }
 
-/** 提交前的整体质量检查：列出所有必填字段（含重复段每条目）中仍为空的项。 */
+/** 提交前的整体质量检查：列出所有必填字段（含重复段每条目）中仍为空的项，以及 table 类型字段的最少行数校验。 */
 export function validateRequiredFields(template: FormTemplate, values: Record<string, unknown>): MissingField[] {
   const missing: MissingField[] = [];
   for (const section of template.sections) {
     const requiredFields = section.fields.filter((f) => f.required);
-    if (requiredFields.length === 0) continue;
     if (section.repeatable) {
       const entries = (values[section.id] as Record<string, unknown>[] | undefined) ?? [];
       const minEntries = section.minEntries ?? 1;
@@ -121,6 +120,18 @@ export function validateRequiredFields(template: FormTemplate, values: Record<st
       requiredFields.forEach((f) => {
         if (isEmptyValue(values[f.id])) {
           missing.push({ sectionId: section.id, fieldId: f.id, label: f.label });
+        }
+      });
+      section.fields.forEach((f) => {
+        if (f.type === 'table' && f.validation?.min !== undefined) {
+          const rows = Array.isArray(values[f.id]) ? (values[f.id] as unknown[]) : [];
+          const filledRows = rows.filter((row) => {
+            if (typeof row !== 'object' || row === null) return false;
+            return Object.values(row as Record<string, unknown>).some((v) => typeof v === 'string' && v.trim() !== '');
+          });
+          if (filledRows.length < f.validation.min) {
+            missing.push({ sectionId: section.id, fieldId: f.id, label: `${f.label}（至少需要 ${f.validation.min} 行有效数据）` });
+          }
         }
       });
     }
