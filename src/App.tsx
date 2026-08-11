@@ -17,6 +17,7 @@ const FormPage = lazy(() => import('./pages/FormPage'));
 const HistoryPage = lazy(() => import('./pages/HistoryPage'));
 const DataPage = lazy(() => import('./pages/DataPage'));
 const ProblemWizardPage = lazy(() => import('./pages/ProblemWizardPage'));
+const ProblemEditPage = lazy(() => import('./pages/ProblemEditPage'));
 
 function FullScreenLoading() {
   return <div className="flex min-h-screen items-center justify-center text-sm text-slate-400">加载中…</div>;
@@ -56,6 +57,16 @@ function TopNav() {
           <NavLink to="/data" className={linkClass}>
             数据管理
           </NavLink>
+          <button
+            onClick={() => navigate('/history')}
+            className="rounded-md border border-slate-200 px-2 py-1 text-slate-400 hover:border-slate-400 hover:text-slate-600 transition"
+            title="全局搜索 (⌘K)"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
+            </svg>
+            <span className="ml-1 hidden sm:inline text-xs">搜索</span>
+          </button>
           <span className="text-slate-400">{account?.username}</span>
           <button onClick={handleLogout} className="text-rose-600 hover:underline">
             登出
@@ -95,6 +106,7 @@ export default function App() {
                 <Route index element={<DashboardPage />} />
                 <Route path="new" element={<ProblemWizardPage />} />
                 <Route path="problem/:problemId" element={<ProblemPage />} />
+                <Route path="problem/:problemId/edit" element={<ProblemEditPage />} />
                 <Route path="analysis/:problemId/:templateId/:recordId?" element={<FormPage />} />
                 <Route path="history" element={<HistoryPage />} />
                 <Route path="data" element={<DataPage />} />
