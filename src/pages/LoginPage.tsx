@@ -7,6 +7,19 @@ import { useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
+function PasswordToggle({ visible, onToggle }: { visible: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm"
+      aria-label={visible ? '隐藏密码' : '显示密码'}
+    >
+      {visible ? '🙈' : '👁'}
+    </button>
+  );
+}
+
 type Mode = 'login' | 'register' | 'reset';
 
 const MODE_TITLE: Record<Mode, string> = {
@@ -23,6 +36,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   if (account) {
     return <Navigate to="/" replace />;
@@ -75,16 +90,19 @@ export default function LoginPage() {
           </div>
           <div>
             <label className="mb-1 block text-sm text-slate-700">{mode === 'reset' ? '新密码' : '密码'}</label>
-            <input
-              type="password"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-              placeholder="至少 4 位"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={4}
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 pr-10 text-sm"
+                placeholder="至少 4 位"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={4}
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              />
+              <PasswordToggle visible={showPassword} onToggle={() => setShowPassword((v) => !v)} />
+            </div>
             {mode === 'register' && password.length > 0 && password.length < 4 && (
               <p className="mt-1 text-xs text-amber-600">已输入 {password.length}/4 位，还需 {4 - password.length} 位</p>
             )}
@@ -92,16 +110,19 @@ export default function LoginPage() {
           {mode === 'reset' && (
             <div>
               <label className="mb-1 block text-sm text-slate-700">确认新密码</label>
-              <input
-                type="password"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                placeholder="再次输入新密码"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                minLength={4}
-                autoComplete="new-password"
-              />
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 pr-10 text-sm"
+                  placeholder="再次输入新密码"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={4}
+                  autoComplete="new-password"
+                />
+                <PasswordToggle visible={showConfirmPassword} onToggle={() => setShowConfirmPassword((v) => !v)} />
+              </div>
               {confirmPassword.length > 0 && password !== confirmPassword && (
                 <p className="mt-1 text-xs text-rose-600">两次密码不一致</p>
               )}
