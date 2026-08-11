@@ -56,6 +56,7 @@ export const fishboneTemplate: FormTemplate = {
         ...createCheckItem('manSkillGap', '人员技能不足？'),
         ...createCheckItem('manResponsibility', '职责不清？'),
         ...createCheckItem('manTraining', '培训缺失？'),
+        { id: 'manNotes', label: '本维度发现与备注', type: 'textarea', placeholder: '记录在"人"这个维度的具体发现、证据或补充说明…' },
       ],
     },
     {
@@ -65,6 +66,7 @@ export const fishboneTemplate: FormTemplate = {
       fields: [
         ...createCheckItem('machineFault', '工具/系统是否故障？'),
         ...createCheckItem('machineConfig', '环境配置问题？'),
+        { id: 'machineNotes', label: '本维度发现与备注', type: 'textarea', placeholder: '记录在"机"这个维度的具体发现、证据或补充说明…' },
       ],
     },
     {
@@ -74,6 +76,7 @@ export const fishboneTemplate: FormTemplate = {
       fields: [
         ...createCheckItem('materialQuality', '输入数据/物料质量？'),
         ...createCheckItem('materialUpstream', '上游依赖问题？'),
+        { id: 'materialNotes', label: '本维度发现与备注', type: 'textarea', placeholder: '记录在"料"这个维度的具体发现、证据或补充说明…' },
       ],
     },
     {
@@ -83,6 +86,7 @@ export const fishboneTemplate: FormTemplate = {
       fields: [
         ...createCheckItem('methodMissing', '流程/规范缺失？'),
         ...createCheckItem('methodWrong', '方法论错误？'),
+        { id: 'methodNotes', label: '本维度发现与备注', type: 'textarea', placeholder: '记录在"法"这个维度的具体发现、证据或补充说明…' },
       ],
     },
     {
@@ -92,6 +96,7 @@ export const fishboneTemplate: FormTemplate = {
       fields: [
         ...createCheckItem('envChange', '外部环境变化？'),
         ...createCheckItem('envPressure', '时间压力？'),
+        { id: 'envNotes', label: '本维度发现与备注', type: 'textarea', placeholder: '记录在"环"这个维度的具体发现、证据或补充说明…' },
       ],
     },
     {
@@ -101,6 +106,7 @@ export const fishboneTemplate: FormTemplate = {
       fields: [
         ...createCheckItem('measureMissing', '监控/度量缺失？'),
         ...createCheckItem('measureDefinition', '指标定义不合理？'),
+        { id: 'measureNotes', label: '本维度发现与备注', type: 'textarea', placeholder: '记录在"测"这个维度的具体发现、证据或补充说明…' },
       ],
     },
     {
