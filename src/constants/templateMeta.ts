@@ -4,6 +4,7 @@
 import type { TemplateId } from '../types';
 
 export const TEMPLATE_COLORS: Record<TemplateId, string> = {
+  problemWizard: 'bg-slate-100 text-slate-700 border-slate-200',
   keyFactor: 'bg-emerald-100 text-emerald-700 border-emerald-200',
   fiveWhy: 'bg-sky-100 text-sky-700 border-sky-200',
   fishbone: 'bg-teal-100 text-teal-700 border-teal-200',
