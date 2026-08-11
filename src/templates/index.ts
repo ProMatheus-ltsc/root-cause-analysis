@@ -3,6 +3,7 @@
  * 顺序：要因分析法（推荐）置顶，其他方法作为可选项。
  */
 import type { FormTemplate, TemplateId } from '../types';
+import { problemWizardTemplate } from './problemWizard';
 import { keyFactorTemplate } from './keyFactor';
 import { fiveWhyTemplate } from './fiveWhy';
 import { fishboneTemplate } from './fishbone';
@@ -12,6 +13,7 @@ import { systemThinkingTemplate } from './systemThinking';
 import { technicalFaultTemplate } from './technicalFault';
 
 export const TEMPLATES: Record<TemplateId, FormTemplate> = {
+  problemWizard: problemWizardTemplate,
   keyFactor: keyFactorTemplate,
   fiveWhy: fiveWhyTemplate,
   fishbone: fishboneTemplate,
@@ -21,8 +23,8 @@ export const TEMPLATES: Record<TemplateId, FormTemplate> = {
   technicalFault: technicalFaultTemplate,
 };
 
-/** 推荐模板优先展示，其他作为可选项。 */
-export const TEMPLATE_LIST: FormTemplate[] = Object.values(TEMPLATES);
+/** 分析方法模板列表（不含 problemWizard），推荐模板优先展示。 */
+export const TEMPLATE_LIST: FormTemplate[] = Object.values(TEMPLATES).filter((t) => t.id !== 'problemWizard');
 
 export function getTemplate(templateId: TemplateId): FormTemplate {
   return TEMPLATES[templateId];
