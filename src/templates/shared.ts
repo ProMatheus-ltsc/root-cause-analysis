@@ -367,7 +367,7 @@ export const RELATION_LEVEL_OPTIONS = [
 ];
 
 /** 矩阵最大因子数（用户从头脑风暴清单中筛选 ≤ MAX_FACTORS 个核心因素参与矩阵分析）。 */
-export const KEY_FACTOR_MAX = 8;
+export const KEY_FACTOR_MAX = 15;
 
 /** 矩阵列定义：固定 KEY_FACTOR_MAX × KEY_FACTOR_MAX，第 i 行第 j 列 = 因素 i 对因素 j 的影响强度。 */
 export function keyFactorMatrixColumns(): { id: string; label: string; placeholder: string }[] {
@@ -491,10 +491,15 @@ export function computeKeyFactors(values: Record<string, unknown>): KeyFactorRes
   const total = sorted.reduce((s, r) => s + r.centrality, 0);
   if (total > 0) {
     let cum = 0;
+    let hasKey = false;
     for (const r of sorted) {
       cum += r.centrality;
       r.cumulativePercent = +(cum / total).toFixed(4);
-      r.isKey = r.cumulativePercent <= KEY_FACTOR_THRESHOLD || (r === sorted[sorted.length - 1] && cum / total < 1);
+      r.isKey = r.cumulativePercent <= KEY_FACTOR_THRESHOLD;
+      if (r.isKey) hasKey = true;
+    }
+    if (!hasKey && sorted.length > 0) {
+      sorted[0].isKey = true;
     }
   }
   return rows;
