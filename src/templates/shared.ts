@@ -569,7 +569,8 @@ export function createRemedySection(): FormSection {
         id: 'symptomRootCauseCheck',
         label: '症状 ≠ 根因 自检',
         type: 'checkbox',
-        hint: '对策必须针对根因而非症状——症状是表现，根因才是真正可以消除的源头',
+        priority: 'recommended',
+        hint: '⭐ 推荐完成——对策必须针对根因而非症状，症状是表现，根因才是真正可以消除的源头。跳过此项可能导致问题反复出现。',
         options: [
           { value: 'identifiedSymptom', label: '已明确区分"症状"（表面现象）与"根因"（真正源头）' },
           { value: 'rootCauseEliminable', label: '此根因被消除后，症状会随之消失' },
@@ -580,7 +581,8 @@ export function createRemedySection(): FormSection {
         id: 'meceCheck',
         label: 'MECE 自检（相互独立、完全穷尽）',
         type: 'checkbox',
-        hint: '多根因 / 多措施场景下确保覆盖完整且不重叠',
+        priority: 'recommended',
+        hint: '⭐ 推荐完成——多根因/多措施场景下确保覆盖完整且不重叠，避免遗漏或重复投入。',
         options: [
           { value: 'exclusive', label: '各项根因 / 措施之间相互独立（不重叠、不互为因果）' },
           { value: 'exhaustive', label: '已穷尽所有可能的根因（无明显遗漏）' },
