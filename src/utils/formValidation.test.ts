@@ -95,7 +95,7 @@ describe('validateRequiredFields', () => {
 
   it('returns an empty list when all required fields are filled', () => {
     const missing = validateRequiredFields(fiveWhyTemplate, {
-      whyChain: [{ why: 'a' }],
+      whyChain: [{ why: 'a' }, { why: 'b' }],
       rootCauseSummary: 'r',
     });
     expect(missing).toHaveLength(0);
