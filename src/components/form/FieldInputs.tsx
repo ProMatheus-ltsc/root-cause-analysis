@@ -165,54 +165,95 @@ export function TableFieldInput({ field, name, disabled }: InputProps) {
   const columns = field.tableColumns ?? [];
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr>
-            {columns.map((col) => (
-              <th key={col.id} className="border-b border-slate-200 px-2 py-1 text-left font-medium text-slate-600">
-                {col.label}
-              </th>
-            ))}
-            {!disabled && <th className="border-b border-slate-200" />}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, idx) => (
-            <tr key={row.id}>
+    <div>
+      {/* 桌面端：表格布局 */}
+      <div className="hidden sm:block overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr>
               {columns.map((col) => (
-                <td key={col.id} className="border-b border-slate-100 px-2 py-1">
-                  {col.type === 'select' ? (
-                    <select className={INPUT_CLASS} disabled={disabled} {...register(`${name}.${idx}.${col.id}`)}>
-                      <option value="">请选择</option>
-                      {col.options?.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input type="text" className={INPUT_CLASS} placeholder={col.placeholder} disabled={disabled} {...register(`${name}.${idx}.${col.id}`)} />
-                  )}
-                </td>
+                <th key={col.id} className="border-b border-slate-200 px-2 py-1 text-left font-medium text-slate-600">
+                  {col.label}
+                </th>
               ))}
-              {!disabled && (
-                <td className="border-b border-slate-100 px-2 py-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (confirm('确定删除这一行吗？')) remove(idx);
-                    }}
-                    className="text-xs text-rose-600 hover:underline"
-                  >
-                    删除
-                  </button>
-                </td>
-              )}
+              {!disabled && <th className="border-b border-slate-200" />}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((row, idx) => (
+              <tr key={row.id}>
+                {columns.map((col) => (
+                  <td key={col.id} className="border-b border-slate-100 px-2 py-1">
+                    {col.type === 'select' ? (
+                      <select className={INPUT_CLASS} disabled={disabled} {...register(`${name}.${idx}.${col.id}`)}>
+                        <option value="">请选择</option>
+                        {col.options?.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input type="text" className={INPUT_CLASS} placeholder={col.placeholder} disabled={disabled} {...register(`${name}.${idx}.${col.id}`)} />
+                    )}
+                  </td>
+                ))}
+                {!disabled && (
+                  <td className="border-b border-slate-100 px-2 py-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm('确定删除这一行吗？')) remove(idx);
+                      }}
+                      className="text-xs text-rose-600 hover:underline"
+                    >
+                      删除
+                    </button>
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {/* 移动端：卡片布局 */}
+      <div className="sm:hidden space-y-3">
+        {rows.map((row, idx) => (
+          <div key={row.id} className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-slate-500">第 {idx + 1} 行</span>
+              {!disabled && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm('确定删除这一行吗？')) remove(idx);
+                  }}
+                  className="text-xs text-rose-600 hover:underline"
+                >
+                  删除
+                </button>
+              )}
+            </div>
+            {columns.map((col) => (
+              <div key={col.id}>
+                <label className="mb-0.5 block text-xs font-medium text-slate-600">{col.label}</label>
+                {col.type === 'select' ? (
+                  <select className={INPUT_CLASS} disabled={disabled} {...register(`${name}.${idx}.${col.id}`)}>
+                    <option value="">请选择</option>
+                    {col.options?.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input type="text" className={INPUT_CLASS} placeholder={col.placeholder} disabled={disabled} {...register(`${name}.${idx}.${col.id}`)} />
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
       {!disabled && (
         <button
           type="button"
