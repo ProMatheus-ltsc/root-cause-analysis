@@ -2,10 +2,12 @@
  * 可重复段：管理条目数组（useFieldArray），支持添加/删除并自动编号。
  * 填写当前条目时，以精简摘要展示前面已填写的内容，避免用户忘记上文。
  * 删除条目时提供短暂的"撤销删除"恢复机会（5秒内可撤销）。
+ * causalChain section 使用专用的卡片式逐对引导填写组件。
  */
 import { useRef, useState } from 'react';
 import { useFieldArray, useFormContext } from 'react-hook-form';
 import type { FormRecord, FormSection, Problem, TemplateId } from '../types';
+import { CausalChainGuidedInput } from './form/CausalChainGuidedInput';
 import { FieldList } from './form/FieldList';
 
 interface RepeatableSectionProps {
@@ -114,6 +116,14 @@ function BrainstormPicker({ brainstormCauses, existingNames, onPick }: Brainstor
 }
 
 export function RepeatableSection({ section, disabled, templateId, historyRecords, problem }: RepeatableSectionProps) {
+  if (section.id === 'causalChain') {
+    return <CausalChainGuidedInput disabled={disabled} problem={problem} />;
+  }
+
+  return <DefaultRepeatableSection section={section} disabled={disabled} templateId={templateId} historyRecords={historyRecords} problem={problem} />;
+}
+
+function DefaultRepeatableSection({ section, disabled, templateId, historyRecords, problem }: RepeatableSectionProps) {
   const { control, watch } = useFormContext();
   const { fields: entries, append, remove, insert } = useFieldArray({ control, name: section.id });
   const values = watch();
