@@ -3,6 +3,7 @@
  * 顶部常驻显示问题摘要卡片（做分析时随时查看问题），下方渲染分析方法表单。
  * 首次自动保存后通过 onFirstSave 把 URL 从"新建"跳转到"编辑现有记录"。
  */
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getTemplate } from '../templates';
 import type { TemplateId } from '../types';
@@ -15,6 +16,7 @@ export default function FormPage() {
   const navigate = useNavigate();
   const { problem, loading: problemLoading } = useProblem(problemId);
   const { record, loading } = useRecord(recordId);
+  const [printPreview, setPrintPreview] = useState(false);
 
   const template = templateId ? getTemplate(templateId as TemplateId) : undefined;
   if (!problemId || !templateId || !template) {
@@ -33,16 +35,31 @@ export default function FormPage() {
     return <p className="text-sm text-rose-600">问题不存在</p>;
   }
 
+  function handlePrint() {
+    setPrintPreview(true);
+    setTimeout(() => {
+      window.print();
+      setPrintPreview(false);
+    }, 300);
+  }
+
   return (
     <div className="space-y-4">
       <div className="no-print flex items-center justify-between text-sm text-slate-500">
         <span>
           {template.icon} {template.name} · 基于问题：{problem.title}
         </span>
-        <button type="button" onClick={() => window.print()} className="text-sky-600 hover:underline">
-          打印 / 导出 PDF
-        </button>
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={handlePrint} className="text-sky-600 hover:underline">
+            打印预览 / 导出 PDF
+          </button>
+        </div>
       </div>
+      {printPreview && (
+        <div className="no-print rounded-md border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-700">
+          正在准备打印预览…打印对话框即将弹出，请确认内容后选择"打印"或"另存为 PDF"。
+        </div>
+      )}
       <ProblemSummaryCard problem={problem} />
       <FormRenderer
         template={template}
