@@ -114,6 +114,7 @@ function FieldLabel({ field }: { field: FormField }) {
     <label className={clsx('block text-sm font-medium text-slate-700', field.emphasis && 'text-base text-slate-900')}>
       {field.label}
       {field.required && <span className="ml-1 text-rose-500">*</span>}
+      {field.priority === 'recommended' && <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">推荐完成</span>}
     </label>
   );
 }
