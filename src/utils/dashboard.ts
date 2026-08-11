@@ -31,7 +31,7 @@ export function countByDisplayStatus(
   templates: Record<TemplateId, FormTemplate>,
   todayISO: string,
 ): Record<DisplayStatus, number> {
-  const counts: Record<DisplayStatus, number> = { 待分析: 0, 分析中: 0, 已关闭: 0 };
+  const counts: Record<DisplayStatus, number> = { 待分析: 0, 分析中: 0, 已完成: 0 };
   for (const record of records) {
     const status = getDisplayStatus(templates[record.templateId], record, todayISO);
     counts[status] += 1;
