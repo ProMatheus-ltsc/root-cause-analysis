@@ -21,7 +21,17 @@ export function buildDefaultValues(template: FormTemplate, record: FormRecord | 
   const values: Record<string, unknown> = {};
   for (const section of template.sections) {
     if (section.repeatable) {
-      values[section.id] = data[section.id] ?? [];
+      const existing = data[section.id];
+      if (existing && Array.isArray(existing) && existing.length > 0) {
+        values[section.id] = existing;
+      } else {
+        const prefillCount = section.minEntries ?? 3;
+        const emptyEntry: Record<string, unknown> = {};
+        for (const f of section.fields) {
+          emptyEntry[f.id] = '';
+        }
+        values[section.id] = Array.from({ length: prefillCount }, () => ({ ...emptyEntry }));
+      }
       continue;
     }
     for (const field of section.fields) {
@@ -100,12 +110,16 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
     return saved;
   }
 
+  const persistRef = useRef(persist);
+  persistRef.current = persist;
+
   useEffect(() => {
     const timer = setInterval(() => {
-      persist(statusRef.current);
-    }, 30000);
+      if (dirtyRef.current) {
+        persistRef.current(statusRef.current);
+      }
+    }, 10000);
     return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 标记"自上次保存后是否有未保存的改动"，用于关闭页面/离开路由时尽力补一次保存。
@@ -163,7 +177,10 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
     if (missing.length > 0) {
       const labels = missing.map((m) => m.label);
       setValidationErrors(labels);
-      showToast(`请完善必填项：${labels.slice(0, 5).join('、')}${labels.length > 5 ? ` 等 ${labels.length} 项` : ''}`, 'error');
+      const MAX_SHOW = 5;
+      const shown = labels.slice(0, MAX_SHOW).join('、');
+      const suffix = labels.length > MAX_SHOW ? `…等共 ${labels.length} 项` : '';
+      showToast(`请完善必填项：${shown}${suffix}`, 'error');
       return;
     }
     const phase = template.phases?.[activePhaseIndex];
@@ -255,6 +272,15 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
         )}
         {!disabled && (
           <div className="no-print mt-8 flex flex-wrap items-center gap-3 border-t border-slate-200 pt-4">
+            {phases && activePhaseIndex > 0 && (
+              <button
+                type="button"
+                onClick={() => handleSelectPhase(activePhaseIndex - 1)}
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-100"
+              >
+                ← 上一阶段
+              </button>
+            )}
             <button
               type="button"
               onClick={handlePrimaryAction}
@@ -269,8 +295,15 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
             >
               {copiedJson ? '已复制 JSON ✓' : '复制 JSON（问题描述 / 根因 / 果因）'}
             </button>
+            <button
+              type="button"
+              onClick={() => { persist(statusRef.current); showToast('已手动保存', 'success'); }}
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-100"
+            >
+              手动保存
+            </button>
             <span className="text-xs text-slate-400">
-              {lastSavedAt ? `上次自动保存于 ${format(lastSavedAt, 'HH:mm:ss')}` : '系统每 30 秒自动保存草稿'}
+              {lastSavedAt ? `上次保存于 ${format(lastSavedAt, 'HH:mm:ss')}` : '系统每 10 秒自动保存草稿'}
             </span>
           </div>
         )}
