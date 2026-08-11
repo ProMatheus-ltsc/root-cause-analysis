@@ -3,6 +3,7 @@
  */
 
 export type TemplateId =
+  | 'problemWizard'
   | 'keyFactor'
   | 'fiveWhy'
   | 'fishbone'
@@ -76,6 +77,8 @@ export interface FormField {
   conditionalHints?: Record<string, string>;
   hintDependsOn?: string;
   collapsedByDefault?: boolean;
+  /** 添加条目时自动填入当前时间（HH:mm 格式） */
+  autoTimestamp?: boolean;
 }
 
 export interface FormSection {
