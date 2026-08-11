@@ -29,7 +29,6 @@ export const systemThinkingTemplate: FormTemplate = {
           { value: 'frequent', label: '经常' },
           { value: 'always', label: '每次都会' },
         ] },
-        { id: 'knownFactors', label: '已知的相关因素列表', type: 'textarea', hint: '每行一个', placeholder: '列出所有你认为与问题相关的因素，每行一个…' },
       ],
     },
     {
@@ -69,9 +68,19 @@ export const systemThinkingTemplate: FormTemplate = {
       id: 'loopAnalysis',
       title: '回路与杠杆点',
       fields: [
-        { id: 'hasReinforcingLoop', label: '是否存在增强回路？', type: 'checkbox' },
-        { id: 'hasBalancingLoop', label: '是否存在调节回路？', type: 'checkbox' },
-        { id: 'leveragePoint', label: '系统杠杆点在哪里？', type: 'textarea', required: true, placeholder: '在哪个环节施加最小干预能产生最大系统改变？' },
+        {
+          id: 'detectedLoops',
+          label: '系统自动检测的回路（基于因果链数据）',
+          type: 'text',
+          computed: {
+            dependsOn: ['causalChain'],
+            formula: (values) => {
+              const { detectLoopsText } = require('../utils/loopDetection');
+              return detectLoopsText(values);
+            },
+          },
+        },
+        { id: 'leveragePoint', label: '系统杠杆点在哪里？', type: 'textarea', required: true, placeholder: '参考上方自动检测的回路，在哪个环节施加最小干预能产生最大系统改变？' },
       ],
     },
     {
