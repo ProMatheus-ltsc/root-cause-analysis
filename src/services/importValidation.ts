@@ -58,5 +58,31 @@ export function validateExportedData(data: unknown): string[] {
     errors.push('settings 字段不是对象');
   }
 
+  if (data.problems !== undefined && data.problems !== null) {
+    if (!Array.isArray(data.problems)) {
+      errors.push('problems 字段存在但不是数组');
+    } else {
+      data.problems.forEach((problem: unknown, idx: number) => {
+        const label = `第 ${idx + 1} 个问题`;
+        if (!isPlainObject(problem)) {
+          errors.push(`${label}不是对象`);
+          return;
+        }
+        if (typeof problem.id !== 'string' || !problem.id) {
+          errors.push(`${label}的 id 不合法`);
+        }
+        if (typeof problem.title !== 'string') {
+          errors.push(`${label}的 title 不是字符串`);
+        }
+        if (!isPlainObject(problem.data)) {
+          errors.push(`${label}的 data 不是对象`);
+        }
+        if (typeof problem.createdAt !== 'string' || typeof problem.updatedAt !== 'string') {
+          errors.push(`${label}的 createdAt/updatedAt 不是字符串`);
+        }
+      });
+    }
+  }
+
   return errors;
 }
