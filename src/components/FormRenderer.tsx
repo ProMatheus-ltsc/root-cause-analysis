@@ -73,6 +73,7 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
   const statusRef = useRef<'draft' | 'completed'>(record?.status ?? 'draft');
   const dirtyRef = useRef(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | undefined>(undefined);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   async function persist(status: 'draft' | 'completed', { commitPhase = false } = {}): Promise<FormRecord> {
     const currentValues = getValues();
@@ -160,17 +161,21 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
   async function handlePrimaryAction() {
     const missing = getScopedMissingFields(activePhaseIndex);
     if (missing.length > 0) {
-      showToast(`请完善必填项：${missing.slice(0, 5).map((m) => m.label).join('、')}`, 'error');
+      const labels = missing.map((m) => m.label);
+      setValidationErrors(labels);
+      showToast(`请完善必填项：${labels.slice(0, 5).join('、')}${labels.length > 5 ? ` 等 ${labels.length} 项` : ''}`, 'error');
       return;
     }
     const phase = template.phases?.[activePhaseIndex];
     if (phase && !phase.completesRecord) {
       const currentValues = getValues();
       if (!isPhaseCompletionSatisfied(template, phase, currentValues)) {
+        setValidationErrors(['当前阶段尚未完成，请继续填写所有必要内容']);
         showToast('当前阶段尚未完成，请继续填写', 'error');
         return;
       }
     }
+    setValidationErrors([]);
     const willComplete = !template.phases || phase?.completesRecord;
     const saved = await persist(willComplete ? 'completed' : statusRef.current, { commitPhase: true });
     const ctx = { todayISO, createdAtISO: saved.createdAt };
@@ -214,13 +219,19 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
 
   const phases = template.phases;
   const activeSections = phases ? phases[activePhaseIndex].sectionIndices.map((i) => template.sections[i]) : template.sections;
-  const disabled = phases ? phaseLogic.isSectionLocked(activePhaseIndex) || phaseLogic.isSectionReadOnly(activePhaseIndex) : false;
+  const isCompleted = statusRef.current === 'completed';
+  const disabled = isCompleted || (phases ? phaseLogic.isSectionLocked(activePhaseIndex) || phaseLogic.isSectionReadOnly(activePhaseIndex) : false);
   const activePhase = phases?.[activePhaseIndex];
   const isLastPhase = phases ? activePhaseIndex === phases.length - 1 : true;
 
   return (
     <FormProvider {...methods}>
       <form onSubmit={(e) => e.preventDefault()} className="print-area">
+        {isCompleted && (
+          <div className="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
+            ✓ 本次分析已标记完成，内容为只读状态。
+          </div>
+        )}
         {phases && (
           <PhaseIndicator
             phases={phases}
@@ -231,7 +242,17 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
             onLockedClick={handleLockedClick}
           />
         )}
-        <FormTabs sections={activeSections} disabled={disabled} templateId={template.id} historyRecords={historyRecords} />
+        <FormTabs sections={activeSections} disabled={disabled} templateId={template.id} historyRecords={historyRecords} problem={problem} />
+        {validationErrors.length > 0 && (
+          <div className="no-print mt-4 rounded-md border border-rose-200 bg-rose-50 px-4 py-3">
+            <p className="text-sm font-medium text-rose-700">⚠ 以下必填项尚未完成：</p>
+            <ul className="mt-1 list-disc pl-5 text-sm text-rose-600">
+              {validationErrors.map((err, idx) => (
+                <li key={idx}>{err}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         {!disabled && (
           <div className="no-print mt-8 flex flex-wrap items-center gap-3 border-t border-slate-200 pt-4">
             <button
