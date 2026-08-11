@@ -6,22 +6,12 @@
 import { useNavigate } from 'react-router-dom';
 import { FormProvider, useForm } from 'react-hook-form';
 import { format } from 'date-fns';
-import { createBrainstormSection, createProblemDefinitionSection, createProblemSummarySection } from '../templates/shared';
-import type { FormTemplate } from '../types';
 import { useRecords, useSaveProblem } from '../hooks/useDB';
 import { useToast } from '../hooks/useToast';
 import { validateRequiredFields } from '../utils/formValidation';
 import { buildDefaultValues } from '../components/FormRenderer';
 import { FormTabs } from '../components/form/FormTabs';
-
-/** 问题实体表单（问题定义 + 问题整理 + 原因头脑风暴） */
-const PROBLEM_TEMPLATE: FormTemplate = {
-  id: 'fiveWhy',
-  name: '问题定义',
-  icon: '🎯',
-  description: '问题实体表单',
-  sections: [createProblemDefinitionSection(), createProblemSummarySection(), createBrainstormSection()],
-};
+import { problemWizardTemplate as PROBLEM_TEMPLATE } from '../templates/problemWizard';
 
 /** 头脑风暴最少原因数（发散阶段的覆盖度要求） */
 const BRAINSTORM_MIN_COUNT = 15;
@@ -41,7 +31,7 @@ export default function ProblemWizardPage() {
     try {
       const missing = validateRequiredFields(PROBLEM_TEMPLATE, getValues());
       if (missing.length > 0) {
-        showToast(`请完善必填项：${missing.slice(0, 5).map((m) => m.label).join('、')}`, 'error');
+        showToast(`请完善必填项：${missing.map((m) => m.label).join('、')}`, 'error');
         return;
       }
       const values = getValues();
@@ -75,7 +65,7 @@ export default function ProblemWizardPage() {
       </div>
       <FormProvider {...methods}>
         <form onSubmit={(e) => e.preventDefault()} className="print-area">
-          <FormTabs sections={PROBLEM_TEMPLATE.sections} disabled={false} templateId="fiveWhy" historyRecords={historyRecords} />
+          <FormTabs sections={PROBLEM_TEMPLATE.sections} disabled={false} templateId="problemWizard" historyRecords={historyRecords} />
         </form>
       </FormProvider>
       <div className="no-print mt-8 flex items-center gap-3 border-t border-slate-200 pt-4">
