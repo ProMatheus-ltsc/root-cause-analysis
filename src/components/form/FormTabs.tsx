@@ -2,7 +2,7 @@
  * 渲染一组分区（当前阶段包含的所有 section）：重复段委托 RepeatableSection，
  * 非重复段直接铺开字段；collapsedByDefault 的分区用 <details> 折叠展示。
  */
-import type { FormRecord, FormSection, TemplateId } from '../../types';
+import type { FormRecord, FormSection, Problem, TemplateId } from '../../types';
 import { RepeatableSection } from '../RepeatableSection';
 import { FieldList } from './FieldList';
 
@@ -11,21 +11,22 @@ interface FormTabsProps {
   disabled: boolean;
   templateId: TemplateId;
   historyRecords: FormRecord[];
+  problem?: Problem;
 }
 
-export function FormTabs({ sections, disabled, templateId, historyRecords }: FormTabsProps) {
+export function FormTabs({ sections, disabled, templateId, historyRecords, problem }: FormTabsProps) {
   return (
     <div className="space-y-8">
       {sections.map((section) => (
-        <SectionBlock key={section.id} section={section} disabled={disabled} templateId={templateId} historyRecords={historyRecords} />
+        <SectionBlock key={section.id} section={section} disabled={disabled} templateId={templateId} historyRecords={historyRecords} problem={problem} />
       ))}
     </div>
   );
 }
 
-function SectionBlock({ section, disabled, templateId, historyRecords }: { section: FormSection } & Omit<FormTabsProps, 'sections'>) {
+function SectionBlock({ section, disabled, templateId, historyRecords, problem }: { section: FormSection } & Omit<FormTabsProps, 'sections'>) {
   const body = section.repeatable ? (
-    <RepeatableSection section={section} disabled={disabled} templateId={templateId} historyRecords={historyRecords} />
+    <RepeatableSection section={section} disabled={disabled} templateId={templateId} historyRecords={historyRecords} problem={problem} />
   ) : (
     <div className="grid gap-5 sm:grid-cols-2">
       <FieldList fields={section.fields} basePath="" disabled={disabled} templateId={templateId} historyRecords={historyRecords} />
