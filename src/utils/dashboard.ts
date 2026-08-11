@@ -7,7 +7,7 @@ import type { FormRecord, FormTemplate, TemplateId } from '../types';
 import { ROOT_CAUSE_TYPE_OPTIONS } from '../templates/shared';
 import { getCurrentPhaseIndex, type PhaseLockContext } from './formValidation';
 
-export type DisplayStatus = '待分析' | '分析中' | '已关闭';
+export type DisplayStatus = '待分析' | '分析中' | '已完成';
 
 function recordContext(record: FormRecord, todayISO: string): PhaseLockContext {
   return { todayISO, createdAtISO: record.createdAt };
@@ -17,10 +17,10 @@ export function getDisplayStatus(template: FormTemplate, record: FormRecord, tod
   const phases = template.phases;
   const context = recordContext(record, todayISO);
   if (!phases || phases.length === 0) {
-    return record.status === 'completed' ? '已关闭' : '待分析';
+    return record.status === 'completed' ? '已完成' : '待分析';
   }
   if (record.status === 'completed') {
-    return '已关闭';
+    return '已完成';
   }
   const currentIdx = getCurrentPhaseIndex(template, record.data, context);
   return currentIdx === 0 ? '待分析' : '分析中';
