@@ -1,8 +1,9 @@
 /**
  * 可重复段：管理条目数组（useFieldArray），支持添加/删除并自动编号。
  * 填写当前条目时，以精简摘要展示前面已填写的内容，避免用户忘记上文。
+ * 删除条目时提供短暂的"撤销删除"恢复机会（5秒内可撤销）。
  */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useFieldArray, useFormContext } from 'react-hook-form';
 import type { FormRecord, FormSection, Problem, TemplateId } from '../types';
 import { FieldList } from './form/FieldList';
@@ -114,8 +115,28 @@ function BrainstormPicker({ brainstormCauses, existingNames, onPick }: Brainstor
 
 export function RepeatableSection({ section, disabled, templateId, historyRecords, problem }: RepeatableSectionProps) {
   const { control, watch } = useFormContext();
-  const { fields: entries, append, remove } = useFieldArray({ control, name: section.id });
+  const { fields: entries, append, remove, insert } = useFieldArray({ control, name: section.id });
   const values = watch();
+  const [undoInfo, setUndoInfo] = useState<{ data: Record<string, unknown>; index: number } | null>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleDelete(idx: number) {
+    const sectionEntries = (values[section.id] as Record<string, unknown>[] | undefined) ?? [];
+    const deletedData = sectionEntries[idx] ? { ...sectionEntries[idx] } : null;
+    remove(idx);
+    if (deletedData) {
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+      setUndoInfo({ data: deletedData, index: idx });
+      undoTimerRef.current = setTimeout(() => setUndoInfo(null), 5000);
+    }
+  }
+
+  function handleUndo() {
+    if (!undoInfo) return;
+    insert(undoInfo.index, undoInfo.data);
+    setUndoInfo(null);
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+  }
 
   const shouldStopAppend = (() => {
     if (!section.stopAppendWhen) return false;
@@ -150,6 +171,15 @@ export function RepeatableSection({ section, disabled, templateId, historyRecord
 
   return (
     <div className="space-y-4">
+      {undoInfo && (
+        <div className="flex items-center gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-2">
+          <span className="text-sm text-amber-800">已删除一条记录</span>
+          <button type="button" onClick={handleUndo} className="rounded bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700">
+            撤销删除
+          </button>
+          <span className="text-xs text-amber-500">5秒后自动消失</span>
+        </div>
+      )}
       {!disabled && brainstormCauses.length > 0 && (
         <BrainstormPicker
           brainstormCauses={brainstormCauses}
@@ -175,9 +205,7 @@ export function RepeatableSection({ section, disabled, templateId, historyRecord
               {!disabled && entries.length > 1 && (
                 <button
                   type="button"
-                  onClick={() => {
-                    if (confirm('确定删除这一条吗？')) remove(idx);
-                  }}
+                  onClick={() => handleDelete(idx)}
                   className="text-xs text-rose-600 hover:underline"
                 >
                   删除
@@ -199,7 +227,15 @@ export function RepeatableSection({ section, disabled, templateId, historyRecord
       {!disabled && !shouldStopAppend && (
         <button
           type="button"
-          onClick={() => append(Object.fromEntries(section.fields.map((f) => [f.id, ''])))}
+          onClick={() => {
+            const newEntry = Object.fromEntries(
+              section.fields.map((f) => [
+                f.id,
+                f.autoTimestamp ? new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }) : '',
+              ]),
+            );
+            append(newEntry);
+          }}
           className="text-sm text-sky-600 hover:underline"
         >
           + 添加一条
