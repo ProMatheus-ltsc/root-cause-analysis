@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.6.0",
+    "@rolldown/binding-linux-x64-gnu": "^1.2.3",
     "@xyflow/react": "^12.11.2",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
