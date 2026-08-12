@@ -296,8 +296,8 @@ function DirectionStep({
   const currentDir = getDirectionValue(currentPair.i, currentPair.j);
   const nameI = factorNames[currentPair.i];
   const nameJ = factorNames[currentPair.j];
-  const shortI = nameI.length > 8 ? nameI.slice(0, 8) + '…' : nameI;
-  const shortJ = nameJ.length > 8 ? nameJ.slice(0, 8) + '…' : nameJ;
+  const shortI = nameI;
+  const shortJ = nameJ;
 
   function handleSelect(dir: 'i2j' | 'j2i' | 'none') {
     setDirectionPair(currentPair.i, currentPair.j, dir);
@@ -316,57 +316,58 @@ function DirectionStep({
         <div className="mb-2 text-xs text-slate-400">
           第 {currentPairIndex + 1} / {totalPairs} 组
         </div>
-        <div className="mb-4 text-center">
-          <span className="text-base font-semibold text-slate-800">
+        <div className="mb-4 text-center space-y-1">
+          <p className="text-sm font-semibold text-slate-800 leading-relaxed">
             「{nameI}」
-          </span>
-          <span className="mx-2 text-slate-400">⟷</span>
-          <span className="text-base font-semibold text-slate-800">
+          </p>
+          <span className="text-slate-400">⟷</span>
+          <p className="text-sm font-semibold text-slate-800 leading-relaxed">
             「{nameJ}」
-          </span>
+          </p>
           <p className="mt-1 text-sm text-slate-500">这两个因素之间的因果关系是？</p>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-3">
+        <div className="flex flex-col gap-2">
           <button
             type="button"
             disabled={disabled}
             onClick={() => handleSelect('i2j')}
             className={clsx(
-              'rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition',
+              'w-full rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition text-left',
               currentDir === 'i2j'
                 ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
                 : 'border-surface-200 text-text-secondary hover:border-emerald-300 hover:bg-emerald-50',
             )}
-            title={`${nameI} 是因，${nameJ} 是果`}
           >
-            {shortI} → {shortJ}
+            <span className="text-emerald-600 font-semibold">{shortI}</span>
+            <span className="mx-1">→</span>
+            <span className="text-blue-600 font-semibold">{shortJ}</span>
           </button>
           <button
             type="button"
             disabled={disabled}
             onClick={() => handleSelect('j2i')}
             className={clsx(
-              'rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition',
+              'w-full rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition text-left',
               currentDir === 'j2i'
                 ? 'border-blue-500 bg-blue-50 text-blue-700'
                 : 'border-surface-200 text-text-secondary hover:border-blue-300 hover:bg-blue-50',
             )}
-            title={`${nameJ} 是因，${nameI} 是果`}
           >
-            {shortJ} → {shortI}
+            <span className="text-blue-600 font-semibold">{shortJ}</span>
+            <span className="mx-1">→</span>
+            <span className="text-emerald-600 font-semibold">{shortI}</span>
           </button>
           <button
             type="button"
             disabled={disabled}
             onClick={() => handleSelect('none')}
             className={clsx(
-              'rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition',
+              'w-full rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition text-left',
               currentDir === 'none'
                 ? 'border-slate-500 bg-slate-100 text-slate-700'
                 : 'border-surface-200 text-text-secondary hover:border-slate-300 hover:bg-slate-50',
             )}
-            title="两者之间无因果关系"
           >
             无关
           </button>
