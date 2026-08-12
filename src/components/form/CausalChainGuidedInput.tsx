@@ -4,9 +4,13 @@ import clsx from 'clsx';
 import type { Problem } from '../../types';
 
 const RELATION_OPTIONS = [
-  { value: 'reinforcing', label: 'A↑ → B↑', desc: 'A 增加 → B 增加（正反馈）' },
-  { value: 'balancing', label: 'A↑ → B↓', desc: 'A 增加 → B 减少（负反馈）' },
-  { value: 'causal', label: 'A → B', desc: 'A 触发 → B 发生（因果链）' },
+  { value: 'reinforcing', label: 'A↑ → B↑', desc: 'A 增加导致 B 增加（正反馈）' },
+  { value: 'reinforcing_rev', label: 'B↑ → A↑', desc: 'B 增加导致 A 增加（正反馈，反向）' },
+  { value: 'balancing', label: 'A↑ → B↓', desc: 'A 增加导致 B 减少（负反馈）' },
+  { value: 'balancing_rev', label: 'B↑ → A↓', desc: 'B 增加导致 A 减少（负反馈，反向）' },
+  { value: 'causal', label: 'A → B', desc: 'A 触发 B 发生（因果链）' },
+  { value: 'causal_rev', label: 'B → A', desc: 'B 触发 A 发生（因果链，反向）' },
+  { value: 'mutual', label: 'A ⟷ B', desc: '互为因果（双向影响）' },
   { value: 'none', label: '无关', desc: '两因素之间无因果关系' },
 ];
 
@@ -60,8 +64,8 @@ export const CausalChainGuidedInput = memo(function CausalChainGuidedInput({ dis
   const allPairs = useMemo(() => {
     const pairs: { i: number; j: number }[] = [];
     for (let i = 0; i < selectedFactors.length; i++) {
-      for (let j = 0; j < selectedFactors.length; j++) {
-        if (i !== j) pairs.push({ i, j });
+      for (let j = i + 1; j < selectedFactors.length; j++) {
+        pairs.push({ i, j });
       }
     }
     return pairs;
@@ -97,10 +101,10 @@ export const CausalChainGuidedInput = memo(function CausalChainGuidedInput({ dis
     );
 
     for (let i = 0; i < factors.length; i++) {
-      for (let j = 0; j < factors.length; j++) {
-        if (i === j) continue;
+      for (let j = i + 1; j < factors.length; j++) {
         const key = `${factors[i]}|||${factors[j]}`;
-        if (!existingPairs.has(key)) {
+        const keyReverse = `${factors[j]}|||${factors[i]}`;
+        if (!existingPairs.has(key) && !existingPairs.has(keyReverse)) {
           append({ factorA: factors[i], factorB: factors[j], relationType: '', delayEffect: '', evidence: '' });
         }
       }
@@ -181,7 +185,7 @@ export const CausalChainGuidedInput = memo(function CausalChainGuidedInput({ dis
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-xs text-slate-500">
-          已选 {selectedFactors.length} 个因素，共 {allPairs.length} 对 · 已填 {filledCount} 对 · 有效因果链 {effectivePairs.length} 条
+          已选 {selectedFactors.length} 个因素，共 {allPairs.length} 组 · 已填 {filledCount} 组 · 有效因果链 {effectivePairs.length} 条
         </span>
         <button
           type="button"
@@ -195,33 +199,38 @@ export const CausalChainGuidedInput = memo(function CausalChainGuidedInput({ dis
 
       <div className="rounded-lg border border-slate-200 bg-white p-5">
         <div className="mb-2 text-xs text-slate-400">
-          第 {currentPairIndex + 1} / {allPairs.length} 对
+          第 {currentPairIndex + 1} / {allPairs.length} 组
         </div>
         <div className="mb-4 text-center">
           <span className="text-base font-semibold text-slate-800">「{currentFactorA}」</span>
-          <span className="mx-2 text-slate-400">→</span>
+          <span className="mx-2 text-slate-400">⟷</span>
           <span className="text-base font-semibold text-slate-800">「{currentFactorB}」</span>
-          <p className="mt-1 text-sm text-slate-500">它们之间的因果关系是？</p>
+          <p className="mt-1 text-sm text-slate-500">这两个因素之间的因果关系是？（每组只需判断一次）</p>
         </div>
 
         <div className="flex flex-wrap justify-center gap-2">
-          {RELATION_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              disabled={disabled}
-              onClick={() => handleSetRelation(currentPairIndex, opt.value)}
-              title={opt.desc}
-              className={clsx(
-                'rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition',
-                currentEntry?.relationType === opt.value
-                  ? 'border-brand-500 bg-brand-50 text-brand-700'
-                              : 'border-surface-200 text-text-secondary hover:border-brand-300 hover:bg-brand-50',
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
+          {RELATION_OPTIONS.map((opt) => {
+            const displayLabel = opt.label
+              .replace(/A/g, currentFactorA.length > 6 ? currentFactorA.slice(0, 6) + '…' : currentFactorA)
+              .replace(/B/g, currentFactorB.length > 6 ? currentFactorB.slice(0, 6) + '…' : currentFactorB);
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                disabled={disabled}
+                onClick={() => handleSetRelation(currentPairIndex, opt.value)}
+                title={opt.desc.replace(/A/g, currentFactorA).replace(/B/g, currentFactorB)}
+                className={clsx(
+                  'rounded-lg border-2 px-3 py-2 text-sm font-medium transition',
+                  currentEntry?.relationType === opt.value
+                    ? 'border-brand-500 bg-brand-50 text-brand-700'
+                                : 'border-surface-200 text-text-secondary hover:border-brand-300 hover:bg-brand-50',
+                )}
+              >
+                {displayLabel}
+              </button>
+            );
+          })}
         </div>
 
         {currentEntry?.relationType && currentEntry.relationType !== 'none' && (
@@ -434,7 +443,7 @@ function FactorSelector({ brainstormCauses, initialSelected, onConfirm }: Factor
         disabled={totalSelected < 2}
         className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40"
       >
-        开始逐对分析（已选 {totalSelected} 个因素，{totalSelected * (totalSelected - 1)} 对）
+        开始逐对分析（已选 {totalSelected} 个因素，{totalSelected * (totalSelected - 1) / 2} 组）
       </button>
     </div>
   );
