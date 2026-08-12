@@ -6,7 +6,7 @@ import { useFieldArray, useFormContext } from 'react-hook-form';
 import type { FormField } from '../../types';
 
 export const INPUT_CLASS =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500';
+  'w-full rounded-xl border border-surface-200 bg-surface-50 px-4 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-brand-400 focus:bg-surface-0 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-surface-100 disabled:text-text-tertiary transition';
 
 type ValidationRules = Record<string, unknown>;
 
@@ -34,8 +34,10 @@ interface InputProps {
 }
 
 export function TextInput({ field, name, disabled, suggestions }: InputProps) {
-  const { register } = useFormContext();
+  const { register, formState: { errors } } = useFormContext();
   const listId = suggestions?.length ? `${name}-suggestions` : undefined;
+  const errorId = `${name}-error`;
+  const hasError = !!errors[name];
   return (
     <>
       <input
@@ -44,6 +46,9 @@ export function TextInput({ field, name, disabled, suggestions }: InputProps) {
         placeholder={field.placeholder}
         disabled={disabled}
         list={listId}
+        aria-required={field.required || undefined}
+        aria-invalid={hasError || undefined}
+        aria-describedby={hasError ? errorId : undefined}
         {...register(name, buildValidationRules(field))}
       />
       {listId && (
@@ -58,13 +63,17 @@ export function TextInput({ field, name, disabled, suggestions }: InputProps) {
 }
 
 export function TextareaInput({ field, name, disabled }: InputProps) {
-  const { register } = useFormContext();
+  const { register, formState: { errors } } = useFormContext();
+  const hasError = !!errors[name];
   return (
     <textarea
       className={INPUT_CLASS}
       rows={4}
       placeholder={field.placeholder}
       disabled={disabled}
+      aria-required={field.required || undefined}
+      aria-invalid={hasError || undefined}
+      aria-describedby={hasError ? `${name}-error` : undefined}
       {...register(name, buildValidationRules(field))}
     />
   );
@@ -89,9 +98,17 @@ export function DateInput({ field, name, disabled }: InputProps) {
 }
 
 export function SelectInput({ field, name, disabled }: InputProps) {
-  const { register } = useFormContext();
+  const { register, formState: { errors } } = useFormContext();
+  const hasError = !!errors[name];
   return (
-    <select className={INPUT_CLASS} disabled={disabled} {...register(name, buildValidationRules(field))}>
+    <select
+      className={INPUT_CLASS}
+      disabled={disabled}
+      aria-required={field.required || undefined}
+      aria-invalid={hasError || undefined}
+      aria-describedby={hasError ? `${name}-error` : undefined}
+      {...register(name, buildValidationRules(field))}
+    >
       <option value="">请选择</option>
       {field.options?.map((opt) => (
         <option key={opt.value} value={opt.value}>
@@ -105,9 +122,9 @@ export function SelectInput({ field, name, disabled }: InputProps) {
 export function RadioGroupInput({ field, name, disabled }: InputProps) {
   const { register } = useFormContext();
   return (
-    <div className="flex flex-wrap gap-x-5 gap-y-2">
+    <div className="flex flex-wrap gap-x-5 gap-y-2" role="radiogroup" aria-label={field.label}>
       {field.options?.map((opt) => (
-        <label key={opt.value} className="flex items-center gap-1.5 text-sm text-slate-700">
+        <label key={opt.value} className="flex items-center gap-1.5 text-sm text-text-secondary">
           <input type="radio" value={opt.value} disabled={disabled} {...register(name, buildValidationRules(field))} />
           {opt.label}
         </label>
@@ -120,9 +137,9 @@ export function CheckboxInput({ field, name, disabled }: InputProps) {
   const { register } = useFormContext();
   if (field.options) {
     return (
-      <div className="flex flex-wrap gap-x-5 gap-y-2">
+      <div className="flex flex-wrap gap-x-5 gap-y-2" role="group" aria-label={field.label}>
         {field.options.map((opt) => (
-          <label key={opt.value} className="flex items-center gap-1.5 text-sm text-slate-700">
+          <label key={opt.value} className="flex items-center gap-1.5 text-sm text-text-secondary">
             <input type="checkbox" value={opt.value} disabled={disabled} {...register(name)} />
             {opt.label}
           </label>
@@ -131,26 +148,31 @@ export function CheckboxInput({ field, name, disabled }: InputProps) {
     );
   }
   return (
-    <label className="flex items-center gap-1.5 text-sm text-slate-700">
+    <label className="flex items-center gap-1.5 text-sm text-text-secondary">
       <input type="checkbox" disabled={disabled} {...register(name)} />
       {field.label}
     </label>
   );
 }
 
-export function RatingInput({ name, disabled }: InputProps) {
+export function RatingInput({ field, name, disabled }: InputProps) {
   const { watch, setValue } = useFormContext();
   const value = Number(watch(name)) || 0;
   return (
-    <div className="flex gap-1">
+    <div className="flex gap-1" role="radiogroup" aria-label={field.label}>
       {[1, 2, 3, 4, 5].map((star) => (
         <button
           key={star}
           type="button"
           disabled={disabled}
           onClick={() => setValue(name, star, { shouldDirty: true })}
-          className={star <= value ? 'text-xl text-amber-500' : 'text-xl text-slate-300'}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowRight' && value < 5) setValue(name, value + 1, { shouldDirty: true });
+            if (e.key === 'ArrowLeft' && value > 1) setValue(name, value - 1, { shouldDirty: true });
+          }}
+          className={star <= value ? 'text-xl text-amber-500' : 'text-xl text-surface-300'}
           aria-label={`评 ${star} 星`}
+          aria-pressed={star <= value}
         >
           ★
         </button>
@@ -166,24 +188,23 @@ export function TableFieldInput({ field, name, disabled }: InputProps) {
 
   return (
     <div>
-      {/* 桌面端：表格布局 */}
       <div className="hidden sm:block overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr>
               {columns.map((col) => (
-                <th key={col.id} className="border-b border-slate-200 px-2 py-1 text-left font-medium text-slate-600">
+                <th key={col.id} className="border-b border-surface-200 px-2 py-1 text-left font-medium text-text-secondary">
                   {col.label}
                 </th>
               ))}
-              {!disabled && <th className="border-b border-slate-200" />}
+              {!disabled && <th className="border-b border-surface-200" />}
             </tr>
           </thead>
           <tbody>
             {rows.map((row, idx) => (
               <tr key={row.id}>
                 {columns.map((col) => (
-                  <td key={col.id} className="border-b border-slate-100 px-2 py-1">
+                  <td key={col.id} className="border-b border-surface-100 px-2 py-1">
                     {col.type === 'select' ? (
                       <select className={INPUT_CLASS} disabled={disabled} {...register(`${name}.${idx}.${col.id}`)}>
                         <option value="">请选择</option>
@@ -199,13 +220,14 @@ export function TableFieldInput({ field, name, disabled }: InputProps) {
                   </td>
                 ))}
                 {!disabled && (
-                  <td className="border-b border-slate-100 px-2 py-1">
+                  <td className="border-b border-surface-100 px-2 py-1">
                     <button
                       type="button"
                       onClick={() => {
                         if (confirm('确定删除这一行吗？')) remove(idx);
                       }}
-                      className="text-xs text-rose-600 hover:underline"
+                      className="text-xs text-danger-600 hover:underline"
+                      aria-label={`删除第 ${idx + 1} 行`}
                     >
                       删除
                     </button>
@@ -216,19 +238,19 @@ export function TableFieldInput({ field, name, disabled }: InputProps) {
           </tbody>
         </table>
       </div>
-      {/* 移动端：卡片布局 */}
       <div className="sm:hidden space-y-3">
         {rows.map((row, idx) => (
-          <div key={row.id} className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
+          <div key={row.id} className="rounded-xl border border-surface-200 bg-surface-0 p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-500">第 {idx + 1} 行</span>
+              <span className="text-xs font-medium text-text-tertiary">第 {idx + 1} 行</span>
               {!disabled && (
                 <button
                   type="button"
                   onClick={() => {
                     if (confirm('确定删除这一行吗？')) remove(idx);
                   }}
-                  className="text-xs text-rose-600 hover:underline"
+                  className="text-xs text-danger-600 hover:underline"
+                  aria-label={`删除第 ${idx + 1} 行`}
                 >
                   删除
                 </button>
@@ -236,7 +258,7 @@ export function TableFieldInput({ field, name, disabled }: InputProps) {
             </div>
             {columns.map((col) => (
               <div key={col.id}>
-                <label className="mb-0.5 block text-xs font-medium text-slate-600">{col.label}</label>
+                <label className="mb-0.5 block text-xs font-medium text-text-secondary">{col.label}</label>
                 {col.type === 'select' ? (
                   <select className={INPUT_CLASS} disabled={disabled} {...register(`${name}.${idx}.${col.id}`)}>
                     <option value="">请选择</option>
@@ -258,7 +280,7 @@ export function TableFieldInput({ field, name, disabled }: InputProps) {
         <button
           type="button"
           onClick={() => append(Object.fromEntries(columns.map((c) => [c.id, ''])))}
-          className="mt-2 text-sm text-sky-600 hover:underline"
+          className="mt-2 text-sm text-brand-600 hover:underline"
         >
           + 添加一行
         </button>
