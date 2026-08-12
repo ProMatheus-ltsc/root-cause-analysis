@@ -558,10 +558,10 @@ export function createRemedySection(): FormSection {
     fields: [
       {
         id: 'confirmedCause',
-        label: '从头脑风暴清单中确认的原因',
+        label: '从候选原因中确认的根因',
         type: 'textarea',
-        hint: '对照问题卡片中的"原因头脑风暴"候选清单，结合本方法分析，收敛出最可能的 1-3 个原因（可引用候选清单中的原因编号/描述）。',
-        placeholder: '例如"① 每日 22:00 上游依赖未就绪（清单第 3 条）——经 5 Why 追问确认"',
+        hint: '对照问题卡片中的"原因头脑风暴"候选清单，结合本方法分析，收敛出最可能的 1-3 个根因（可引用候选清单中的原因编号/描述）。',
+        placeholder: '例如"① 每日 22:00 上游依赖未就绪（清单第 3 条）——综合各维度分析判定为最关键的源头"',
       },
       { id: 'rootCauseSummary', label: '根因总结', type: 'textarea', required: true, placeholder: '用一句话概括最终确定的根本原因' },
       { id: 'rootCauseType', label: '根因类型分类', type: 'radio', options: ROOT_CAUSE_TYPE_OPTIONS },
@@ -596,4 +596,48 @@ export function createRemedySection(): FormSection {
       },
     ],
   };
+}
+
+/**
+ * 鱼骨图分析法的"已确认原因"汇总：把六大维度下用户勾选/填写的发现整理成 markdown，
+ * 让根因结论处自动展示本方法的所有发现，无需用户手动复制。
+ * - 优先汇总维度内 `*Notes` 备注（用户自填的细化发现）
+ * - 列出该维度的发现数组（`values[dim.id]` 中的 cause 项）
+ * - 最后附上头脑风暴候选中已被分类到该维度的引用（`values.brainstormRefs[catId]`）
+ */
+export function buildFishboneSummary(values: Record<string, unknown>): string {
+  const DIMENSIONS = [
+    { id: 'man', label: '人 (Man)' },
+    { id: 'machine', label: '机 (Machine)' },
+    { id: 'material', label: '料 (Material)' },
+    { id: 'method', label: '法 (Method)' },
+    { id: 'environment', label: '环 (Environment)' },
+    { id: 'measurement', label: '测 (Measurement)' },
+  ];
+  const refs =
+    values.brainstormRefs && typeof values.brainstormRefs === 'object'
+      ? (values.brainstormRefs as Record<string, string[]>)
+      : {};
+  const lines: string[] = [];
+  let hasAny = false;
+  for (const dim of DIMENSIONS) {
+    const notes = typeof values[`${dim.id}Notes`] === 'string' ? (values[`${dim.id}Notes`] as string).trim() : '';
+    const findings: string[] = [];
+    const dimData = values[dim.id];
+    if (Array.isArray(dimData)) {
+      for (const item of dimData as Array<Record<string, unknown>>) {
+        const cause = typeof item?.cause === 'string' ? item.cause.trim() : '';
+        if (cause) findings.push(cause);
+      }
+    }
+    const refCauses = Array.isArray(refs[dim.id]) ? refs[dim.id] : [];
+    if (!notes && findings.length === 0 && refCauses.length === 0) continue;
+    hasAny = true;
+    lines.push(`【${dim.label}】`);
+    if (notes) lines.push(notes);
+    for (const c of findings) lines.push(`- ${c}`);
+    for (const c of refCauses) lines.push(`- (候选) ${c}`);
+    lines.push('');
+  }
+  return hasAny ? lines.join('\n').trimEnd() : '';
 }

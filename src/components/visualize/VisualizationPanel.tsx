@@ -48,7 +48,8 @@ export function VisualizationPanel({ templateId, values, problemTitle }: Visuali
 
       case 'fishbone': {
         const categories: Array<{ name: string; causes: string[] }> = [];
-        const FISHBONE_CATEGORIES = ['people', 'process', 'equipment', 'material', 'environment', 'measurement'];
+        // 鱼骨图模板实际 section id：人/机/料/法/环/测（man/machine/material/method/environment/measurement）
+        const FISHBONE_CATEGORIES = ['man', 'machine', 'material', 'method', 'environment', 'measurement'];
         for (const catId of FISHBONE_CATEGORIES) {
           const catData = values[catId];
           if (Array.isArray(catData)) {
@@ -57,8 +58,8 @@ export function VisualizationPanel({ templateId, values, problemTitle }: Visuali
               .filter((c) => c.length > 0);
             if (causes.length > 0) {
               const LABEL_MAP: Record<string, string> = {
-                people: '人员', process: '流程', equipment: '设备',
-                material: '材料', environment: '环境', measurement: '测量',
+                man: '人 (Man)', machine: '机 (Machine)', material: '料 (Material)',
+                method: '法 (Method)', environment: '环 (Environment)', measurement: '测 (Measurement)',
               };
               categories.push({ name: LABEL_MAP[catId] || catId, causes });
             }

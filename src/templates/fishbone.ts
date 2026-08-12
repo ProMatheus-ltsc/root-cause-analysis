@@ -2,7 +2,7 @@
  * 鱼骨图分析法（石川图）：从人机料法环测六大维度全面排查多因素系统性问题。
  */
 import type { FormField, FormTemplate } from '../types';
-import { createRemedySection } from './shared';
+import { buildFishboneSummary, createRemedySection } from './shared';
 
 const DIMENSION_OPTIONS = [
   { value: 'man', label: '人 (Man)' },
@@ -128,7 +128,7 @@ export const fishboneTemplate: FormTemplate = {
         { id: 'rootCauseJudgement', label: '根因判定', type: 'textarea', required: true, placeholder: '综合各维度分析，判定最主要的根因是什么' },
       ],
     },
-    createRemedySection(),
+    createFishboneRemedySection(),
   ],
   phases: [
     {
@@ -148,3 +148,27 @@ export const fishboneTemplate: FormTemplate = {
     },
   ],
 };
+
+/**
+ * 鱼骨图专属的根因结论 section：`confirmedCause` 用 computed field 自动汇总六大维度发现，
+ * 避免让用户手动复制。
+ */
+function createFishboneRemedySection() {
+  const section = createRemedySection();
+  const fields = section.fields.map((f) => {
+    if (f.id === 'confirmedCause') {
+      return {
+        ...f,
+        label: '六大维度的发现汇总',
+        hint: '系统自动汇总上面六大维度里的发现与备注，无需手动填写；如有候选原因引用（脑暴）也会显示在此。',
+        type: 'text' as const,
+        computed: {
+          dependsOn: ['man', 'machine', 'material', 'method', 'environment', 'measurement'],
+          formula: (values: Record<string, unknown>) => buildFishboneSummary(values),
+        },
+      } as FormField;
+    }
+    return f;
+  });
+  return { ...section, fields };
+}
