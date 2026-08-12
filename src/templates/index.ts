@@ -26,12 +26,18 @@ export const TEMPLATES: Record<TemplateId, FormTemplate> = {
 };
 
 /**
- * 分析方法模板列表（不含 problemWizard）。
- * 时间线分析（timeline）与技术故障根因分析（technicalFault）已二合一为"技术专题分析"（techIncident），
- * 旧模板保留在 TEMPLATES 中以兼容历史数据的打开/导出，但不再出现在新增入口。
+ * 可作为"问题下新增分析方法"的模板列表（不含 problemWizard）。
+ * - timeline / technicalFault：已二合一为 techIncident，不再出现在新增入口（保留注册以兼容历史数据打开/导出）
+ * - techIncident（技术专题）：仅通过首页独立入口创建（不走新建问题流程），不作为问题下的分析方法
  */
-const HIDDEN_FROM_LIST: TemplateId[] = ['timeline', 'technicalFault'];
+const HIDDEN_FROM_LIST: TemplateId[] = ['timeline', 'technicalFault', 'techIncident'];
 export const TEMPLATE_LIST: FormTemplate[] = Object.values(TEMPLATES).filter((t) => t.id !== 'problemWizard' && !HIDDEN_FROM_LIST.includes(t.id));
+
+/**
+ * 全部分析方法列表（仅排除 problemWizard）：用于历史记录筛选等需要看到所有模板的场景。
+ * 与技术专题由首页独立创建但历史记录仍需按模板筛选。
+ */
+export const ALL_TEMPLATE_LIST: FormTemplate[] = Object.values(TEMPLATES).filter((t) => t.id !== 'problemWizard');
 
 export function getTemplate(templateId: TemplateId): FormTemplate {
   return TEMPLATES[templateId];

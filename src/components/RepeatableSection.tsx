@@ -524,6 +524,43 @@ function WhyFirstLevelPicker({ causes, currentValue, onSelect, disabled }: WhyFi
   );
 }
 
+/**
+ * 5Why 段内"追问依据/上一答案"提示条：自动把上一阶段或上一层答案
+ * 展示在当前层，避免用户手动复制。
+ * - idx === 0：若 values.problemSummary（如 techIncident 阶段②结论）有值，显示"← 追问依据（来自阶段②问题定位结论）"
+ * - idx > 0：显示"→ 上一层答案：{whyChain[idx-1].why}"
+ * 只在有依据时渲染，不主动修改 why 字段（保留用户输入主权）。
+ */
+function WhyChainChainContextBar({ sectionId, idx, values }: { sectionId: string; idx: number; values: Record<string, unknown> }) {
+  let label: string | null = null;
+  let content: string | null = null;
+
+  if (idx === 0) {
+    const upstream = typeof values['problemSummary'] === 'string' ? (values['problemSummary'] as string).trim() : '';
+    if (upstream) {
+      label = '追问依据 · 来自上方"问题定位结论"（自动衔接，无需复制）';
+      content = upstream;
+    }
+  } else {
+    const chain = Array.isArray(values[sectionId]) ? (values[sectionId] as Array<Record<string, unknown>>) : [];
+    const prev = chain[idx - 1];
+    const prevWhy = typeof prev?.why === 'string' ? (prev.why as string).trim() : '';
+    if (prevWhy) {
+      label = `上一层答案（第 ${idx} 层 Why 自动依据第 ${idx} 层追问）`;
+      content = prevWhy;
+    }
+  }
+
+  if (!content || !label) return null;
+
+  return (
+    <div className="mb-3 rounded-md border border-indigo-200 bg-indigo-50/70 px-3 py-2 text-xs leading-relaxed text-indigo-900">
+      <div className="mb-1 font-semibold">📎 {label}</div>
+      <div className="break-words text-indigo-800/90">{content}</div>
+    </div>
+  );
+}
+
 interface BrainstormCardStripProps {
   section: FormSection;
   values: Record<string, unknown>;
@@ -1123,6 +1160,13 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
                   currentValue={typeof (entry as Record<string, unknown>).why === 'string' ? ((entry as Record<string, unknown>).why as string) : ''}
                   onSelect={(cause) => setValue(`${section.id}.${idx}.why`, cause, { shouldDirty: true })}
                   disabled={disabled}
+                />
+              )}
+              {isWhyChain && (
+                <WhyChainChainContextBar
+                  sectionId={section.id}
+                  idx={idx}
+                  values={values}
                 />
               )}
               <div className="grid gap-4 sm:grid-cols-2">

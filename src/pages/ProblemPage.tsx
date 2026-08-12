@@ -75,7 +75,7 @@ export default function ProblemPage() {
                 <li><strong>鱼骨图分析法</strong>：适合需要从人/机/料/法/环/测多维度排查的系统性问题</li>
                 <li><strong>对比分析法</strong>：适合"为什么有时正常有时异常"的问题，对比找差异</li>
                 <li><strong>系统思考分析</strong>：适合反复出现的循环性问题，找出系统杠杆点</li>
-                <li><strong>技术专题分析</strong>：适合生产/系统故障，时间线发现影响面 → 日志定位问题 → 5Why 追溯根因</li>
+                <li><strong>技术专题分析</strong>：适合生产/系统故障（时间线发现影响面 → 日志定位问题 → 5Why 追溯根因），请从首页"技术专题分析"入口进入</li>
               </ul>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

@@ -130,9 +130,11 @@ export const MatrixGuidedInput = memo(function MatrixGuidedInput({ field, name, 
   }, [allPairs, getDirectionValue]);
 
   const strFilledCount = useMemo(() => {
+    // "已填"按 cellValue >= 1 计数：1 弱 / 2 中 / 4 强 任何一档都算已填；
+    // 强度档在数据里 0 表示未填。
     let count = 0;
     for (const cp of causalPairs) {
-      if (getCellValue(cp.cause, cp.effect) >= 2) count++;
+      if (getCellValue(cp.cause, cp.effect) >= 1) count++;
     }
     return count;
   }, [causalPairs, getCellValue]);

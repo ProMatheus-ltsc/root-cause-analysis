@@ -24,13 +24,13 @@ export default function ProblemEditPage() {
   const [ready, setReady] = useState(false);
 
   const methods = useForm<Record<string, unknown>>({
-    defaultValues: buildDefaultValues(PROBLEM_TEMPLATE, undefined, ''),
+    defaultValues: buildDefaultValues(PROBLEM_TEMPLATE, undefined, '', ''),
   });
   const { getValues, reset } = methods;
 
   useEffect(() => {
     if (problem && !ready) {
-      const merged = { ...buildDefaultValues(PROBLEM_TEMPLATE, undefined, ''), ...problem.data };
+      const merged = { ...buildDefaultValues(PROBLEM_TEMPLATE, undefined, '', ''), ...problem.data };
       reset(merged);
       setReady(true);
     }

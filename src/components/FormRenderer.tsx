@@ -21,7 +21,7 @@ import { PdfExportButton } from './export/PdfExportButton';
 import { FloatExpandToggleButton, RepeatableExpandProvider } from './RepeatableSection';
 
 /** 解析模板默认值：按 section/field 遍历，注入 defaultValue（问题向导页与编辑页共用）。 */
-export function buildDefaultValues(template: FormTemplate, record: FormRecord | undefined, todayISO: string): Record<string, unknown> {
+export function buildDefaultValues(template: FormTemplate, record: FormRecord | undefined, todayISO: string, nowISO: string): Record<string, unknown> {
   const data = record?.data ?? {};
   const values: Record<string, unknown> = {};
   for (const section of template.sections) {
@@ -40,7 +40,7 @@ export function buildDefaultValues(template: FormTemplate, record: FormRecord | 
       continue;
     }
     for (const field of section.fields) {
-      values[field.id] = resolveDefaultValue(field, data[field.id], todayISO);
+      values[field.id] = resolveDefaultValue(field, data[field.id], todayISO, nowISO);
     }
   }
   return values;
@@ -67,13 +67,16 @@ interface FormRendererProps {
 
 export function FormRenderer({ template, record, problemId, problemTitle, problem, onFirstSave }: FormRendererProps) {
   const todayISO = format(new Date(), 'yyyy-MM-dd');
+  const nowISO = format(new Date(), "yyyy-MM-dd'T'HH:mm");
   const saveRecord = useSaveRecord();
   const { showToast } = useToast();
   const { records: historyRecords } = useRecords();
 
-  const defaultValues = useMemo(() => buildDefaultValues(template, record, todayISO), [template, record, todayISO]);
+  const defaultValues = useMemo(() => buildDefaultValues(template, record, todayISO, nowISO), [template, record, todayISO, nowISO]);
   const methods = useForm<Record<string, unknown>>({ defaultValues });
-  const { getValues, reset, setValue } = methods;
+  const { getValues, reset, setValue, watch } = methods;
+  // VisualizationPanel 需要看实时填写的值，不能用 committedValues（只有 persist 后才更新）
+  const watchedValues = watch();
 
   const createdAtISO = record?.createdAt ?? todayISO;
   const [committedValues, setCommittedValues] = useState(defaultValues);
@@ -311,7 +314,7 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
           }}
         />
         {activePhase?.id !== 'factors' && (
-          <VisualizationPanel templateId={template.id} values={committedValues} problemTitle={problemTitle} />
+          <VisualizationPanel templateId={template.id} values={watchedValues} problemTitle={problemTitle} />
         )}
         {validationErrors.length > 0 && (
           <div className="no-print mt-5 rounded-xl border border-danger/30 bg-danger/5 px-5 py-3.5" role="alert">

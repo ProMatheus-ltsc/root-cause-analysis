@@ -9,6 +9,7 @@ import type { FormField, Problem } from '../types';
 import {
   CheckboxInput,
   DateInput,
+  DateTimeInput,
   NumberInput,
   RadioGroupInput,
   RatingInput,
@@ -129,6 +130,8 @@ function FieldInput({ field, name, disabled, suggestions, problem }: FieldRender
       return <NumberInput field={field} name={name} disabled={disabled} />;
     case 'date':
       return <DateInput field={field} name={name} disabled={disabled} />;
+    case 'datetime':
+      return <DateTimeInput field={field} name={name} disabled={disabled} />;
     case 'select':
       return <SelectInput field={field} name={name} disabled={disabled} />;
     case 'radio':

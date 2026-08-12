@@ -97,6 +97,19 @@ export function DateInput({ field, name, disabled }: InputProps) {
   return <input type="date" className={INPUT_CLASS} disabled={disabled} {...register(name, buildValidationRules(field))} />;
 }
 
+export function DateTimeInput({ field, name, disabled }: InputProps) {
+  const { register } = useFormContext();
+  return (
+    <input
+      type="datetime-local"
+      className={INPUT_CLASS}
+      disabled={disabled}
+      step={60}
+      {...register(name, buildValidationRules(field))}
+    />
+  );
+}
+
 export function SelectInput({ field, name, disabled }: InputProps) {
   const { register, formState: { errors } } = useFormContext();
   const hasError = !!errors[name];

@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { differenceInCalendarDays, parseISO } from 'date-fns';
 import { useDeleteRecord, useRecords, useSearchRecords } from '../hooks/useDB';
-import { TEMPLATES, TEMPLATE_LIST, getTemplate } from '../templates';
+import { TEMPLATES, ALL_TEMPLATE_LIST, getTemplate } from '../templates';
 import { TEMPLATE_COLORS } from '../constants/templateMeta';
 import { ROOT_CAUSE_TYPE_OPTIONS, SEVERITY_OPTIONS } from '../templates/shared';
 import { exportRecordToMarkdown, exportRecordsToMarkdown } from '../services/exportMarkdown';
@@ -130,7 +130,7 @@ export default function HistoryPage() {
           onChange={(e) => setTemplateFilter(e.target.value as TemplateId | '')}
         >
           <option value="">全部模板</option>
-          {TEMPLATE_LIST.map((t) => (
+          {ALL_TEMPLATE_LIST.map((t) => (
             <option key={t.id} value={t.id}>
               {t.name}
             </option>

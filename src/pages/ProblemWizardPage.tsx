@@ -24,7 +24,7 @@ export default function ProblemWizardPage() {
   const { records: historyRecords } = useRecords();
 
   const methods = useForm<Record<string, unknown>>({
-    defaultValues: buildDefaultValues(PROBLEM_TEMPLATE, undefined, format(new Date(), 'yyyy-MM-dd')),
+    defaultValues: buildDefaultValues(PROBLEM_TEMPLATE, undefined, format(new Date(), 'yyyy-MM-dd'), format(new Date(), "yyyy-MM-dd'T'HH:mm")),
   });
   const { getValues } = methods;
 

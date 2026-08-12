@@ -12,13 +12,26 @@ export function isEmptyValue(value: unknown): boolean {
   return false;
 }
 
-/** existingValue 非空则原样保留；否则按 field.defaultValue 解析（'auto_today' 转为传入的今日日期字符串，'auto_today+N' 转为 N 天后）。 */
-export function resolveDefaultValue(field: FormField, existingValue: unknown, todayISO: string): unknown {
+/**
+ * existingValue 非空则原样保留；否则按 field.defaultValue 解析：
+ * - 'auto_today' / 'auto_today+N'：今天 / N 天后（格式 yyyy-MM-dd）
+ * - 'auto_now' / 'auto_now+N'：当前时间 / N 天后（格式 yyyy-MM-ddTHH:mm）
+ * - 其他字符串/对象：原样返回
+ *
+ * `nowISO` 形如 `yyyy-MM-ddTHH:mm`，默认按传入值；用于测试注入。`todayISO` 兼容只到日的旧调用。
+ */
+export function resolveDefaultValue(field: FormField, existingValue: unknown, todayISO: string, nowISO?: string): unknown {
   if (!isEmptyValue(existingValue)) return existingValue;
+  const now = nowISO ?? `${todayISO}T00:00`;
   if (field.defaultValue === 'auto_today') return todayISO;
   if (typeof field.defaultValue === 'string' && field.defaultValue.startsWith('auto_today+')) {
     const days = parseInt(field.defaultValue.slice('auto_today+'.length), 10);
     if (!isNaN(days)) return format(addDays(parseISO(todayISO), days), 'yyyy-MM-dd');
+  }
+  if (field.defaultValue === 'auto_now') return now;
+  if (typeof field.defaultValue === 'string' && field.defaultValue.startsWith('auto_now+')) {
+    const days = parseInt(field.defaultValue.slice('auto_now+'.length), 10);
+    if (!isNaN(days)) return format(addDays(parseISO(now.slice(0, 10)), days), "yyyy-MM-dd'T'HH:mm");
   }
   if (field.defaultValue !== undefined) return field.defaultValue;
   return existingValue;

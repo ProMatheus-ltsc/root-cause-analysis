@@ -32,7 +32,7 @@ export const techIncidentTemplate: FormTemplate = {
       id: 'incidentOverview',
       title: '影响面概述',
       fields: [
-        { id: 'occurredAt', label: '发生时间', type: 'date', defaultValue: 'auto_today' },
+        { id: 'occurredAt', label: '发生时间（自动填入当前时间，可用选择器调整）', type: 'datetime', defaultValue: 'auto_now' },
         { id: 'impactScope', label: '影响范围', type: 'radio', options: IMPACT_SCOPE_OPTIONS },
         { id: 'severity', label: '严重程度', type: 'radio', options: SEVERITY_OPTIONS },
         {
@@ -161,7 +161,7 @@ export const techIncidentTemplate: FormTemplate = {
     {
       id: 'whyChain',
       title: '5 Why 根因追问',
-      description: '针对上方"定位到的问题"逐层追问"为什么会发生"，每层附上证据；任意一层确认为根因即可停止。',
+      description: '针对上方"问题定位结论"逐层追问"为什么会发生"，每层附上证据；任意一层确认为根因即可停止。下方每层会自动展示上一阶段/上一层的依据，无需手动复制。',
       repeatable: true,
       repeatLabel: '第 {n} 层 Why',
       minEntries: 1,
