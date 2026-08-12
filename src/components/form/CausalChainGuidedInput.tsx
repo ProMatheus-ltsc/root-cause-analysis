@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFieldArray, useFormContext } from 'react-hook-form';
 import clsx from 'clsx';
 import type { Problem } from '../../types';
@@ -36,8 +36,35 @@ interface PairData {
 
 export const CausalChainGuidedInput = memo(function CausalChainGuidedInput({ disabled, problem }: CausalChainGuidedInputProps) {
   const { control, watch, setValue } = useFormContext();
-  const { append } = useFieldArray({ control, name: 'causalChain' });
+  const { append, remove } = useFieldArray({ control, name: 'causalChain' });
   const causalChainValues = watch('causalChain') as PairData[] | undefined;
+
+  /**
+   * 清理残留空 entry：buildDefaultValues 会按 minEntries 预填 1 条空 entry
+   * （factorA=''、factorB=''）。如果不清理，validateRequiredFields 会把它当作
+   * 真正的"未填"，错误地弹出 banner；并且它会污染 existingPairs 的统计。
+   * 仅执行一次（用 ref 防重复）。
+   */
+  const cleanedRef = useRef(false);
+  useEffect(() => {
+    if (cleanedRef.current) return;
+    if (!Array.isArray(causalChainValues)) {
+      cleanedRef.current = true;
+      return;
+    }
+    cleanedRef.current = true;
+
+    const emptyIndices: number[] = [];
+    causalChainValues.forEach((entry, idx) => {
+      const a = typeof entry?.factorA === 'string' ? entry.factorA.trim() : '';
+      const b = typeof entry?.factorB === 'string' ? entry.factorB.trim() : '';
+      if (!a || !b) emptyIndices.push(idx);
+    });
+    for (const idx of emptyIndices.reverse()) {
+      remove(idx);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const brainstormCauses = useMemo(() => {
     if (!problem) return [];
@@ -92,6 +119,19 @@ export const CausalChainGuidedInput = memo(function CausalChainGuidedInput({ dis
   );
 
   function handleFactorsConfirm(factors: string[]) {
+    // 防御性清理残留空 entry（用户可能从"重新选择因素"回到选择器后追加了因素）
+    if (Array.isArray(causalChainValues)) {
+      const emptyIndices: number[] = [];
+      causalChainValues.forEach((entry, idx) => {
+        const a = typeof entry?.factorA === 'string' ? entry.factorA.trim() : '';
+        const b = typeof entry?.factorB === 'string' ? entry.factorB.trim() : '';
+        if (!a || !b) emptyIndices.push(idx);
+      });
+      for (const idx of emptyIndices.reverse()) {
+        remove(idx);
+      }
+    }
+
     setSelectedFactors(factors);
     setShowPicker(false);
     setCurrentPairIndex(0);
@@ -512,14 +552,42 @@ function FactorSelector({ brainstormCauses, initialSelected, onConfirm }: Factor
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={handleConfirm}
-        disabled={totalSelected < 2}
-        className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40"
+      <div
+        className={clsx(
+          'flex flex-col gap-2 rounded-md border p-3 transition',
+          totalSelected >= 2
+            ? 'border-brand-300 bg-white'
+            : 'border-dashed border-slate-300 bg-slate-50/60',
+        )}
       >
-        开始逐对分析（已选 {totalSelected} 个因素，{totalSelected * (totalSelected - 1) / 2} 组）
-      </button>
+        <div className="flex items-baseline justify-between gap-3">
+          <p className={clsx('text-sm', totalSelected >= 2 ? 'text-brand-800' : 'text-slate-500')}>
+            {totalSelected >= 2 ? (
+              <>
+                已选 <strong>{totalSelected}</strong> 个因素，将生成{' '}
+                <strong>{totalSelected * (totalSelected - 1) / 2}</strong> 对因果关系供你逐对判断
+              </>
+            ) : (
+              <>至少选 2 个因素后才能开始</>
+            )}
+          </p>
+          {totalSelected >= 2 && (
+            <span className="text-xs text-amber-600 leading-relaxed shrink-0">
+              需点击下方按钮才会写入因果链
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={handleConfirm}
+          disabled={totalSelected < 2}
+          className="rounded-md bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+        >
+          {totalSelected >= 2
+            ? `开始逐对分析（共 ${totalSelected * (totalSelected - 1) / 2} 对） →`
+            : '开始逐对分析'}
+        </button>
+      </div>
     </div>
   );
 }

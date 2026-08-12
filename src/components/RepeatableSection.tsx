@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useFieldArray, useFormContext } from 'react-hook-form';
 import clsx from 'clsx';
-import type { FormRecord, FormSection, Problem, TemplateId } from '../types';
+import type { FormField, FormRecord, FormSection, Problem, TemplateId } from '../types';
 import { CausalChainGuidedInput } from './form/CausalChainGuidedInput';
 import { FieldList } from './form/FieldList';
 import { KEY_FACTOR_MAX } from '../templates/shared';
@@ -36,6 +36,35 @@ function EntrySummary({ section, idx, values }: { section: FormSection; idx: num
       </p>
       <p className="mt-0.5 text-sm text-slate-700 whitespace-pre-wrap break-words">{text.trim()}</p>
     </div>
+  );
+}
+
+/** 在折叠态展示 entry 内容的紧凑预览：取第一个非空字符串字段，不截断。 */
+function EntryPreviewText({ entry, fields }: { entry: Record<string, unknown>; fields: FormField[] }) {
+  for (const f of fields) {
+    const v = entry[f.id];
+    if (typeof v === 'string' && v.trim()) {
+      const text = v.trim();
+      const preview = text.length > 120 ? text.slice(0, 120) + '…' : text;
+      return <span className="text-xs font-normal text-slate-500 break-words">· {preview}</span>;
+    }
+  }
+  return <span className="text-xs font-normal italic text-slate-400">（尚未填写，点击展开）</span>;
+}
+
+/** 折叠/展开图标（SVG，无外部依赖）。 */
+function ChevronIcon({ expanded }: { expanded: boolean }) {
+  return (
+    <svg
+      className={clsx('h-4 w-4 shrink-0 text-slate-400 transition-transform', expanded && 'rotate-90 text-brand-500')}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+    </svg>
   );
 }
 
@@ -178,6 +207,69 @@ function BrainstormPicker({ brainstormCauses, existingNames, onPick, maxSelect }
           ? `请先取消勾选 ${selected.size - (maxSelect ?? 0)} 项（最多选 ${maxSelect} 个）`
           : `引入选中的 ${selected.size} 项`}
       </button>
+    </div>
+  );
+}
+
+interface WhyFirstLevelPickerProps {
+  causes: string[];
+  currentValue: string;
+  onSelect: (cause: string) => void;
+  disabled?: boolean;
+}
+
+/**
+ * 5 Why 第 1 层专属：从头脑风暴候选原因中单选一个作为首层答案。
+ * 全部候选完整展示（不截断），点击即写入 why 字段；当前值高亮。
+ */
+function WhyFirstLevelPicker({ causes, currentValue, onSelect, disabled }: WhyFirstLevelPickerProps) {
+  const [expanded, setExpanded] = useState(true);
+  const current = currentValue.trim();
+
+  if (causes.length === 0) return null;
+
+  return (
+    <div className="mb-3 rounded-lg border border-brand-200 bg-brand-50/50 p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold text-brand-800">
+          第 1 层：从头脑风暴候选原因中选取最符合的一个
+        </p>
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          className="shrink-0 text-xs text-slate-500 hover:underline"
+        >
+          {expanded ? '收起' : '展开'}
+        </button>
+      </div>
+      {expanded && (
+        <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
+          {causes.map((cause, idx) => {
+            const isSelected = cause.toLowerCase() === current.toLowerCase();
+            return (
+              <button
+                key={idx}
+                type="button"
+                disabled={disabled}
+                onClick={() => onSelect(cause)}
+                className={clsx(
+                  'block w-full rounded-md border px-2.5 py-1.5 text-left text-sm leading-relaxed break-words transition',
+                  isSelected
+                    ? 'border-brand-500 bg-brand-100 text-brand-800 font-medium'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-brand-300 hover:bg-brand-50',
+                )}
+              >
+                {idx + 1}. {cause}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {current && (
+        <p className="mt-2 text-xs text-emerald-700 break-words">
+          ✓ 当前第 1 层：{current}
+        </p>
+      )}
     </div>
   );
 }
@@ -349,7 +441,7 @@ export function RepeatableSection({ section, disabled, templateId, historyRecord
 }
 
 function DefaultRepeatableSection({ section, disabled, templateId, historyRecords, problem }: RepeatableSectionProps) {
-  const { control, watch } = useFormContext();
+  const { control, watch, setValue } = useFormContext();
   const { fields: entries, append, remove, insert } = useFieldArray({ control, name: section.id });
   const values = watch();
   const [undoInfo, setUndoInfo] = useState<{ data: Record<string, unknown>; index: number } | null>(null);
@@ -357,6 +449,7 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
 
   const isBrainstormLike = section.id === 'brainstorm' || section.id === 'factors';
   const isFactorsSection = section.id === 'factors';
+  const isWhyChain = section.id === 'whyChain';
   const autoImportedRef = useRef(false);
 
   /**
@@ -368,6 +461,41 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
+  /**
+   * 每条 entry 的折叠/展开状态：使用 React state 持久化。
+   * - 默认全部折叠，仅第一条（idx===0）默认展开，确保用户进入后能立即看到主要内容
+   * - 用户主动切换或新增条目时自动展开相应条目（autoExpandRef 跟踪）
+   */
+  const [expanded, setExpanded] = useState<Set<number>>(() => new Set([0]));
+  const previousLenRef = useRef(entries.length);
+
+  useEffect(() => {
+    if (entries.length > previousLenRef.current) {
+      // 用户新增了条目：自动展开新条目，并滚动到它（等 DOM 更新）
+      const newIdx = entries.length - 1;
+      setExpanded((prev) => {
+        const next = new Set(prev);
+        next.add(newIdx);
+        return next;
+      });
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          entryRefsMap.current.get(newIdx)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+      });
+    }
+    previousLenRef.current = entries.length;
+  }, [entries.length]);
+
+  function toggleExpanded(idx: number) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  }
+
   function setEntryRef(idx: number, el: HTMLElement | null) {
     if (el) {
       entryRefsMap.current.set(idx, el);
@@ -377,14 +505,25 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
   }
 
   function handleCardClick(idx: number) {
-    const el = entryRefsMap.current.get(idx);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      // 把焦点放到该 entry 的第一个可输入字段
-      const focusable = el.querySelector<HTMLElement>('input, textarea, select, [tabindex]');
-      focusable?.focus({ preventScroll: true });
-    }
+    // 折叠态不渲染输入框，必须先展开目标 entry，等 DOM 更新后再滚动定位
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.add(idx);
+      return next;
+    });
     setActiveIndex(idx);
+
+    // 等待 React commit 完成（double rAF），再滚动 + focus
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = entryRefsMap.current.get(idx);
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // 把焦点放到该 entry 的第一个可输入字段
+        const focusable = el.querySelector<HTMLElement>('input, textarea, select, [tabindex]');
+        focusable?.focus({ preventScroll: true });
+      });
+    });
   }
 
   // 用 IntersectionObserver 监听各 entry 的可视状态，自动更新 activeIndex。
@@ -456,7 +595,7 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
   })();
 
   const brainstormCauses = (() => {
-    if (section.id !== 'factors' && section.id !== 'causalChain') return [];
+    if (section.id !== 'factors' && section.id !== 'causalChain' && section.id !== 'whyChain') return [];
     if (!problem) return [];
     const brainstorm = problem.data?.['brainstorm'];
     if (!Array.isArray(brainstorm)) return [];
@@ -567,7 +706,9 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
           disabled={disabled}
         />
       )}
-      {entries.map((entry, idx) => (
+      {entries.map((entry, idx) => {
+        const isExpanded = expanded.has(idx);
+        return (
         <div
           key={entry.id}
           ref={(el) => setEntryRef(idx, el)}
@@ -579,39 +720,66 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
               : 'border-slate-200',
           )}
         >
-          {section.id !== 'brainstorm' && section.id !== 'factors' && idx > 0 && (
-            <div className="mb-3 space-y-1.5">
-              <p className="text-xs font-medium text-slate-400">前序内容回顾</p>
-              {Array.from({ length: idx }, (_, i) => (
-                <EntrySummary key={i} section={section} idx={i} values={values} />
-              ))}
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => toggleExpanded(idx)}
+              aria-expanded={isExpanded}
+              className="flex flex-1 flex-wrap items-baseline gap-x-2 gap-y-1 text-left text-sm font-semibold text-slate-700 transition hover:text-brand-600"
+            >
+              <span className="flex items-center gap-1.5">
+                <ChevronIcon expanded={isExpanded} />
+                <span>{(section.repeatLabel ?? '条目 {n}').replace('{n}', String(idx + 1))}</span>
+              </span>
+              {!isExpanded && (
+                <EntryPreviewText entry={entry as Record<string, unknown>} fields={section.fields} />
+              )}
+            </button>
+            <div className="flex items-center gap-3 shrink-0">
+              {!disabled && entries.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => handleDelete(idx)}
+                  className="text-xs text-rose-600 hover:underline"
+                >
+                  删除
+                </button>
+              )}
             </div>
+          </div>
+
+          {isExpanded && (
+            <>
+              {section.id !== 'brainstorm' && section.id !== 'factors' && idx > 0 && (
+                <div className="mb-3 space-y-1.5">
+                  <p className="text-xs font-medium text-slate-400">前序内容回顾</p>
+                  {Array.from({ length: idx }, (_, i) => (
+                    <EntrySummary key={i} section={section} idx={i} values={values} />
+                  ))}
+                </div>
+              )}
+              {isWhyChain && idx === 0 && brainstormCauses.length > 0 && (
+                <WhyFirstLevelPicker
+                  causes={brainstormCauses}
+                  currentValue={typeof (entry as Record<string, unknown>).why === 'string' ? ((entry as Record<string, unknown>).why as string) : ''}
+                  onSelect={(cause) => setValue(`${section.id}.${idx}.why`, cause, { shouldDirty: true })}
+                  disabled={disabled}
+                />
+              )}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FieldList
+                  fields={section.fields}
+                  basePath={`${section.id}.${idx}.`}
+                  disabled={disabled}
+                  templateId={templateId}
+                  historyRecords={historyRecords}
+                />
+              </div>
+            </>
           )}
-          <div className="mb-3 flex items-center justify-between">
-            <h4 className="text-sm font-semibold text-slate-700">
-              {(section.repeatLabel ?? '条目 {n}').replace('{n}', String(idx + 1))}
-            </h4>
-            {!disabled && entries.length > 1 && (
-              <button
-                type="button"
-                onClick={() => handleDelete(idx)}
-                className="text-xs text-rose-600 hover:underline"
-              >
-                删除
-              </button>
-            )}
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FieldList
-              fields={section.fields}
-              basePath={`${section.id}.${idx}.`}
-              disabled={disabled}
-              templateId={templateId}
-              historyRecords={historyRecords}
-            />
-          </div>
         </div>
-      ))}
+        );
+      })}
       {!disabled && !shouldStopAppend && !isBrainstormLike && (
         <button
           type="button"
