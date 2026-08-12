@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import clsx from 'clsx';
 import type { FormField } from '../../types';
@@ -23,7 +23,9 @@ interface CellPair {
 
 type Step = 'direction' | 'scores' | 'strength';
 
-export const MatrixGuidedInput = memo(function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputProps) {
+// 不使用 React.memo：组件通过 watch(name) 监听表单 state 变化，setValue 后必须能正常 re-render，
+// 否则 matrixValue 永远是 mount 时的初始值，按钮点击 setValue 后 UI 不会同步更新（用户需要刷新才能看到）。
+export function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputProps) {
   const { watch, setValue } = useFormContext();
   const factors = watch('factors') as Array<Record<string, unknown>> | undefined;
   const matrixValue = watch(name) as Array<Record<string, unknown>> | undefined;
@@ -238,7 +240,7 @@ export const MatrixGuidedInput = memo(function MatrixGuidedInput({ field, name, 
       {field.hint && <p className="text-xs text-slate-400">{field.hint}</p>}
     </div>
   );
-});
+}
 
 function StepTab({ label, active, onClick, disabled, dimmed, optional }: {
   label: string;
@@ -541,6 +543,11 @@ function StrengthStep({
 
   function handleSelect(value: number) {
     setCellValue(currentCP.cause, currentCP.effect, value);
+    // 强度 2（双向关联）/ 4（互为强因果）语义包含反向影响：同步写反向，保证矩阵对称
+    // 强度 1（单向弱关联）保持只写正向，反向留 0
+    if (value >= 2) {
+      setCellValue(currentCP.effect, currentCP.cause, value);
+    }
     if (safeIndex < causalPairs.length - 1) {
       setCurrentPairIndex(safeIndex + 1);
     }
@@ -550,6 +557,7 @@ function StrengthStep({
     <div className="space-y-4">
       <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
         对已确认存在因果关系的 {causalPairs.length} 组，逐个填写影响强度（因在前 → 果在后）。强度用于 DEMATEL 中心度计算和帕累托 80/20 分析。
+        选「2 中 / 4 强」（双向关联 / 互为强因果）会自动同时写入反向强度，保证矩阵对称。
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-5">

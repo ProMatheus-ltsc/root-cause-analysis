@@ -203,7 +203,26 @@ export const techIncidentTemplate: FormTemplate = {
         { id: 'rootCauseJudgement', label: '根因判定', type: 'textarea', required: true, placeholder: '综合 5Why 追问结论，明确根因是哪个代码/配置层面的问题' },
       ],
     },
-    createRemedySection(),
+    createRemedySection({
+      confirmedCauseDeps: ['problemLocate', 'rootCauseConfirm'],
+      confirmedCauseFormula: (values) => {
+        const ps = typeof values.problemSummary === 'string' ? values.problemSummary.trim() : '';
+        const rc = typeof values.rootCauseJudgement === 'string' ? values.rootCauseJudgement.trim() : '';
+        const lines: string[] = [];
+        if (ps) lines.push(`问题：${ps}`);
+        if (rc) lines.push(`根因：${rc}`);
+        return lines.join('\n');
+      },
+      rootCauseSummaryDeps: ['problemLocate', 'rootCauseConfirm'],
+      rootCauseSummaryFormula: (values) => {
+        const rc = typeof values.rootCauseJudgement === 'string' ? values.rootCauseJudgement.trim() : '';
+        const ps = typeof values.problemSummary === 'string' ? values.problemSummary.trim() : '';
+        if (rc && ps) return `${ps} → 经 5Why 追问判定根因为：${rc}`;
+        if (rc) return `根因：${rc}`;
+        if (ps) return `问题：${ps}`;
+        return '';
+      },
+    }),
   ],
   phases: [
     {

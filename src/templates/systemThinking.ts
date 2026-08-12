@@ -2,12 +2,10 @@
  * 系统思考分析（因果回路图）：找出反复出现的系统性问题背后的循环因果关系。
  *
  * 已切换为"手动调 AI"模式：因果链段（causalChain）由外部 AI 完成，
- * 这里只保留 AI 回路/杠杆点面板 + 系统自动检测（兼容旧数据） + 杠杆点总结 + 干预策略。
- * 旧因果链段不再让用户手动填写；历史 record 中已有的 causalChain 数据会被 detectLoopsText
- * 仍然识别为"系统自动检测的回路"（可选参考）。
+ * 这里只保留 AI 回路/杠杆点面板 + 杠杆点总结（AI 自动填）+ 干预策略。
+ * 旧因果链段不再让用户手动填写；历史 record 中已有的 causalChain 数据不影响新模板。
  */
 import type { FormTemplate } from '../types';
-import { detectLoopsText } from '../utils/loopDetection';
 
 export const systemThinkingTemplate: FormTemplate = {
   id: 'systemThinking',
@@ -21,7 +19,7 @@ export const systemThinkingTemplate: FormTemplate = {
   ],
   flowSteps: [
     '把问题与候选原因导出给外部 AI（"手动调 AI"模式），AI 返回回路与杠杆点 JSON 粘贴回应用',
-    '识别增强回路与调节回路（系统自动检测作为辅助参考），找出系统杠杆点',
+    '查看 AI 识别的回路与杠杆点（下方可视化会自动展示）',
     '制定干预方案，提前评估可能的副作用',
   ],
   sections: [
@@ -40,23 +38,13 @@ export const systemThinkingTemplate: FormTemplate = {
     {
       id: 'loopAnalysis',
       title: '回路与杠杆点',
-      description: '使用"手动调 AI"模式：把问题与候选原因导出给外部 AI，AI 返回回路与杠杆点 JSON，粘贴回来即可解析应用。系统也提供基于已有因果链数据的自动检测（仅参考）。',
+      description: '使用"手动调 AI"模式：把问题与候选原因导出给外部 AI，AI 返回回路与杠杆点 JSON，粘贴回来即可解析应用。完整杠杆点会在可视化区域与下方干预策略中展示。',
       fields: [
         {
           id: 'aiLoopAnalysis',
           label: 'AI 辅助识别回路与杠杆点',
           type: 'custom',
         },
-        {
-          id: 'detectedLoops',
-          label: '系统自动检测的回路（基于因果链数据，可选）',
-          type: 'text',
-          computed: {
-            dependsOn: ['causalChain'],
-            formula: (values) => detectLoopsText(values),
-          },
-        },
-        { id: 'leveragePoint', label: '系统杠杆点在哪里？', type: 'textarea', required: true, placeholder: '参考上方 AI 识别的回路/杠杆点，或自动检测的回路，在哪个环节施加最小干预能产生最大系统改变？' },
       ],
     },
     {
@@ -77,10 +65,10 @@ export const systemThinkingTemplate: FormTemplate = {
       id: 'causalAnalysis',
       label: '系统分析',
       icon: '🔄',
-      // sections: 0=相关因素, 1=回路与杠杆点（AI/自动检测）
+      // sections: 0=相关因素, 1=回路与杠杆点（AI 模式完成即可）
       sectionIndices: [0, 1],
-      // AI 模式下无需手动录因果链；杠杆点（来自 AI 结果或手动分析）为完成条件
-      completionFields: ['leveragePoint'],
+      // AI 模式下无需手动录因果链；阶段完成仅看是否已 AI 分析
+      completionFields: [],
     },
     {
       id: 'intervention',

@@ -10,9 +10,9 @@
 import type { FormTemplate } from '../types';
 import {
   KEY_FACTOR_MAX,
-  buildCauseScoreText,
+  buildCauseScoreTableData,
   buildDefaultKeyFactorMatrix,
-  buildKeyFactorRankingText,
+  buildKeyFactorRankingTableData,
   computeKeyFactors,
   createRemedySection,
   keyFactorMatrixColumns,
@@ -67,8 +67,13 @@ export const keyFactorTemplate: FormTemplate = {
       id: 'matrix',
       title: '② 因果关系强度矩阵',
       description:
-        '逐对判断因素间的因果关系与影响强度，系统将自动完成得分计算与分类。',
+        '逐对判断因素间的因果关系与影响强度，系统将自动完成得分计算与分类。如想跳过逐对判断的繁琐流程，可使用下方快捷通道让 AI 一次性给出所有因果方向+影响强度。',
       fields: [
+        {
+          id: 'keyFactorAiAnalysis',
+          label: '快捷通道：手动调 AI 一次性填入所有因果关系与影响强度',
+          type: 'custom',
+        },
         {
           id: 'matrix',
           label: `关系矩阵（${KEY_FACTOR_MAX}×${KEY_FACTOR_MAX}）`,
@@ -92,7 +97,7 @@ export const keyFactorTemplate: FormTemplate = {
           type: 'text',
           computed: {
             dependsOn: ['factors', 'matrix'],
-            formula: (values) => buildCauseScoreText(computeKeyFactors(values)),
+            formula: (values) => buildCauseScoreTableData(computeKeyFactors(values)),
           },
         },
         {
@@ -101,7 +106,7 @@ export const keyFactorTemplate: FormTemplate = {
           type: 'text',
           computed: {
             dependsOn: ['factors', 'matrix'],
-            formula: (values) => buildKeyFactorRankingText(computeKeyFactors(values)),
+            formula: (values) => buildKeyFactorRankingTableData(computeKeyFactors(values)),
           },
         },
         {
@@ -114,7 +119,41 @@ export const keyFactorTemplate: FormTemplate = {
         },
       ],
     },
-    createRemedySection(),
+    createRemedySection({
+      confirmedCauseDeps: ['factors', 'matrix'],
+      confirmedCauseFormula: (values) => {
+        const results = computeKeyFactors(values);
+        const sorted = [...results].sort((a, b) => a.score - b.score);
+        const root = sorted.filter((r) => r.role === 'root');
+        const keyNames = [...results].sort((a, b) => b.centrality - a.centrality).filter((r) => r.isKey).map((r) => r.name);
+        const lines: string[] = [];
+        root.forEach((r, i) => lines.push(`${i + 1}. ${r.name}：得分 ${r.score}（作为因 ${r.outCount} 次 / 作为果 ${r.inCount} 次）→ 根因`));
+        if (keyNames.length) {
+          lines.push('');
+          lines.push('【DEMATEL 帕累托 80/20 关键因素】');
+          keyNames.forEach((n) => lines.push(`★ ${n}`));
+        }
+        if (sorted[0]) {
+          lines.push('');
+          lines.push(`相对视角：最源头 → ${sorted[0].name}；最表象 → ${sorted[sorted.length - 1].name}`);
+        }
+        return lines.join('\n');
+      },
+      rootCauseSummaryDeps: ['factors', 'matrix'],
+      rootCauseSummaryFormula: (values) => {
+        const results = computeKeyFactors(values);
+        const sorted = [...results].sort((a, b) => a.score - b.score);
+        const root = sorted.filter((r) => r.role === 'root');
+        const keyNames = [...results].sort((a, b) => b.centrality - a.centrality).filter((r) => r.isKey).map((r) => r.name);
+        if (root.length > 0) {
+          return `${root.map((r) => r.name).join('、')} 是最源头（得分最低 ${root[0].score}），叠加 DEMATEL 关键因素 ${keyNames.slice(0, 3).join('、') || '—'}，判定为最终根因`;
+        }
+        if (sorted.length > 0) {
+          return `相对视角：最源头为 ${sorted[0].name}（得分 ${sorted[0].score}），最表象为 ${sorted[sorted.length - 1].name}（得分 ${sorted[sorted.length - 1].score}）。`;
+        }
+        return '';
+      },
+    }),
   ],
   phases: [
     {

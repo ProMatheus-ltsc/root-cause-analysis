@@ -52,12 +52,19 @@ export interface FieldCondition {
   showWhen: string | string[];
 }
 
-/** formula 接收当前表单全部字段值，返回展示用的计算结果字符串。 */
+/** formula 接收当前表单全部字段值，返回展示用的计算结果（字符串或结构化表格数据）。 */
 export interface FieldComputed {
   dependsOn: string[];
-  formula: (values: Record<string, unknown>) => string;
+  formula: (values: Record<string, unknown>) => string | unknown;
   placeholder?: string;
   errorText?: string;
+  /**
+   * 标记字段为"可写自动汇总"：
+   * - 表单字段类型仍为 textarea / text（用户可编辑）
+   * - 默认值由 formula 动态计算并写入
+   * - 用户编辑过该字段后（formState.dirtyFields[name]=true）停止自动覆盖
+   */
+  editable?: boolean;
 }
 
 export interface FormField {

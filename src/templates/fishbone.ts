@@ -64,6 +64,7 @@ export const fishboneTemplate: FormTemplate = {
         ...createCheckItem('manSkillGap', '人员技能不足？', '具体观察：哪类人员、缺哪类技能/熟练度？如"新讲师对九年级物理重难点不熟"'),
         ...createCheckItem('manResponsibility', '职责不清？', '哪些角色边界模糊？如"谁负责对接产品部资料需求无明确 owner"'),
         ...createCheckItem('manTraining', '培训缺失？', '哪些培训未覆盖？如"产品部资料使用培训覆盖不到广分一线教师"'),
+        { id: 'manAutoCheck', label: '从问题头脑风暴自动勾选', type: 'custom' },
         { id: 'manNotes', label: '本维度发现与备注', type: 'textarea', placeholder: '例：在"人"这个维度观察到的整体现象、跨多个检查项的共性原因、或额外补充说明…' },
       ],
     },
@@ -74,6 +75,7 @@ export const fishboneTemplate: FormTemplate = {
       fields: [
         ...createCheckItem('machineFault', '工具/系统是否故障？', '具体故障表现？如"备课系统搜索接口报错、内容分发调用量为0"'),
         ...createCheckItem('machineConfig', '环境配置问题？', '配置不匹配的具体点？如"教师端备课入口未接入产品部资料库"'),
+        { id: 'machineAutoCheck', label: '从问题头脑风暴自动勾选', type: 'custom' },
         { id: 'machineNotes', label: '本维度发现与备注', type: 'textarea', placeholder: '例：在"机"这个维度观察到的整体现象、跨多个检查项的共性原因、或额外补充说明…' },
       ],
     },
@@ -84,6 +86,7 @@ export const fishboneTemplate: FormTemplate = {
       fields: [
         ...createCheckItem('materialQuality', '输入数据/物料质量？', '质量问题的具体表现？如"九年级物理资料知识点/题型覆盖率不足不足"'),
         ...createCheckItem('materialUpstream', '上游依赖问题？', '依赖方是谁、问题是什么？如"产品部资料库迁移后未对接教师端"'),
+        { id: 'materialAutoCheck', label: '从问题头脑风暴自动勾选', type: 'custom' },
         { id: 'materialNotes', label: '本维度发现与备注', type: 'textarea', placeholder: '例：在"料"这个维度观察到的整体现象、跨多个检查项的共性原因、或额外补充说明…' },
       ],
     },
@@ -94,6 +97,7 @@ export const fishboneTemplate: FormTemplate = {
       fields: [
         ...createCheckItem('methodMissing', '流程/规范缺失？', '哪些环节缺流程？如"备课流程未要求嵌入产品部资料取材"'),
         ...createCheckItem('methodWrong', '方法论错误？', '当前做法错在哪？如"资料产出后没有推送/宣导闭环"'),
+        { id: 'methodAutoCheck', label: '从问题头脑风暴自动勾选', type: 'custom' },
         { id: 'methodNotes', label: '本维度发现与备注', type: 'textarea', placeholder: '例：在"法"这个维度观察到的整体现象、跨多个检查项的共性原因、或额外补充说明…' },
       ],
     },
@@ -104,6 +108,7 @@ export const fishboneTemplate: FormTemplate = {
       fields: [
         ...createCheckItem('envChange', '外部环境变化？', '哪些外部条件变了？如"广分竞争产品形态调整、对资料要求改变"'),
         ...createCheckItem('envPressure', '时间压力？', '压力来自哪里、影响什么？如"学期紧、备课无时间试用新产品"'),
+        { id: 'envAutoCheck', label: '从问题头脑风暴自动勾选', type: 'custom' },
         { id: 'envNotes', label: '本维度发现与备注', type: 'textarea', placeholder: '例：在"环"这个维度观察到的整体现象、跨多个检查项的共性原因、或额外补充说明…' },
       ],
     },
@@ -114,6 +119,7 @@ export const fishboneTemplate: FormTemplate = {
       fields: [
         ...createCheckItem('measureMissing', '监控/度量缺失？', '没有监控什么指标？如"资料使用率指标未接监控面板"'),
         ...createCheckItem('measureDefinition', '指标定义不合理？', '当前指标定义哪里不对？如"使用率只统计点击不计实际备课采纳"'),
+        { id: 'measureAutoCheck', label: '从问题头脑风暴自动勾选', type: 'custom' },
         { id: 'measureNotes', label: '本维度发现与备注', type: 'textarea', placeholder: '例：在"测"这个维度观察到的整体现象、跨多个检查项的共性原因、或额外补充说明…' },
       ],
     },
@@ -162,17 +168,45 @@ export const fishboneTemplate: FormTemplate = {
  * 避免让用户手动复制。
  */
 function createFishboneRemedySection() {
-  const section = createRemedySection();
+  const labelMap: Record<string, string> = {
+    man: '人 (Man)', machine: '机 (Machine)', material: '料 (Material)',
+    method: '法 (Method)', environment: '环 (Environment)', measurement: '测 (Measurement)',
+  };
+  const section = createRemedySection({
+    rootCauseSummaryDeps: ['primaryDimensions', 'weightTable', 'rootCauseJudgement'],
+    rootCauseSummaryFormula: (values) => {
+      const judgement = typeof values.rootCauseJudgement === 'string' ? values.rootCauseJudgement.trim() : '';
+      const dims = Array.isArray(values.primaryDimensions) ? (values.primaryDimensions as string[]) : [];
+      const wts = Array.isArray(values.weightTable) ? (values.weightTable as Array<Record<string, unknown>>) : [];
+      const topWeights = wts
+        .map((w) => ({ dimension: typeof w?.dimension === 'string' ? w.dimension : '', key: typeof w?.keyFinding === 'string' ? w.keyFinding : '' }))
+        .filter((w) => w.dimension && w.key)
+        .slice(0, 3);
+      const lines: string[] = [];
+      if (dims.length > 0) {
+        lines.push(`主要维度：${dims.map((d) => labelMap[d] || d).join('、')}`);
+      }
+      if (topWeights.length > 0) {
+        lines.push(`关键发现：${topWeights.map((w) => `${labelMap[w.dimension] || w.dimension}：${w.key}`).join('；')}`);
+      }
+      if (judgement) {
+        lines.push(`根因判定：${judgement}`);
+      } else if (dims.length === 0 && topWeights.length === 0) {
+        return '';
+      }
+      return lines.join('\n');
+    },
+  });
   const fields = section.fields.map((f) => {
     if (f.id === 'confirmedCause') {
       return {
         ...f,
-        label: '六大维度的发现汇总',
-        hint: '系统自动汇总上面六大维度里的发现与备注，无需手动填写；如有候选原因引用（脑暴）也会显示在此。',
-        type: 'text' as const,
+        type: 'textarea' as const,
+        rows: 8,
         computed: {
           dependsOn: ['man', 'machine', 'material', 'method', 'environment', 'measurement'],
           formula: (values: Record<string, unknown>) => buildFishboneSummary(values),
+          editable: true,
         },
       } as FormField;
     }

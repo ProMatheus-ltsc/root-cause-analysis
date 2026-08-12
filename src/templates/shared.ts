@@ -532,6 +532,51 @@ export function buildCauseScoreText(results: KeyFactorResult[]): string {
 }
 
 /**
+ * 得分分类的结构化表格数据（供 FieldRenderer 渲染带颜色表格）：
+ * - 单元格背景色按判定（根因/过因/表因）配色，重要性突出
+ * - 数字列用等宽字体右对齐便于对比
+ */
+export interface CauseScoreTableData {
+  type: 'causeScoreTable';
+  rows: Array<{
+    rank: number;
+    name: string;
+    outCount: number;
+    inCount: number;
+    score: number;
+    role: 'root' | 'transit' | 'surface';
+    roleLabel: string;
+  }>;
+  summary: string[];
+}
+export function buildCauseScoreTableData(results: KeyFactorResult[]): CauseScoreTableData {
+  const sorted = [...results].sort((a, b) => a.score - b.score);
+  const root = results.filter((r) => r.role === 'root').map((r) => r.name);
+  const transit = results.filter((r) => r.role === 'transit').map((r) => r.name);
+  const surface = results.filter((r) => r.role === 'surface').map((r) => r.name);
+  const summary: string[] = [];
+  if (root.length) summary.push(`根因：${root.join('、')}`);
+  if (transit.length) summary.push(`过因：${transit.join('、')}`);
+  if (surface.length) summary.push(`表因：${surface.join('、')}`);
+  if (sorted.length > 0) {
+    summary.push(`相对视角：最源头 → ${sorted[0].name}；最表象 → ${sorted[sorted.length - 1].name}`);
+  }
+  return {
+    type: 'causeScoreTable',
+    rows: sorted.map((r, i) => ({
+      rank: i + 1,
+      name: r.name,
+      outCount: r.outCount,
+      inCount: r.inCount,
+      score: r.score,
+      role: r.role as 'root' | 'transit' | 'surface',
+      roleLabel: r.roleLabel,
+    })),
+    summary,
+  };
+}
+
+/**
  * 帕累托补充视角文本：按中心度（强度加权）降序排列，标注累计贡献达 80% 的关键因素。
  */
 export function buildKeyFactorRankingText(results: KeyFactorResult[]): string {
@@ -548,22 +593,94 @@ export function buildKeyFactorRankingText(results: KeyFactorResult[]): string {
 }
 
 /**
+ * 帕累托中心度排名的结构化表格数据：
+ * - 关键因素（累计贡献达 KEY_FACTOR_THRESHOLD）整行高亮琥珀色
+ * - 累计贡献单元格用色阶标识贡献度
+ */
+export interface KeyFactorRankingTableData {
+  type: 'keyFactorRankingTable';
+  rows: Array<{
+    rank: number;
+    name: string;
+    centrality: number;
+    cumulativePercent: number;
+    isKey: boolean;
+  }>;
+  keyNames: string[];
+  threshold: number;
+}
+export function buildKeyFactorRankingTableData(results: KeyFactorResult[]): KeyFactorRankingTableData {
+  const sorted = [...results].sort((a, b) => b.centrality - a.centrality);
+  const keyNames = sorted.filter((r) => r.isKey).map((r) => r.name);
+  return {
+    type: 'keyFactorRankingTable',
+    rows: sorted.map((r, i) => ({
+      rank: i + 1,
+      name: r.name,
+      centrality: r.centrality,
+      cumulativePercent: r.cumulativePercent,
+      isKey: r.isKey,
+    })),
+    keyNames,
+    threshold: KEY_FACTOR_THRESHOLD,
+  };
+}
+
+/**
  * 根因结论区：症状/根因区分 + MECE 自检 + 验证方式。
  * 强调"对策必须针对根因而非症状"，以及多根因/多措施下的 MECE（相互独立、完全穷尽）。
+ *
+ * options 提供"自动汇总"公式：
+ * - confirmedCauseFormula: 汇总前序分析结果（如根因列表）作为根因结论初始值；用户可编辑后不再被覆盖
+ * - rootCauseSummaryFormula: 生成一句话根因总结作为初始值
+ * - editableFields 标记哪些字段使用 ComputedEditableTextarea（自动汇总+可编辑）
  */
-export function createRemedySection(): FormSection {
+export interface RemedySectionOptions {
+  /** 自动汇总到 confirmedCause 的公式，依赖前序字段 ids */
+  confirmedCauseFormula?: (values: Record<string, unknown>) => string;
+  /** confirmedCause 公式依赖的字段 id 列表（用于 setValue 时机） */
+  confirmedCauseDeps?: string[];
+  /** 自动汇总到 rootCauseSummary 的公式 */
+  rootCauseSummaryFormula?: (values: Record<string, unknown>) => string;
+  rootCauseSummaryDeps?: string[];
+}
+
+export function createRemedySection(options?: RemedySectionOptions): FormSection {
+  const o = options ?? {};
+  const useAutoCause = typeof o.confirmedCauseFormula === 'function';
+  const useAutoSummary = typeof o.rootCauseSummaryFormula === 'function';
   return {
     id: 'remedy',
     title: '根因结论',
     fields: [
       {
         id: 'confirmedCause',
-        label: '从候选原因中确认的根因',
+        label: useAutoCause ? '从候选原因中确认的根因（自动汇总，可编辑修改）' : '从候选原因中确认的根因',
         type: 'textarea',
         hint: '对照问题卡片中的"原因头脑风暴"候选清单，结合本方法分析，收敛出最可能的 1-3 个根因（可引用候选清单中的原因编号/描述）。',
         placeholder: '例如"① 每日 22:00 上游依赖未就绪（清单第 3 条）——综合各维度分析判定为最关键的源头"',
+        computed: useAutoCause
+          ? {
+              dependsOn: o.confirmedCauseDeps ?? [],
+              formula: o.confirmedCauseFormula!,
+              editable: true,
+            }
+          : undefined,
       },
-      { id: 'rootCauseSummary', label: '根因总结', type: 'textarea', required: true, placeholder: '用一句话概括最终确定的根本原因' },
+      {
+        id: 'rootCauseSummary',
+        label: useAutoSummary ? '根因总结（自动汇总，可编辑修改）' : '根因总结',
+        type: 'textarea',
+        required: true,
+        placeholder: '用一句话概括最终确定的根本原因',
+        computed: useAutoSummary
+          ? {
+              dependsOn: o.rootCauseSummaryDeps ?? [],
+              formula: o.rootCauseSummaryFormula!,
+              editable: true,
+            }
+          : undefined,
+      },
       { id: 'rootCauseType', label: '根因类型分类', type: 'radio', options: ROOT_CAUSE_TYPE_OPTIONS },
       {
         id: 'symptomRootCauseCheck',

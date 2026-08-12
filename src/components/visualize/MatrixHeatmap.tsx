@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import clsx from 'clsx';
 
-interface MatrixHeatmapProps {
+interface MatrixHeatMapProps {
   factorNames: string[];
   matrix: number[][];
 }
@@ -15,7 +15,7 @@ function getHeatColor(value: number, max: number): string {
   return 'bg-brand-300 text-brand-900 font-semibold';
 }
 
-export function MatrixHeatmap({ factorNames, matrix }: MatrixHeatmapProps) {
+export function MatrixHeatmap({ factorNames, matrix }: MatrixHeatMapProps) {
   const maxVal = useMemo(() => {
     let m = 0;
     for (const row of matrix) {
@@ -38,19 +38,19 @@ export function MatrixHeatmap({ factorNames, matrix }: MatrixHeatmapProps) {
 
   return (
     <div className="overflow-x-auto rounded-xl border border-surface-200 p-4" role="img" aria-label="因果矩阵热力图">
-      <table className="border-collapse text-xs w-full">
+      <table className="border-collapse text-xs">
         <thead>
           <tr>
-            <th className="sticky left-0 z-10 bg-surface-0 px-2 py-1.5 text-left font-medium text-text-tertiary text-[10px]">
+            <th className="sticky left-0 z-10 bg-surface-0 px-2 py-2 text-left font-medium text-text-tertiary text-[10px] align-bottom">
               行↓ \ 列→
             </th>
             {factorNames.map((fname, j) => (
               <th
                 key={j}
-                className="min-w-[48px] px-1 py-1.5 text-center font-medium text-text-secondary text-[10px] truncate max-w-[60px]"
                 title={fname}
+                className="min-w-[160px] max-w-[200px] px-2 py-2 text-center font-medium text-text-secondary align-bottom"
               >
-                {fname.length > 3 ? fname.slice(0, 3) + '…' : fname}
+                <div className="break-words leading-tight whitespace-pre-wrap">{fname}</div>
               </th>
             ))}
           </tr>
@@ -59,15 +59,15 @@ export function MatrixHeatmap({ factorNames, matrix }: MatrixHeatmapProps) {
           {factorNames.map((rowName, i) => (
             <tr key={i}>
               <td
-                className="sticky left-0 z-10 bg-surface-0 px-2 py-1 text-left font-medium text-text-secondary text-[10px] whitespace-nowrap truncate max-w-[80px]"
                 title={rowName}
+                className="sticky left-0 z-10 bg-surface-0 px-2 py-2 text-left font-medium text-text-secondary align-middle min-w-[140px] max-w-[200px]"
               >
-                {rowName.length > 5 ? rowName.slice(0, 5) + '…' : rowName}
+                <div className="break-words leading-tight whitespace-pre-wrap">{rowName}</div>
               </td>
               {factorNames.map((_, j) => {
                 if (i === j) {
                   return (
-                    <td key={j} className="border border-surface-100 bg-surface-50 px-1 py-1 text-center text-surface-300 text-[10px]">
+                    <td key={j} className="border border-surface-100 bg-surface-50 px-1 py-2 text-center text-surface-300 text-[10px] align-middle">
                       —
                     </td>
                   );
@@ -77,7 +77,7 @@ export function MatrixHeatmap({ factorNames, matrix }: MatrixHeatmapProps) {
                   <td
                     key={j}
                     className={clsx(
-                      'border border-surface-100 px-1 py-1 text-center text-[11px] transition-colors',
+                      'min-w-[48px] border border-surface-100 px-1 py-2 text-center text-[12px] transition-colors align-middle tabular-nums',
                       getHeatColor(val, maxVal),
                       !val && 'text-text-tertiary',
                     )}

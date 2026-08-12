@@ -47,7 +47,7 @@ export function LoopDiagram({ result }: LoopDiagramProps) {
 
   return (
     <div className="overflow-x-auto rounded-xl border border-surface-200 bg-surface-0">
-      <svg viewBox={`0 0 640 ${totalHeight}`} width="100%" role="img" aria-label="系统思考反馈回路图">
+      <svg viewBox={`0 0 720 ${totalHeight}`} width="100%" role="img" aria-label="系统思考反馈回路图">
         <title>系统思考反馈回路图</title>
         <desc>AI 识别出的反馈回路闭环与杠杆点</desc>
         <defs>
@@ -65,7 +65,7 @@ export function LoopDiagram({ result }: LoopDiagramProps) {
         </defs>
 
         {loops.map((loop, loopIdx) => {
-          const cx = 320;
+          const cx = 360;
           const cy = loopIdx * PER_RING + 140;
           const R = 104;
           const n = loop.causes.length;
@@ -114,16 +114,22 @@ export function LoopDiagram({ result }: LoopDiagramProps) {
                 );
               })}
 
-              {/* 节点 + 节点名 */}
+              {/* 节点 + 节点名（节点圈放圆周，文字放圆外，避免遮挡中央回路名） */}
               {loop.causes.map((cause, i) => {
                 const p = points[i];
                 const isLeverage = leverageSet.has(cause.trim());
                 const r = isLeverage ? 15 : 10;
                 const angle = -Math.PI / 2 + (i * 2 * Math.PI) / n;
-                const labelR = R * 0.55;
+                // 节点圆画在圆周；文字放圆外侧，按角度决定锚点（左/中/右）
+                const labelR = R + 22;
                 const lx = cx + labelR * Math.cos(angle);
                 const ly = cy + labelR * Math.sin(angle);
-                const labelLines = cause.length > 7 ? [cause.slice(0, 7), cause.slice(7, 14)] : [cause];
+                // 文字锚点：根据 cos(angle) 决定 start/middle/end，对应左/中/右
+                const cosA = Math.cos(angle);
+                const sinA = Math.sin(angle);
+                const anchor: 'start' | 'middle' | 'end' = cosA > 0.3 ? 'start' : cosA < -0.3 ? 'end' : 'middle';
+                const dy = sinA < -0.3 ? -4 : sinA > 0.3 ? 4 : 0;
+                const labelLines = cause.length > 8 ? [cause.slice(0, 8), cause.slice(8, 16)] : [cause];
                 return (
                   <g key={i}>
                     <circle cx={p.x} cy={p.y} r={r} fill={color.fill} stroke={isLeverage ? '#f59e0b' : color.stroke} strokeWidth={isLeverage ? 3 : 2} />
@@ -140,10 +146,10 @@ export function LoopDiagram({ result }: LoopDiagramProps) {
                       <text
                         key={li}
                         x={lx}
-                        y={ly + (li - (labelLines.length - 1) / 2) * 13}
+                        y={ly + dy + (li - (labelLines.length - 1) / 2) * 13}
                         fontSize={10.5}
                         fill="#334155"
-                        textAnchor="middle"
+                        textAnchor={anchor}
                         dominantBaseline="central"
                         fontFamily={FONT}
                       >

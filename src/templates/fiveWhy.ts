@@ -77,7 +77,26 @@ export const fiveWhyTemplate: FormTemplate = {
         },
       ],
     },
-    createRemedySection(),
+    createRemedySection({
+      confirmedCauseDeps: ['whyChain'],
+      confirmedCauseFormula: (values) => {
+        const chain = Array.isArray(values.whyChain) ? (values.whyChain as Array<Record<string, unknown>>) : [];
+        const rootLayers = chain.filter((e) => e?.isRootCause === 'yes');
+        const lines: string[] = [];
+        rootLayers.forEach((e, i) => {
+          lines.push(`${i + 1}. ${typeof e.why === 'string' ? e.why : ''}${e.evidenceType === 'data' && typeof e.evidence === 'string' ? `（数据依据：${e.evidence}）` : typeof e.evidence === 'string' && e.evidence ? `（${e.evidence}）` : ''}`);
+        });
+        return lines.join('\n');
+      },
+      rootCauseSummaryDeps: ['whyChain'],
+      rootCauseSummaryFormula: (values) => {
+        const chain = Array.isArray(values.whyChain) ? (values.whyChain as Array<Record<string, unknown>>) : [];
+        const rootLayers = chain.filter((e) => e?.isRootCause === 'yes');
+        if (rootLayers.length === 0) return '';
+        const last = rootLayers[rootLayers.length - 1];
+        return `经 ${chain.length} 层追问，定位根因为：${typeof last.why === 'string' ? last.why : ''}`;
+      },
+    }),
   ],
   phases: [
     {

@@ -174,3 +174,116 @@ export function formatAiAnalysis(result: AiAnalysisResult): string {
   }
   return lines.join('\n');
 }
+
+// ========== 要因分析法（keyFactor）的 AI 桥接：一次给出所有有向因果对及影响强度 ==========
+
+export interface KeyFactorAiPair {
+  cause: string; // 因素名（因）
+  effect: string; // 因素名（果）
+  strength: 1 | 2 | 4;
+  reason?: string;
+}
+
+export interface KeyFactorAiResult {
+  causalPairs: KeyFactorAiPair[];
+}
+
+/** 组装给外部 AI 的提示词：把问题详情 + 因素清单 + 候选原因打包，AI 返回因果对（cause+effect+strength）。 */
+export function buildKeyFactorPrompt(problem?: Problem, factors?: string[]): string {
+  const probJson = buildProblemJson(problem);
+  const factorList = (factors ?? []).map((f, i) => `  ${i + 1}. ${f}`).join('\n');
+  return `你是要因分析（DEMATEL）的因果判定助手。请基于下面的"问题详情 + 候选原因 + 因素清单"，
+识别所有有方向有强度的因果关系对（i → j），把结果严格按以下 JSON 格式返回（不要输出任何其他文字）：
+
+{
+  "causalPairs": [
+    {
+      "cause": "完整的因素名（从下面 15 个因素中选，必须一字不差）",
+      "effect": "完整的因素名（从下面 15 个因素中选，必须一字不差）",
+      "strength": 1 | 2 | 4,
+      "reason": "为什么是因→果（可选）"
+    }
+  ]
+}
+
+判定标准：
+- 只列有正向因果关系的对（cause 导致 effect），无关或反向的不要列
+- 强度 1=弱关联（单向弱影响），2=中关联（双向或单向强影响），4=强关联（互为强因果）
+- 如果因素 i 是 j 的因，必须 i 在 cause、j 在 effect
+- 两个因素之间的最强影响强度作为 strength
+- "无关"和"无影响"的关系不要写进 causalPairs
+- 若强度为 2 或 4（双向/互为因果），应用会自动同时写入反向强度（j→i），你只需列出正向 cause→effect 即可
+
+## 问题详情
+${probJson}
+
+## 因素清单（从 1 到 ${factors?.length ?? 0}，AI 必须用其中"完整原文"作为 cause/effect 字段值）
+${factorList || '（无）'}
+`;
+}
+
+/** 解析 AI 返回的 keyFactor JSON。 */
+export function parseKeyFactorAnalysis(raw: string, factors: string[]): KeyFactorAiResult {
+  const text = raw.trim();
+  if (!text) throw new Error('粘贴内容为空');
+  let obj: unknown;
+  try {
+    obj = JSON.parse(text);
+  } catch {
+    throw new Error('JSON 解析失败——请确认 AI 只返回了 JSON 对象，没有多余文字（可用 ```json 包裹，解析时会自动去除）');
+  }
+  if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
+    throw new Error('JSON 顶层应为对象 { causalPairs: [...] }');
+  }
+  const root = obj as Record<string, unknown>;
+  if (!Array.isArray(root.causalPairs)) {
+    throw new Error('缺少字段：causalPairs（必须是数组）');
+  }
+  // 建立因素名到索引的映射（容错：去除空白对比）
+  const factorIndex = new Map<string, number>();
+  factors.forEach((f, i) => factorIndex.set(f.trim(), i));
+  const lookup = (name: string): number => {
+    const trimmed = name.trim();
+    if (factorIndex.has(trimmed)) return factorIndex.get(trimmed)!;
+    // 模糊匹配：忽略空白后子串包含
+    for (const [key, idx] of factorIndex) {
+      if (key.includes(trimmed) || trimmed.includes(key)) return idx;
+    }
+    return -1;
+  };
+  const pairs: KeyFactorAiPair[] = [];
+  for (let i = 0; i < root.causalPairs.length; i++) {
+    const raw = root.causalPairs[i] as Record<string, unknown> | null;
+    if (!raw || typeof raw !== 'object') throw new Error(`causalPairs[${i}] 不是对象`);
+    const cause = typeof raw.cause === 'string' ? raw.cause.trim() : '';
+    const effect = typeof raw.effect === 'string' ? raw.effect.trim() : '';
+    if (!cause) throw new Error(`causalPairs[${i}].cause 缺失或为空`);
+    if (!effect) throw new Error(`causalPairs[${i}].effect 缺失或为空`);
+    const strengthNum = Number(raw.strength);
+    if (strengthNum !== 1 && strengthNum !== 2 && strengthNum !== 4) {
+      throw new Error(`causalPairs[${i}].strength 必须为 1/2/4 之一（实际 ${raw.strength}）`);
+    }
+    const causeIdx = lookup(cause);
+    const effectIdx = lookup(effect);
+    if (causeIdx < 0) throw new Error(`causalPairs[${i}].cause "${cause}" 不在因素清单中（必须用因素清单里的完整原文）`);
+    if (effectIdx < 0) throw new Error(`causalPairs[${i}].effect "${effect}" 不在因素清单中（必须用因素清单里的完整原文）`);
+    if (causeIdx === effectIdx) throw new Error(`causalPairs[${i}].cause 和 effect 不能是同一因素`);
+    pairs.push({
+      cause: factors[causeIdx],
+      effect: factors[effectIdx],
+      strength: strengthNum as 1 | 2 | 4,
+      reason: typeof raw.reason === 'string' ? raw.reason.trim() : undefined,
+    });
+  }
+  return { causalPairs: pairs };
+}
+
+/** 把解析结果格式化为可读文本（用于写入 form state 备查）。 */
+export function formatKeyFactorAnalysis(result: KeyFactorAiResult): string {
+  if (result.causalPairs.length === 0) return 'AI 未识别到任何因果关系';
+  const lines: string[] = [`共 ${result.causalPairs.length} 对因果关系（AI 自动填入）：`];
+  result.causalPairs.forEach((p, i) => {
+    lines.push(`${i + 1}. ${p.cause}  →  ${p.effect}（强度 ${p.strength}）${p.reason ? ` — ${p.reason}` : ''}`);
+  });
+  return lines.join('\n');
+}
