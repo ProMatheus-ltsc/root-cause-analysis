@@ -6,7 +6,7 @@
  * 头脑风暴/factors 段落用横向卡片条（BrainstormCardStrip）导航并展示全部已填内容，
  * 避免重复填写与上 / 下文丢失。
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFieldArray, useFormContext } from 'react-hook-form';
 import clsx from 'clsx';
 import type { FormField, FormRecord, FormSection, Problem, TemplateId } from '../types';
@@ -66,6 +66,74 @@ function ChevronIcon({ expanded }: { expanded: boolean }) {
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
     </svg>
   );
+}
+
+/** 相似原因检测：相似度阈值，0.5 以上视为"可能重复/相似"。 */
+export const SIMILARITY_THRESHOLD = 0.5;
+
+/**
+ * 文本相似度（0-1）：去空白 + 小写后，基于字符 2-gram 的 Sørensen–Dice 系数。
+ * Dice 对长度不对称的句子比 Jaccard 更宽容，适合中文短语/长句的"改写近义"检测。
+ */
+export function textSimilarity(a: string, b: string): number {
+  const norm = (s: string) => (s ?? '').toLowerCase().replace(/\s+/g, '');
+  const na = norm(a);
+  const nb = norm(b);
+  if (!na || !nb) return 0;
+  if (na === nb) return 1;
+
+  const bigrams = (s: string): Set<string> => {
+    const set = new Set<string>();
+    const padded = `#${s}#`;
+    for (let i = 0; i < padded.length - 1; i++) set.add(padded.slice(i, i + 2));
+    return set;
+  };
+
+  const sa = bigrams(na);
+  const sb = bigrams(nb);
+  let inter = 0;
+  for (const x of sa) if (sb.has(x)) inter++;
+  if (inter === 0) return 0;
+  return (2 * inter) / (sa.size + sb.size);
+}
+
+export interface SimilarPair {
+  /** 相似条目的索引 */
+  idx: number;
+  /** 相似度 0-1 */
+  score: number;
+  /** 相似条目的首字段文本（用于展示） */
+  text: string;
+}
+
+/** 两两比较 section 内各 entry 的首字段，返回每个 entry → 与其相似的其他 entry 列表（按分数降序）。 */
+export function computeSimilarPairs(
+  entries: Record<string, unknown>[],
+  primaryFieldId: string,
+  threshold: number = SIMILARITY_THRESHOLD,
+): Map<number, SimilarPair[]> {
+  const filled: { idx: number; text: string }[] = [];
+  entries.forEach((entry, idx) => {
+    const v = entry?.[primaryFieldId];
+    if (typeof v === 'string' && v.trim()) filled.push({ idx, text: v.trim() });
+  });
+
+  const result = new Map<number, SimilarPair[]>();
+  for (let i = 0; i < filled.length; i++) {
+    for (let j = i + 1; j < filled.length; j++) {
+      const score = textSimilarity(filled[i].text, filled[j].text);
+      if (score >= threshold) {
+        const a = filled[i];
+        const b = filled[j];
+        result.set(a.idx, [...(result.get(a.idx) ?? []), { idx: b.idx, score, text: b.text }]);
+        result.set(b.idx, [...(result.get(b.idx) ?? []), { idx: a.idx, score, text: a.text }]);
+      }
+    }
+  }
+  for (const list of result.values()) {
+    list.sort((x, y) => y.score - x.score);
+  }
+  return result;
 }
 
 interface BrainstormPickerProps {
@@ -283,6 +351,8 @@ interface BrainstormCardStripProps {
   onCardClick: (idx: number) => void;
   /** 点击"添加新原因"卡片时回调，父组件负责 append */
   onAppendNew: () => void;
+  /** 相似原因检测结果：entry 索引 → 与其相似的其它 entry 列表 */
+  similarPairs?: Map<number, SimilarPair[]>;
   disabled?: boolean;
 }
 
@@ -292,6 +362,7 @@ interface BrainstormCardStripProps {
  *   - 显示完整内容（不截断），并展示证据字段；
  *   - 点击卡片跳转到对应 entry 编辑器；
  *   - 当前激活 entry 对应的卡片高亮（其它自动收起，避免屏幕拥挤）。
+ *   - 与其它原因高度相似时，卡片右上角显示 "≈ 与 #N 相似" 徽标。
  */
 function BrainstormCardStrip({
   section,
@@ -299,6 +370,7 @@ function BrainstormCardStrip({
   activeIndex,
   onCardClick,
   onAppendNew,
+  similarPairs,
   disabled,
 }: BrainstormCardStripProps) {
   const sectionEntries = (values[section.id] as Record<string, unknown>[] | undefined) ?? [];
@@ -326,7 +398,7 @@ function BrainstormCardStrip({
   }, [activeIndex]);
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3">
+    <div className="sticky top-2 z-20 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-baseline gap-2">
           <p className="text-xs font-semibold text-slate-600">
@@ -388,6 +460,19 @@ function BrainstormCardStrip({
                   {isFilled ? `${cause.length} 字` : '空'}
                 </span>
               </div>
+              {isFilled && similarPairs?.get(idx) && similarPairs.get(idx)!.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {similarPairs.get(idx)!.map((p) => (
+                    <span
+                      key={p.idx}
+                      className="inline-flex items-center gap-0.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700"
+                      title={p.text}
+                    >
+                      ≈ 与 #{p.idx + 1} 相似 {(p.score * 100).toFixed(0)}%
+                    </span>
+                  ))}
+                </div>
+              )}
               {isFilled ? (
                 <>
                   <p className="text-sm leading-relaxed text-slate-800 break-words">
@@ -605,6 +690,20 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
   })();
 
   /**
+   * 相似原因检测：仅对"原因型"段落（brainstorm / factors）两两比较首字段。
+   * 用户输入时实时更新（依赖 values），用于：
+   *   - 卡片条上标注 "≈ 与 #N 相似"；
+   *   - entry 编辑区内琥珀色提示条，快速发现可能重复/相似的原因。
+   */
+  const similarPairs = useMemo(() => {
+    if (section.id !== 'brainstorm' && section.id !== 'factors') return new Map<number, SimilarPair[]>();
+    const sectionEntries = (values[section.id] as Record<string, unknown>[] | undefined) ?? [];
+    const primaryFieldId = section.fields[0]?.id;
+    if (!primaryFieldId) return new Map<number, SimilarPair[]>();
+    return computeSimilarPairs(sectionEntries, primaryFieldId);
+  }, [values, section.id, section.fields]);
+
+  /**
    * 要因分析法自动引入：候选原因 ≤ 15 个（KEY_FACTOR_MAX）时，无需用户手动勾选，
    * 直接全量引入因素清单，方便直接进入关系矩阵；> 15 个时才交由用户筛选（见 BrainstormPicker）。
    */
@@ -703,6 +802,7 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
           activeIndex={activeIndex}
           onCardClick={handleCardClick}
           onAppendNew={handleAppend}
+          similarPairs={similarPairs}
           disabled={disabled}
         />
       )}
@@ -748,6 +848,25 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
             </div>
           </div>
 
+          {isBrainstormLike && similarPairs.get(idx) && similarPairs.get(idx)!.length > 0 && (
+            <div className="mb-2 mt-1 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs leading-relaxed text-amber-700">
+              <span className="font-semibold">⚠ 与已有原因相似：</span>
+              {(similarPairs.get(idx) as SimilarPair[]).map((p: SimilarPair, i: number) => (
+                <span key={p.idx}>
+                  <button
+                    type="button"
+                    onClick={() => handleCardClick(p.idx)}
+                    className="font-medium text-amber-800 underline decoration-dotted underline-offset-2 hover:text-amber-950"
+                  >
+                    「原因 {p.idx + 1}」（相似度 {(p.score * 100).toFixed(0)}%）
+                  </button>
+                  {i < (similarPairs.get(idx) as SimilarPair[]).length - 1 && '、'}
+                </span>
+              ))}
+              <span className="text-amber-500">—— 内容相近，注意区分或考虑合并</span>
+            </div>
+          )}
+
           {isExpanded && (
             <>
               {section.id !== 'brainstorm' && section.id !== 'factors' && idx > 0 && (
@@ -774,6 +893,26 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
                   templateId={templateId}
                   historyRecords={historyRecords}
                 />
+              </div>
+              {/* 上一条/下一条导航：填写完不必滚回顶部卡片条，直接切到相邻条目 */}
+              <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                <button
+                  type="button"
+                  disabled={idx === 0 || disabled}
+                  onClick={() => handleCardClick(idx - 1)}
+                  className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  ← 上一条
+                </button>
+                <span className="text-xs text-slate-400">第 {idx + 1} / {entries.length} 条</span>
+                <button
+                  type="button"
+                  disabled={idx >= entries.length - 1 || disabled}
+                  onClick={() => handleCardClick(idx + 1)}
+                  className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  下一条 →
+                </button>
               </div>
             </>
           )}
