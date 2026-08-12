@@ -4,6 +4,7 @@ import type { TemplateId } from '../../types';
 const MatrixHeatmap = lazy(() => import('./MatrixHeatmap').then((m) => ({ default: m.MatrixHeatmap })));
 const FishboneDiagram = lazy(() => import('./FishboneDiagram').then((m) => ({ default: m.FishboneDiagram })));
 const CausalGraph = lazy(() => import('./CausalGraph').then((m) => ({ default: m.CausalGraph })));
+const TimelineChart = lazy(() => import('./TimelineChart').then((m) => ({ default: m.TimelineChart })));
 
 interface VisualizationPanelProps {
   templateId: TemplateId;
@@ -44,6 +45,26 @@ export function VisualizationPanel({ templateId, values, problemTitle }: Visuali
         }
 
         return { type: 'heatmap' as const, factorNames, matrix };
+      }
+
+      case 'timeline': {
+        const entries = Array.isArray(values.timelineEntries) ? (values.timelineEntries as Array<Record<string, unknown>>) : [];
+        const cleaned = entries
+          .map((e) => ({
+            time: typeof e?.time === 'string' ? e.time : '',
+            eventDesc: typeof e?.eventDesc === 'string' ? e.eventDesc : '',
+            sourceType: typeof e?.sourceType === 'string' ? e.sourceType : '',
+            isKeyMoment: e?.isKeyMoment === true,
+            actionTaken: typeof e?.actionTaken === 'string' ? e.actionTaken : '',
+            actionCorrectness: typeof e?.actionCorrectness === 'string' ? e.actionCorrectness : '',
+          }))
+          .filter((e) => e.time || e.eventDesc);
+        if (cleaned.length === 0) return null;
+        return {
+          type: 'timeline' as const,
+          eventSummary: typeof values.summary === 'string' ? values.summary : '',
+          entries: cleaned,
+        };
       }
 
       case 'fishbone': {
@@ -109,6 +130,9 @@ export function VisualizationPanel({ templateId, values, problemTitle }: Visuali
         )}
         {content.type === 'causal' && (
           <CausalGraph causalChain={content.causalChain} />
+        )}
+        {content.type === 'timeline' && (
+          <TimelineChart eventSummary={content.eventSummary} entries={content.entries} />
         )}
       </Suspense>
     </div>

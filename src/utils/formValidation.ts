@@ -110,6 +110,14 @@ export function validateRequiredFields(template: FormTemplate, values: Record<st
         missing.push({ sectionId: section.id, fieldId: section.fields[0].id, label: `${section.title}（至少需要 ${minEntries} 条）` });
       }
       entries.forEach((entry, idx) => {
+        // 尊重 section.stopAppendWhen：前一层已标记为根因/停止条件，
+        // 后续层不再强制必填（5Why/要因分析等"可停止追问"的场景）
+        if (idx > 0 && section.stopAppendWhen) {
+          const prevEntry = entries[idx - 1];
+          if (prevEntry && prevEntry[section.stopAppendWhen.fieldId] === section.stopAppendWhen.value) {
+            return;
+          }
+        }
         requiredFields.forEach((f) => {
           if (isEmptyValue(entry[f.id])) {
             missing.push({ sectionId: `${section.id}[${idx}]`, fieldId: f.id, label: f.label });

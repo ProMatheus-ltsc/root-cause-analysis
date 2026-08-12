@@ -18,6 +18,7 @@ const HistoryPage = lazy(() => import('./pages/HistoryPage'));
 const DataPage = lazy(() => import('./pages/DataPage'));
 const ProblemWizardPage = lazy(() => import('./pages/ProblemWizardPage'));
 const ProblemEditPage = lazy(() => import('./pages/ProblemEditPage'));
+const SeedPage = lazy(() => import('./pages/SeedPage'));
 
 function FullScreenLoading() {
   return <div className="flex min-h-screen items-center justify-center text-sm text-slate-400">加载中…</div>;
@@ -98,6 +99,8 @@ export default function App() {
           <Suspense fallback={<FullScreenLoading />}>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
+              {/* 测试数据一键导入（开发/验收用，独立于认证态） */}
+              <Route path="dev/seed" element={<SeedPage />} />
               <Route
                 element={
                   <RequireAuth>
