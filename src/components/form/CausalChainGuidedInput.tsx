@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { useFieldArray, useFormContext } from 'react-hook-form';
 import clsx from 'clsx';
 import type { Problem } from '../../types';
@@ -30,7 +30,7 @@ interface PairData {
   evidence: string;
 }
 
-export const CausalChainGuidedInput = React.memo(function CausalChainGuidedInput({ disabled, problem }: CausalChainGuidedInputProps) {
+export const CausalChainGuidedInput = memo(function CausalChainGuidedInput({ disabled, problem }: CausalChainGuidedInputProps) {
   const { control, watch, setValue } = useFormContext();
   const { append } = useFieldArray({ control, name: 'causalChain' });
   const causalChainValues = watch('causalChain') as PairData[] | undefined;
@@ -438,4 +438,4 @@ function FactorSelector({ brainstormCauses, initialSelected, onConfirm }: Factor
       </button>
     </div>
   );
-});
+}
