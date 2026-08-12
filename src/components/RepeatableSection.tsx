@@ -59,6 +59,9 @@ function BrainstormPicker({ brainstormCauses, existingNames, onPick }: Brainstor
   }
 
   const existingSet = new Set(existingNames.map((n) => n.toLowerCase().trim()));
+  const selectableIndices = brainstormCauses
+    .map((_, idx) => idx)
+    .filter((idx) => !existingSet.has(brainstormCauses[idx].toLowerCase().trim()));
 
   function handleConfirm() {
     const picked = Array.from(selected).map((idx) => brainstormCauses[idx]);
@@ -67,6 +70,25 @@ function BrainstormPicker({ brainstormCauses, existingNames, onPick }: Brainstor
     setSelected(new Set());
   }
 
+  function handleSelectAll() {
+    setSelected(new Set(selectableIndices));
+  }
+
+  function handleInvertSelection() {
+    const inverted = new Set<number>();
+    for (const idx of selectableIndices) {
+      if (!selected.has(idx)) inverted.add(idx);
+    }
+    setSelected(inverted);
+  }
+
+  function handleDeselectAll() {
+    setSelected(new Set());
+  }
+
+  const allSelected = selectableIndices.length > 0 && selectableIndices.every((idx) => selected.has(idx));
+  const noneSelected = selected.size === 0;
+
   return (
     <div className="rounded-lg border border-sky-200 bg-sky-50/60 p-4 space-y-3">
       <div className="flex items-center justify-between">
@@ -74,6 +96,25 @@ function BrainstormPicker({ brainstormCauses, existingNames, onPick }: Brainstor
         <button type="button" onClick={() => setShowPicker(false)} className="text-xs text-slate-500 hover:underline">
           取消
         </button>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={allSelected ? handleDeselectAll : handleSelectAll}
+          className="rounded border border-sky-300 px-2 py-1 text-xs font-medium text-sky-700 hover:bg-sky-100 transition"
+        >
+          {allSelected ? '取消全选' : '全选'}
+        </button>
+        <button
+          type="button"
+          onClick={handleInvertSelection}
+          className="rounded border border-sky-300 px-2 py-1 text-xs font-medium text-sky-700 hover:bg-sky-100 transition"
+        >
+          反选
+        </button>
+        {!noneSelected && (
+          <span className="text-xs text-sky-600 leading-6">已选 {selected.size} / {selectableIndices.length} 项</span>
+        )}
       </div>
       <div className="max-h-60 overflow-y-auto space-y-1">
         {brainstormCauses.map((cause, idx) => {
@@ -111,6 +152,52 @@ function BrainstormPicker({ brainstormCauses, existingNames, onPick }: Brainstor
       >
         引入选中的 {selected.size} 项
       </button>
+    </div>
+  );
+}
+
+function BrainstormSidebar({ section, values }: { section: FormSection; values: Record<string, unknown> }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const sectionEntries = (values[section.id] as Record<string, unknown>[] | undefined) ?? [];
+  const filledEntries = sectionEntries
+    .map((entry, idx) => {
+      const primaryField = section.fields[0];
+      const text = entry[primaryField.id];
+      if (typeof text !== 'string' || !text.trim()) return null;
+      return { idx, text: text.trim() };
+    })
+    .filter((e): e is { idx: number; text: string } => e !== null);
+
+  if (filledEntries.length === 0) return null;
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-3">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold text-slate-600">
+          已有原因 ({filledEntries.length})
+        </p>
+        <button
+          type="button"
+          onClick={() => setCollapsed(!collapsed)}
+          className="text-xs text-slate-400 hover:text-slate-600"
+        >
+          {collapsed ? '展开' : '收起'}
+        </button>
+      </div>
+      {!collapsed && (
+        <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
+          {filledEntries.map((e) => (
+            <span
+              key={e.idx}
+              className="inline-flex items-baseline gap-1 rounded-md border border-slate-100 bg-slate-50 px-2 py-1 text-xs text-slate-600"
+              title={e.text}
+            >
+              <span className="font-medium text-slate-400">{e.idx + 1}.</span>
+              <span>{e.text.length > 20 ? e.text.slice(0, 20) + '…' : e.text}</span>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -181,6 +268,20 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
   })();
 
   function handleBrainstormPick(causes: string[]) {
+    const sectionEntries = (values[section.id] as Record<string, unknown>[] | undefined) ?? [];
+    const blankIndices: number[] = [];
+    for (let i = sectionEntries.length - 1; i >= 0; i--) {
+      const entry = sectionEntries[i];
+      const primaryField = section.fields[0];
+      const val = entry[primaryField.id];
+      if (typeof val !== 'string' || !val.trim()) {
+        blankIndices.push(i);
+      }
+    }
+    for (const idx of blankIndices) {
+      remove(idx);
+    }
+
     if (section.id === 'causalChain') {
       for (const cause of causes) {
         const newEntry = Object.fromEntries(section.fields.map((f) => [f.id, '']));
@@ -214,9 +315,12 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
           onPick={handleBrainstormPick}
         />
       )}
+      {(section.id === 'brainstorm' || section.id === 'factors') && entries.length > 0 && (
+        <BrainstormSidebar section={section} values={values} />
+      )}
       {entries.map((entry, idx) => (
         <div key={entry.id}>
-          {idx > 0 && (
+          {section.id !== 'brainstorm' && section.id !== 'factors' && idx > 0 && (
             <div className="mb-3 space-y-1.5">
               <p className="text-xs font-medium text-slate-400">前序内容回顾</p>
               {Array.from({ length: idx }, (_, i) => (
