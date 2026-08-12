@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useFieldArray, useFormContext } from 'react-hook-form';
 import clsx from 'clsx';
 import type { Problem } from '../../types';
@@ -30,7 +30,7 @@ interface PairData {
   evidence: string;
 }
 
-export function CausalChainGuidedInput({ disabled, problem }: CausalChainGuidedInputProps) {
+export const CausalChainGuidedInput = React.memo(function CausalChainGuidedInput({ disabled, problem }: CausalChainGuidedInputProps) {
   const { control, watch, setValue } = useFormContext();
   const { append } = useFieldArray({ control, name: 'causalChain' });
   const causalChainValues = watch('causalChain') as PairData[] | undefined;
@@ -186,7 +186,7 @@ export function CausalChainGuidedInput({ disabled, problem }: CausalChainGuidedI
         <button
           type="button"
           onClick={() => setShowPicker(true)}
-          className="text-xs text-sky-600 hover:underline"
+          className="text-xs text-brand-600 hover:underline"
           disabled={disabled}
         >
           重新选择因素
@@ -215,8 +215,8 @@ export function CausalChainGuidedInput({ disabled, problem }: CausalChainGuidedI
               className={clsx(
                 'rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition',
                 currentEntry?.relationType === opt.value
-                  ? 'border-sky-500 bg-sky-50 text-sky-700'
-                  : 'border-slate-200 text-slate-600 hover:border-sky-300 hover:bg-sky-50',
+                  ? 'border-brand-500 bg-brand-50 text-brand-700'
+                              : 'border-surface-200 text-text-secondary hover:border-brand-300 hover:bg-brand-50',
               )}
             >
               {opt.label}
@@ -238,8 +238,8 @@ export function CausalChainGuidedInput({ disabled, problem }: CausalChainGuidedI
                     className={clsx(
                       'rounded-md border px-3 py-1.5 text-xs transition',
                       currentEntry?.delayEffect === opt.value
-                        ? 'border-sky-400 bg-sky-50 text-sky-700'
-                        : 'border-slate-200 text-slate-500 hover:border-sky-300',
+                        ? 'border-brand-400 bg-brand-50 text-brand-700'
+                                    : 'border-surface-200 text-text-tertiary hover:border-brand-300',
                     )}
                   >
                     {opt.label}
@@ -282,7 +282,7 @@ export function CausalChainGuidedInput({ disabled, problem }: CausalChainGuidedI
                   onClick={() => setCurrentPairIndex(idx)}
                   className={clsx(
                     'h-2 w-2 rounded-full transition',
-                    idx === currentPairIndex ? 'bg-sky-500' : filled ? 'bg-sky-200' : 'bg-slate-200',
+                    idx === currentPairIndex ? 'bg-brand-500' : filled ? 'bg-brand-200' : 'bg-surface-200',
                   )}
                 />
               );
@@ -312,7 +312,7 @@ export function CausalChainGuidedInput({ disabled, problem }: CausalChainGuidedI
               return (
                 <div key={idx} className="flex items-center gap-2 text-xs text-slate-600">
                   <span className="font-medium">{a}</span>
-                  <span className="text-sky-600">{relLabel}</span>
+                  <span className="text-brand-600">{relLabel}</span>
                   <span className="font-medium">{b}</span>
                   {delayLabel && <span className="text-slate-400">({delayLabel})</span>}
                 </div>
@@ -323,7 +323,7 @@ export function CausalChainGuidedInput({ disabled, problem }: CausalChainGuidedI
       )}
     </div>
   );
-}
+});
 
 interface FactorSelectorProps {
   brainstormCauses: string[];
@@ -372,23 +372,23 @@ function FactorSelector({ brainstormCauses, initialSelected, onConfirm }: Factor
   const totalSelected = selected.size + customFactors.length;
 
   return (
-    <div className="rounded-lg border border-sky-200 bg-sky-50/60 p-4 space-y-4">
+    <div className="rounded-lg border border-brand-200 bg-brand-50/60 p-4 space-y-4">
       <div>
-        <p className="text-sm font-medium text-sky-800">选择参与因果链分析的因素（至少 2 个）</p>
-        <p className="text-xs text-slate-500 mt-1">从头脑风暴候选原因中勾选，系统将自动生成所有两两配对供你逐对判断因果关系</p>
+        <p className="text-sm font-medium text-brand-800">选择参与因果链分析的因素（至少 2 个）</p>
+        <p className="text-xs text-text-tertiary mt-1">从头脑风暴候选原因中勾选，系统将自动生成所有两两配对供你逐对判断因果关系</p>
       </div>
 
       {brainstormCauses.length > 0 && (
         <div className="max-h-60 overflow-y-auto space-y-1">
           {brainstormCauses.map((cause, idx) => (
-            <label key={idx} className="flex items-start gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-sky-100 cursor-pointer">
+            <label key={idx} className="flex items-start gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-brand-100 cursor-pointer">
               <input
                 type="checkbox"
                 checked={selected.has(idx)}
                 onChange={() => handleToggle(idx)}
                 className="mt-0.5"
               />
-              <span className="text-slate-700">{idx + 1}. {cause}</span>
+              <span className="text-text-secondary">{idx + 1}. {cause}</span>
             </label>
           ))}
         </div>
@@ -401,7 +401,7 @@ function FactorSelector({ brainstormCauses, initialSelected, onConfirm }: Factor
       <div className="flex gap-2">
         <input
           type="text"
-          className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+          className="flex-1 rounded-xl border border-surface-300 px-3 py-1.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
           placeholder="手动添加因素…"
           value={customFactor}
           onChange={(e) => setCustomFactor(e.target.value)}
@@ -411,7 +411,7 @@ function FactorSelector({ brainstormCauses, initialSelected, onConfirm }: Factor
           type="button"
           onClick={handleAddCustom}
           disabled={!customFactor.trim()}
-          className="rounded-md bg-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-300 disabled:opacity-40"
+          className="rounded-md bg-surface-200 px-3 py-1.5 text-sm text-text-secondary hover:bg-surface-300 disabled:opacity-40"
         >
           添加
         </button>
@@ -420,9 +420,9 @@ function FactorSelector({ brainstormCauses, initialSelected, onConfirm }: Factor
       {customFactors.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {customFactors.map((f, idx) => (
-            <span key={idx} className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2.5 py-0.5 text-xs text-sky-700">
+            <span key={idx} className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-2.5 py-0.5 text-xs text-brand-700">
               {f}
-              <button type="button" onClick={() => setCustomFactors(customFactors.filter((_, i) => i !== idx))} className="text-sky-400 hover:text-sky-700">×</button>
+              <button type="button" onClick={() => setCustomFactors(customFactors.filter((_, i) => i !== idx))} className="text-brand-400 hover:text-brand-700">×</button>
             </span>
           ))}
         </div>
@@ -432,10 +432,10 @@ function FactorSelector({ brainstormCauses, initialSelected, onConfirm }: Factor
         type="button"
         onClick={handleConfirm}
         disabled={totalSelected < 2}
-        className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-40"
+        className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40"
       >
         开始逐对分析（已选 {totalSelected} 个因素，{totalSelected * (totalSelected - 1)} 对）
       </button>
     </div>
   );
-}
+});
