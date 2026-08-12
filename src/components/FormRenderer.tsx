@@ -267,7 +267,9 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
           />
         )}
         <FormTabs sections={activeSections} disabled={disabled} templateId={template.id} historyRecords={historyRecords} problem={problem} />
-        <VisualizationPanel templateId={template.id} values={committedValues} problemTitle={problemTitle} />
+        {activePhase?.id !== 'factors' && (
+          <VisualizationPanel templateId={template.id} values={committedValues} problemTitle={problemTitle} />
+        )}
         {validationErrors.length > 0 && (
           <div className="no-print mt-5 rounded-xl border border-danger/30 bg-danger/5 px-5 py-3.5" role="alert">
             <p className="text-sm font-semibold text-danger">⚠ 以下必填项尚未完成：</p>
