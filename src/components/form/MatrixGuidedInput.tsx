@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import clsx from 'clsx';
 import type { FormField } from '../../types';
@@ -22,7 +22,7 @@ interface CellPair {
   j: number;
 }
 
-export const MatrixGuidedInput = React.memo(function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputProps) {
+export const MatrixGuidedInput = memo(function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputProps) {
   const { watch, setValue } = useFormContext();
   const factors = watch('factors') as Array<Record<string, unknown>> | undefined;
   const matrixValue = watch(name) as Array<Record<string, unknown>> | undefined;
@@ -191,7 +191,7 @@ export const MatrixGuidedInput = React.memo(function MatrixGuidedInput({ field, 
       {field.hint && <p className="text-xs text-slate-400">{field.hint}</p>}
     </div>
   );
-}
+});
 
 interface GuidedModeProps {
   factorNames: string[];
