@@ -3,10 +3,12 @@
  * 填写当前条目时，以精简摘要展示前面已填写的内容，避免用户忘记上文。
  * 删除条目时提供短暂的"撤销删除"恢复机会（5秒内可撤销）。
  * causalChain section 使用专用的卡片式逐对引导填写组件。
- * 头脑风暴/factors 段落用横向卡片条（BrainstormCardStrip）导航并展示全部已填内容，
- * 避免重复填写与上 / 下文丢失。
+ * 每条 entry 支持折叠/展开；entry 底部提供"上一条 / 下一条"专注导航；
+ * 页面右侧悬浮按钮（FloatExpandToggleButton）可全局折叠/展开全部 entry。
+ * factors 段（要因分析法）候选原因 ≤ 15 时自动全量引入，> 15 时由 BrainstormPicker 筛选。
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useFieldArray, useFormContext } from 'react-hook-form';
 import clsx from 'clsx';
 import type { FormField, FormRecord, FormSection, Problem, TemplateId } from '../types';
@@ -134,6 +136,175 @@ export function computeSimilarPairs(
     list.sort((x, y) => y.score - x.score);
   }
   return result;
+}
+
+/**
+ * 全局"全部折叠 / 全部展开"控制：
+ * - DefaultRepeatableSection 挂载时 registerSection 上报自己的 expand/collapse 函数
+ * - 悬浮按钮 forceExpandAll / forceCollapseAll 触发所有已注册 section 同步
+ * - mode 显示当前最新一次操作的语义
+ */
+interface RepeatableExpandContextValue {
+  registerSection: (id: string, controls: { expand: () => void; collapse: () => void }) => () => void;
+  forceExpandAll: () => void;
+  forceCollapseAll: () => void;
+  mode: 'expanded' | 'collapsed';
+}
+
+const RepeatableExpandContext = createContext<RepeatableExpandContextValue | null>(null);
+
+export function useRepeatableExpand(): RepeatableExpandContextValue {
+  const ctx = useContext(RepeatableExpandContext);
+  if (!ctx) {
+    throw new Error('useRepeatableExpand must be used inside RepeatableExpandProvider');
+  }
+  return ctx;
+}
+
+export function RepeatableExpandProvider({ children }: { children: ReactNode }) {
+  const sectionsRef = useRef<Map<string, { expand: () => void; collapse: () => void }>>(new Map());
+  const [mode, setMode] = useState<'expanded' | 'collapsed'>('collapsed');
+
+  const registerSection = useCallback(
+    (id: string, controls: { expand: () => void; collapse: () => void }) => {
+      sectionsRef.current.set(id, controls);
+      return () => {
+        sectionsRef.current.delete(id);
+      };
+    },
+    [],
+  );
+
+  const forceExpandAll = useCallback(() => {
+    sectionsRef.current.forEach((c) => c.expand());
+    setMode('expanded');
+  }, []);
+
+  const forceCollapseAll = useCallback(() => {
+    sectionsRef.current.forEach((c) => c.collapse());
+    setMode('collapsed');
+  }, []);
+
+  const value = useMemo(
+    () => ({ registerSection, forceExpandAll, forceCollapseAll, mode }),
+    [registerSection, forceExpandAll, forceCollapseAll, mode],
+  );
+
+  return <RepeatableExpandContext.Provider value={value}>{children}</RepeatableExpandContext.Provider>;
+}
+
+/**
+ * 页面右侧全局可拖动悬浮按钮：点击切换"全部折叠 / 全部展开"。
+ * - 默认位置：右侧 16px、垂直居中
+ * - 鼠标按下并拖动（位移 > 3px）即移动按钮；纯点击则触发折叠/展开
+ * - 拖动范围限制在视口内
+ */
+export function FloatExpandToggleButton() {
+  const { mode, forceExpandAll, forceCollapseAll } = useRepeatableExpand();
+  const [pos, setPos] = useState<{ right: number; topPercent: number }>({ right: 16, topPercent: 50 });
+  const dragRef = useRef<{ startX: number; startY: number; moved: boolean } | null>(null);
+
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      const d = dragRef.current;
+      if (!d) return;
+      const dx = e.clientX - d.startX;
+      const dy = e.clientY - d.startY;
+      if (!d.moved && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) d.moved = true;
+      if (d.moved) {
+        setPos((p) => ({
+          right: Math.max(0, Math.min(window.innerWidth - 56, p.right - dx)),
+          topPercent: Math.max(0, Math.min(100, p.topPercent - (dy / window.innerHeight) * 100)),
+        }));
+        d.startX = e.clientX;
+        d.startY = e.clientY;
+      }
+    }
+    function onUp() {
+      // 不清空 dragRef；交给 onMouseUp 内的 dragRef.current === null 检查避免 click 误触
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
+
+  function handleMouseDown(e: React.MouseEvent<HTMLButtonElement>) {
+    e.preventDefault();
+    dragRef.current = { startX: e.clientX, startY: e.clientY, moved: false };
+  }
+
+  function handleMouseUp() {
+    const d = dragRef.current;
+    dragRef.current = null;
+    if (!d || d.moved) return; // 拖动时不触发点击
+    // 纯点击：切换模式
+    if (mode === 'expanded') forceCollapseAll();
+    else forceExpandAll();
+  }
+
+  return (
+    <button
+      type="button"
+      aria-label={mode === 'expanded' ? '全部折叠' : '全部展开'}
+      title={mode === 'expanded' ? '全部折叠（点击） / 拖动调整位置' : '全部展开（点击） / 拖动调整位置'}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onTouchStart={(e) => {
+        // 触屏：把首个 touch 当作起点
+        const t = e.touches[0];
+        if (!t) return;
+        dragRef.current = { startX: t.clientX, startY: t.clientY, moved: false };
+      }}
+      onTouchMove={(e) => {
+        const d = dragRef.current;
+        if (!d) return;
+        const t = e.touches[0];
+        if (!t) return;
+        const dx = t.clientX - d.startX;
+        const dy = t.clientY - d.startY;
+        if (!d.moved && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) d.moved = true;
+        if (d.moved) {
+          setPos((p) => ({
+            right: Math.max(0, Math.min(window.innerWidth - 56, p.right - dx)),
+            topPercent: Math.max(0, Math.min(100, p.topPercent - (dy / window.innerHeight) * 100)),
+          }));
+          d.startX = t.clientX;
+          d.startY = t.clientY;
+        }
+      }}
+      onTouchEnd={() => {
+        const d = dragRef.current;
+        dragRef.current = null;
+        if (!d || d.moved) return;
+        if (mode === 'expanded') forceCollapseAll();
+        else forceExpandAll();
+      }}
+      style={{
+        right: `${pos.right}px`,
+        top: `${pos.topPercent}%`,
+        transform: 'translateY(-50%)',
+      }}
+      className="fixed z-40 flex h-12 w-12 items-center justify-center rounded-full border border-brand-300 bg-white/90 shadow-lg backdrop-blur transition hover:bg-brand-50 active:cursor-grabbing cursor-grab select-none"
+    >
+      {/* 双箭头：上半箭头 + 下半箭头，按 mode 切换方向 */}
+      <svg viewBox="0 0 24 24" className="h-5 w-5 text-brand-600" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {mode === 'expanded' ? (
+          <>
+            <polyline points="6 9 12 15 18 9" />
+            <polyline points="6 14 12 20 18 14" />
+          </>
+        ) : (
+          <>
+            <polyline points="6 15 12 9 18 15" />
+            <polyline points="6 10 12 4 18 10" />
+          </>
+        )}
+      </svg>
+    </button>
+  );
 }
 
 interface BrainstormPickerProps {
@@ -342,197 +513,6 @@ function WhyFirstLevelPicker({ causes, currentValue, onSelect, disabled }: WhyFi
   );
 }
 
-interface BrainstormCardStripProps {
-  section: FormSection;
-  values: Record<string, unknown>;
-  /** 哪个 entry 当前是焦点（高亮其卡片） */
-  activeIndex: number | null;
-  /** 点击某张卡片时回调（参数为 entry 索引），父组件负责滚动定位 */
-  onCardClick: (idx: number) => void;
-  /** 点击"添加新原因"卡片时回调，父组件负责 append */
-  onAppendNew: () => void;
-  /** 相似原因检测结果：entry 索引 → 与其相似的其它 entry 列表 */
-  similarPairs?: Map<number, SimilarPair[]>;
-  /** 是否所有 entry 都展开（控制"折叠全部 / 展开全部"切换按钮文案） */
-  allExpanded: boolean;
-  /** 切换"全部展开 / 全部折叠"的回调 */
-  onToggleExpandAll: () => void;
-  disabled?: boolean;
-}
-
-/**
- * 横向卡片条：每个 entry 一张卡片，完整展示已填写的"原因"和"证据"。
- * 解决"已有原因截断看不清、容易重复填写"的问题：
- *   - 显示完整内容（不截断），并展示证据字段；
- *   - 点击卡片跳转到对应 entry 编辑器；
- *   - 当前激活 entry 对应的卡片高亮（其它自动收起，避免屏幕拥挤）。
- *   - 与其它原因高度相似时，卡片右上角显示 "≈ 与 #N 相似" 徽标。
- */
-function BrainstormCardStrip({
-  section,
-  values,
-  activeIndex,
-  onCardClick,
-  onAppendNew,
-  similarPairs,
-  allExpanded,
-  onToggleExpandAll,
-  disabled,
-}: BrainstormCardStripProps) {
-  const sectionEntries = (values[section.id] as Record<string, unknown>[] | undefined) ?? [];
-  const primaryField = section.fields[0];
-  const secondaryField = section.fields[1];
-
-  function getEntryText(entry: Record<string, unknown>, fieldId: string | undefined): string {
-    if (!fieldId) return '';
-    const v = entry[fieldId];
-    return typeof v === 'string' ? v.trim() : '';
-  }
-
-  const filledCount = sectionEntries.filter((e) => getEntryText(e, primaryField?.id).length > 0).length;
-  const totalCount = sectionEntries.length;
-
-  const stripRef = useRef<HTMLDivElement>(null);
-
-  // 当 activeIndex 变化时，把对应卡片滚动到条带可视区域（横向）
-  useEffect(() => {
-    if (activeIndex === null || !stripRef.current) return;
-    const activeCard = stripRef.current.querySelector<HTMLElement>(`[data-card-index="${activeIndex}"]`);
-    if (activeCard) {
-      activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    }
-  }, [activeIndex]);
-
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-baseline gap-2">
-          <p className="text-xs font-semibold text-slate-600">
-            已有原因{' '}
-            <span className="text-brand-600">
-              {filledCount} / {totalCount}
-            </span>
-          </p>
-          {totalCount > filledCount && (
-            <p className="text-xs text-slate-400">
-              · 待补充 {totalCount - filledCount} 项
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          <p className="text-xs text-slate-400">点击卡片跳转查看/编辑该原因</p>
-          {!disabled && sectionEntries.length > 1 && (
-            <button
-              type="button"
-              onClick={onToggleExpandAll}
-              className="rounded border border-slate-300 px-2 py-0.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100"
-            >
-              {allExpanded ? '折叠全部 ▴' : '展开全部 ▾'}
-            </button>
-          )}
-        </div>
-      </div>
-      <div
-        ref={stripRef}
-        className="flex items-start gap-2.5 overflow-x-auto pb-2 -mx-1 px-1 [scrollbar-width:thin]"
-        role="list"
-      >
-        {sectionEntries.map((entry, idx) => {
-          const cause = getEntryText(entry, primaryField?.id);
-          const evidence = getEntryText(entry, secondaryField?.id);
-          const isFilled = cause.length > 0;
-          const isActive = idx === activeIndex;
-
-          return (
-            <button
-              key={idx}
-              type="button"
-              role="listitem"
-              data-card-index={idx}
-              onClick={() => onCardClick(idx)}
-              className={clsx(
-                'group relative flex min-h-44 w-72 flex-shrink-0 snap-start flex-col gap-1.5 rounded-lg border-2 p-3 text-left transition',
-                isActive
-                  ? 'border-brand-500 bg-brand-50/70 shadow-md ring-2 ring-brand-200'
-                  : isFilled
-                    ? 'border-success/40 bg-success/5 hover:border-success/60 hover:shadow-sm'
-                    : 'border-dashed border-slate-300 bg-slate-50/50 hover:border-brand-300 hover:bg-brand-50/40',
-              )}
-            >
-              <div className="flex items-baseline justify-between">
-                <span
-                  className={clsx(
-                    'text-xs font-semibold tracking-wide',
-                    isActive ? 'text-brand-700' : isFilled ? 'text-emerald-700' : 'text-slate-400',
-                  )}
-                >
-                  原因 {idx + 1}
-                </span>
-                <span
-                  className={clsx(
-                    'text-xs',
-                    isFilled ? 'text-slate-400' : 'text-slate-400',
-                  )}
-                >
-                  {isFilled ? `${cause.length} 字` : '空'}
-                </span>
-              </div>
-              {isFilled && similarPairs?.get(idx) && similarPairs.get(idx)!.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {similarPairs.get(idx)!.map((p) => (
-                    <span
-                      key={p.idx}
-                      className="inline-flex items-center gap-0.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700"
-                      title={p.text}
-                    >
-                      ≈ 与 #{p.idx + 1} 相似 {(p.score * 100).toFixed(0)}%
-                    </span>
-                  ))}
-                </div>
-              )}
-              {isFilled ? (
-                <>
-                  <p className="text-sm leading-relaxed text-slate-800 break-words">
-                    {cause}
-                  </p>
-                  {evidence && (
-                    <div className="mt-auto border-t border-slate-200/70 pt-1.5">
-                      <p className="text-xs leading-relaxed text-slate-500 break-words">
-                        <span className="font-medium text-slate-400">证据：</span>
-                        {evidence}
-                      </p>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="flex flex-1 items-center justify-center text-center">
-                  <p className="text-xs italic text-slate-400">
-                    尚未填写
-                    <br />
-                    点击下方区域补充
-                  </p>
-                </div>
-              )}
-              {isActive && (
-                <span className="absolute right-2 top-2 inline-flex h-1.5 w-1.5 rounded-full bg-brand-500" aria-hidden="true" />
-              )}
-            </button>
-          );
-        })}
-        {!disabled && (
-          <button
-            type="button"
-            onClick={onAppendNew}
-            className="flex min-h-44 w-32 flex-shrink-0 snap-start flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50/50 px-3 text-slate-500 transition hover:border-brand-400 hover:bg-brand-50/60 hover:text-brand-600"
-          >
-            <span className="text-2xl leading-none">+</span>
-            <p className="text-xs">添加新原因</p>
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 export function RepeatableSection({ section, disabled, templateId, historyRecords, problem }: RepeatableSectionProps) {
   if (section.id === 'causalChain') {
@@ -554,6 +534,30 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
   const isWhyChain = section.id === 'whyChain';
 
   /**
+   * 每条 entry 的折叠/展开状态：使用 React state 持久化。
+   * 默认全部折叠，仅第一条（idx===0）默认展开。
+   */
+  const [expanded, setExpanded] = useState<Set<number>>(() => new Set([0]));
+
+  /**
+   * 全局"全部折叠 / 全部展开"按钮的注册：用 ref 持有最新回调，
+   * 仅注册一次，避免 setExpanded/entries 等频繁变化导致重复 register。
+   * 右侧悬浮按钮 forceExpandAll / forceCollapseAll 会调用注册的 expand/collapse 函数。
+   */
+  const expandAllRef = useRef<() => void>(() => {});
+  const collapseAllRef = useRef<() => void>(() => {});
+  // 每次 render 更新最新实现闭包（基于当前 entries 长度）
+  expandAllRef.current = () => setExpanded(new Set(entries.map((_, i) => i)));
+  collapseAllRef.current = () => setExpanded(new Set([0]));
+  const { registerSection } = useRepeatableExpand();
+  useEffect(() => {
+    return registerSection(section.id, {
+      expand: () => expandAllRef.current?.(),
+      collapse: () => collapseAllRef.current?.(),
+    });
+  }, [registerSection, section.id]);
+
+  /**
    * 每个 entry 编辑器容器的 DOM ref，用于：
    * - 卡片条点击 → 滚动到对应 entry；
    * - IntersectionObserver 自动追踪当前可视 entry → 反向高亮对应卡片。
@@ -562,12 +566,6 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
-  /**
-   * 每条 entry 的折叠/展开状态：使用 React state 持久化。
-   * - 默认全部折叠，仅第一条（idx===0）默认展开，确保用户进入后能立即看到主要内容
-   * - 用户主动切换或新增条目时自动展开相应条目（autoExpandRef 跟踪）
-   */
-  const [expanded, setExpanded] = useState<Set<number>>(() => new Set([0]));
   const previousLenRef = useRef(entries.length);
 
   useEffect(() => {
@@ -616,20 +614,6 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
         focusable?.focus({ preventScroll: true });
       });
     });
-  }
-
-  /**
-   * 一键切换"全部折叠 / 全部展开"，让用户主动管理屏幕占用。
-   * 全部展开时 → 折叠（保留第 0 条展开，方便继续填）；
-   * 否则 → 全部展开。
-   */
-  function toggleExpandAll() {
-    const isAllExpanded = expanded.size >= entries.length;
-    if (isAllExpanded) {
-      setExpanded(new Set([0]));
-    } else {
-      setExpanded(new Set(entries.map((_, i) => i)));
-    }
   }
 
   function setEntryRef(idx: number, el: HTMLElement | null) {
@@ -712,7 +696,7 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
     return sectionEntries.some((entry) => entry[fieldId] === value);
   })();
 
-  const brainstormCauses = (() => {
+  const brainstormCauses = useMemo(() => {
     if (section.id !== 'factors' && section.id !== 'causalChain' && section.id !== 'whyChain') return [];
     if (!problem) return [];
     const brainstorm = problem.data?.['brainstorm'];
@@ -720,7 +704,49 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
     return brainstorm
       .map((item) => (typeof item?.cause === 'string' ? item.cause.trim() : ''))
       .filter((c) => c.length > 0);
-  })();
+  }, [problem, section.id]);
+
+  /**
+   * 要因分析法（factors 段）自动引入：
+   * - 候选原因 ≤ 15 个（KEY_FACTOR_MAX）时，自动全量引入因素清单，用户无需手动勾选，
+   *   直接进入关系矩阵阶段；
+   * - > 15 个时由 BrainstormPicker 让用户取消勾选多余项。
+   * 采用"补齐缺失"策略：已引入的候选保留，只补充缺失的候选，并清理空占位条目
+   * （避免旧版 hasFilled 保护导致的"只识别了一个原因"问题）。
+   */
+  useEffect(() => {
+    if (!isFactorsSection) return;
+    if (brainstormCauses.length === 0) return;
+    if (brainstormCauses.length > KEY_FACTOR_MAX) return; // > 15 交给 BrainstormPicker
+
+    const currentEntries = (values[section.id] as Record<string, unknown>[] | undefined) ?? [];
+
+    // 已引入的非空 name 集合
+    const existingNames = new Set(
+      currentEntries
+        .map((e) => (typeof e?.name === 'string' ? e.name.trim() : ''))
+        .filter((n) => n.length > 0),
+    );
+
+    // 缺失的候选（尚未引入）
+    const missing = brainstormCauses.filter((c) => !existingNames.has(c));
+
+    // 清理空占位条目（如 buildDefaultValues 预填的 minEntries 空 entry）
+    const blankIndices: number[] = [];
+    for (let i = currentEntries.length - 1; i >= 0; i--) {
+      const v = currentEntries[i]?.name;
+      if (typeof v !== 'string' || !v.trim()) blankIndices.push(i);
+    }
+    for (const idx of blankIndices) remove(idx);
+
+    // 补齐缺失候选
+    if (missing.length > 0) {
+      for (const cause of missing) {
+        append({ name: cause, description: '' });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFactorsSection, brainstormCauses]);
 
   /**
    * 相似原因检测：仅对"原因型"段落（brainstorm / factors）两两比较首字段。
@@ -737,8 +763,8 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
   }, [values, section.id, section.fields]);
 
   /**
-   * 要因分析法（factors 段）改为用户手动从候选原因选择引入：不再自动 append，
-   * 用户通过 BrainstormPicker 控制引入（> 15 时强制保留 15 个；≤ 15 时也可手动筛选）。
+   * factors 段已引入的候选名称集合：供 BrainstormPicker 标记"已引入"项
+   * （> 15 个候选时用户取消勾选多余项）。
    */
   const existingNames = (() => {
     const sectionEntries = (values[section.id] as Record<string, unknown>[] | undefined) ?? [];
@@ -796,25 +822,12 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
           <span className="text-xs text-amber-500">5秒后自动消失</span>
         </div>
       )}
-      {!disabled && isFactorsSection && brainstormCauses.length > 0 && (
+      {!disabled && isFactorsSection && brainstormCauses.length > KEY_FACTOR_MAX && (
         <BrainstormPicker
           brainstormCauses={brainstormCauses}
           existingNames={existingNames}
           onPick={handleBrainstormPick}
           maxSelect={KEY_FACTOR_MAX}
-        />
-      )}
-      {section.id === 'brainstorm' && entries.length > 0 && (
-        <BrainstormCardStrip
-          section={section}
-          values={values}
-          activeIndex={activeIndex}
-          onCardClick={navigateToEntry}
-          onAppendNew={handleAppend}
-          similarPairs={similarPairs}
-          allExpanded={expanded.size >= entries.length}
-          onToggleExpandAll={toggleExpandAll}
-          disabled={disabled}
         />
       )}
       {entries.map((entry, idx) => {
@@ -930,18 +943,10 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
         </div>
         );
       })}
-      {!disabled && !shouldStopAppend && !isBrainstormLike && (
+      {!disabled && !shouldStopAppend && (
         <button
           type="button"
-          onClick={() => {
-            const newEntry = Object.fromEntries(
-              section.fields.map((f) => [
-                f.id,
-                f.autoTimestamp ? new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }) : '',
-              ]),
-            );
-            append(newEntry);
-          }}
+          onClick={handleAppend}
           className="text-sm text-sky-600 hover:underline"
         >
           + 添加一条

@@ -18,6 +18,7 @@ import { FormTabs } from './form/FormTabs';
 import { VisualizationPanel } from './visualize/VisualizationPanel';
 import { SnapshotList } from './history/SnapshotList';
 import { PdfExportButton } from './export/PdfExportButton';
+import { FloatExpandToggleButton, RepeatableExpandProvider } from './RepeatableSection';
 
 /** 解析模板默认值：按 section/field 遍历，注入 defaultValue（问题向导页与编辑页共用）。 */
 export function buildDefaultValues(template: FormTemplate, record: FormRecord | undefined, todayISO: string): Record<string, unknown> {
@@ -249,8 +250,9 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
   const isLastPhase = phases ? activePhaseIndex === phases.length - 1 : true;
 
   return (
-    <FormProvider {...methods}>
-      <form onSubmit={(e) => e.preventDefault()} className="print-area animate-fade-in">
+    <RepeatableExpandProvider>
+      <FormProvider {...methods}>
+        <form onSubmit={(e) => e.preventDefault()} className="print-area animate-fade-in">
         {isCompleted && (
           <div className="mb-5 rounded-xl border border-success/30 bg-success/5 px-5 py-3.5 text-sm font-medium text-success">
             ✓ 本次分析已标记完成，内容为只读状态。
@@ -364,6 +366,8 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
           </div>
         )}
       </form>
+      <FloatExpandToggleButton />
     </FormProvider>
+    </RepeatableExpandProvider>
   );
 }
