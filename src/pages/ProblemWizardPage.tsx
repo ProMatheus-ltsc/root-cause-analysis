@@ -11,6 +11,7 @@ import { useToast } from '../hooks/useToast';
 import { validateRequiredFields } from '../utils/formValidation';
 import { buildDefaultValues } from '../components/FormRenderer';
 import { FormTabs } from '../components/form/FormTabs';
+import { FloatExpandToggleButton, RepeatableExpandProvider } from '../components/RepeatableSection';
 import { problemWizardTemplate as PROBLEM_TEMPLATE } from '../templates/problemWizard';
 
 /** 头脑风暴最少原因数（发散阶段的覆盖度要求） */
@@ -64,9 +65,12 @@ export default function ProblemWizardPage() {
         </p>
       </div>
       <FormProvider {...methods}>
-        <form onSubmit={(e) => e.preventDefault()} className="print-area">
-          <FormTabs sections={PROBLEM_TEMPLATE.sections} disabled={false} templateId="problemWizard" historyRecords={historyRecords} />
-        </form>
+        <RepeatableExpandProvider>
+          <form onSubmit={(e) => e.preventDefault()} className="print-area">
+            <FormTabs sections={PROBLEM_TEMPLATE.sections} disabled={false} templateId="problemWizard" historyRecords={historyRecords} />
+          </form>
+          <FloatExpandToggleButton />
+        </RepeatableExpandProvider>
       </FormProvider>
       <div className="no-print mt-8 flex items-center gap-3 border-t border-slate-200 pt-4">
         <button

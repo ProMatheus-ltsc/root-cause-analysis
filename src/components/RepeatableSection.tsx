@@ -153,12 +153,16 @@ interface RepeatableExpandContextValue {
 
 const RepeatableExpandContext = createContext<RepeatableExpandContextValue | null>(null);
 
+/** 无 Provider 时的容错 fallback：所有操作 no-op，页面不崩。 */
+const NOOP_EXPAND_CTX: RepeatableExpandContextValue = {
+  registerSection: () => () => {},
+  forceExpandAll: () => {},
+  forceCollapseAll: () => {},
+  mode: 'collapsed',
+};
+
 export function useRepeatableExpand(): RepeatableExpandContextValue {
-  const ctx = useContext(RepeatableExpandContext);
-  if (!ctx) {
-    throw new Error('useRepeatableExpand must be used inside RepeatableExpandProvider');
-  }
-  return ctx;
+  return useContext(RepeatableExpandContext) ?? NOOP_EXPAND_CTX;
 }
 
 export function RepeatableExpandProvider({ children }: { children: ReactNode }) {
@@ -200,9 +204,13 @@ export function RepeatableExpandProvider({ children }: { children: ReactNode }) 
  * - 拖动范围限制在视口内
  */
 export function FloatExpandToggleButton() {
+  const ctx = useContext(RepeatableExpandContext);
   const { mode, forceExpandAll, forceCollapseAll } = useRepeatableExpand();
   const [pos, setPos] = useState<{ right: number; topPercent: number }>({ right: 16, topPercent: 50 });
   const dragRef = useRef<{ startX: number; startY: number; moved: boolean } | null>(null);
+
+  // 未包裹 RepeatableExpandProvider 时不渲染（如某些页面没有 repeatable section 时）
+  if (!ctx) return null;
 
   useEffect(() => {
     function onMove(e: MouseEvent) {

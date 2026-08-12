@@ -9,6 +9,7 @@ import { useToast } from '../hooks/useToast';
 import { validateRequiredFields } from '../utils/formValidation';
 import { buildDefaultValues } from '../components/FormRenderer';
 import { FormTabs } from '../components/form/FormTabs';
+import { FloatExpandToggleButton, RepeatableExpandProvider } from '../components/RepeatableSection';
 import { useEffect, useState } from 'react';
 
 const BRAINSTORM_MIN_COUNT = 15;
@@ -75,9 +76,12 @@ export default function ProblemEditPage() {
         <p className="mt-1 text-sm text-slate-500">修改问题定义、头脑风暴等内容后保存。</p>
       </div>
       <FormProvider {...methods}>
-        <form onSubmit={(e) => e.preventDefault()} className="print-area">
-          <FormTabs sections={PROBLEM_TEMPLATE.sections} disabled={false} templateId="problemWizard" historyRecords={historyRecords} />
-        </form>
+        <RepeatableExpandProvider>
+          <form onSubmit={(e) => e.preventDefault()} className="print-area">
+            <FormTabs sections={PROBLEM_TEMPLATE.sections} disabled={false} templateId="problemWizard" historyRecords={historyRecords} />
+          </form>
+          <FloatExpandToggleButton />
+        </RepeatableExpandProvider>
       </FormProvider>
       <div className="no-print mt-8 flex items-center gap-3 border-t border-slate-200 pt-4">
         <button
