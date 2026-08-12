@@ -353,6 +353,10 @@ interface BrainstormCardStripProps {
   onAppendNew: () => void;
   /** 相似原因检测结果：entry 索引 → 与其相似的其它 entry 列表 */
   similarPairs?: Map<number, SimilarPair[]>;
+  /** 是否所有 entry 都展开（控制"折叠全部 / 展开全部"切换按钮文案） */
+  allExpanded: boolean;
+  /** 切换"全部展开 / 全部折叠"的回调 */
+  onToggleExpandAll: () => void;
   disabled?: boolean;
 }
 
@@ -371,6 +375,8 @@ function BrainstormCardStrip({
   onCardClick,
   onAppendNew,
   similarPairs,
+  allExpanded,
+  onToggleExpandAll,
   disabled,
 }: BrainstormCardStripProps) {
   const sectionEntries = (values[section.id] as Record<string, unknown>[] | undefined) ?? [];
@@ -398,7 +404,7 @@ function BrainstormCardStrip({
   }, [activeIndex]);
 
   return (
-    <div className="sticky top-2 z-20 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+    <div className="rounded-lg border border-slate-200 bg-white p-3">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-baseline gap-2">
           <p className="text-xs font-semibold text-slate-600">
@@ -413,7 +419,18 @@ function BrainstormCardStrip({
             </p>
           )}
         </div>
-        <p className="text-xs text-slate-400">点击卡片跳转查看/编辑该原因</p>
+        <div className="flex items-center gap-3">
+          <p className="text-xs text-slate-400">点击卡片跳转查看/编辑该原因</p>
+          {!disabled && sectionEntries.length > 1 && (
+            <button
+              type="button"
+              onClick={onToggleExpandAll}
+              className="rounded border border-slate-300 px-2 py-0.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100"
+            >
+              {allExpanded ? '折叠全部 ▴' : '展开全部 ▾'}
+            </button>
+          )}
+        </div>
       </div>
       <div
         ref={stripRef}
@@ -535,7 +552,6 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
   const isBrainstormLike = section.id === 'brainstorm' || section.id === 'factors';
   const isFactorsSection = section.id === 'factors';
   const isWhyChain = section.id === 'whyChain';
-  const autoImportedRef = useRef(false);
 
   /**
    * 每个 entry 编辑器容器的 DOM ref，用于：
@@ -581,6 +597,41 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
     });
   }
 
+  /**
+   * "专注模式"导航：跳转到目标 entry 时，只展开这一条、折叠其余。
+   * 用于卡片条点击 / 上一条 / 下一条 / 相似提示跳转 —— 让用户始终专注当前一条，
+   * 避免折叠列表很长、减少上滑时间。
+   */
+  function navigateToEntry(idx: number) {
+    setExpanded(new Set([idx]));
+    setActiveIndex(idx);
+
+    // 等 React commit + DOM 更新，再滚动 + focus
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = entryRefsMap.current.get(idx);
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const focusable = el.querySelector<HTMLElement>('input, textarea, select, [tabindex]');
+        focusable?.focus({ preventScroll: true });
+      });
+    });
+  }
+
+  /**
+   * 一键切换"全部折叠 / 全部展开"，让用户主动管理屏幕占用。
+   * 全部展开时 → 折叠（保留第 0 条展开，方便继续填）；
+   * 否则 → 全部展开。
+   */
+  function toggleExpandAll() {
+    const isAllExpanded = expanded.size >= entries.length;
+    if (isAllExpanded) {
+      setExpanded(new Set([0]));
+    } else {
+      setExpanded(new Set(entries.map((_, i) => i)));
+    }
+  }
+
   function setEntryRef(idx: number, el: HTMLElement | null) {
     if (el) {
       entryRefsMap.current.set(idx, el);
@@ -589,27 +640,9 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
     }
   }
 
-  function handleCardClick(idx: number) {
-    // 折叠态不渲染输入框，必须先展开目标 entry，等 DOM 更新后再滚动定位
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      next.add(idx);
-      return next;
-    });
-    setActiveIndex(idx);
+  // 注：跳转逻辑统一走 navigateToEntry（见上），handleCardClick 已废弃。
 
-    // 等待 React commit 完成（double rAF），再滚动 + focus
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const el = entryRefsMap.current.get(idx);
-        if (!el) return;
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        // 把焦点放到该 entry 的第一个可输入字段
-        const focusable = el.querySelector<HTMLElement>('input, textarea, select, [tabindex]');
-        focusable?.focus({ preventScroll: true });
-      });
-    });
-  }
+  // -- 派生数据 --
 
   // 用 IntersectionObserver 监听各 entry 的可视状态，自动更新 activeIndex。
   useEffect(() => {
@@ -704,33 +737,9 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
   }, [values, section.id, section.fields]);
 
   /**
-   * 要因分析法自动引入：候选原因 ≤ 15 个（KEY_FACTOR_MAX）时，无需用户手动勾选，
-   * 直接全量引入因素清单，方便直接进入关系矩阵；> 15 个时才交由用户筛选（见 BrainstormPicker）。
+   * 要因分析法（factors 段）改为用户手动从候选原因选择引入：不再自动 append，
+   * 用户通过 BrainstormPicker 控制引入（> 15 时强制保留 15 个；≤ 15 时也可手动筛选）。
    */
-  useEffect(() => {
-    if (!isFactorsSection || autoImportedRef.current) return;
-    if (brainstormCauses.length === 0) return;
-    autoImportedRef.current = true; // 仅尝试一次，避免覆盖用户后续的手动修改
-
-    const currentEntries = (values[section.id] as Record<string, unknown>[] | undefined) ?? [];
-    const hasFilled = currentEntries.some((e) => typeof e?.name === 'string' && e.name.trim());
-    if (hasFilled) return; // 用户已填写内容，不自动覆盖
-
-    if (brainstormCauses.length > KEY_FACTOR_MAX) return; // 超过上限，交给用户筛选
-
-    // 删除预填的空条目，再全量引入
-    const blankIndices: number[] = [];
-    for (let i = currentEntries.length - 1; i >= 0; i--) {
-      const v = currentEntries[i]?.name;
-      if (typeof v !== 'string' || !v.trim()) blankIndices.push(i);
-    }
-    for (const idx of blankIndices) remove(idx);
-    for (const cause of brainstormCauses) {
-      append({ name: cause, description: '' });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFactorsSection, brainstormCauses]);
-
   const existingNames = (() => {
     const sectionEntries = (values[section.id] as Record<string, unknown>[] | undefined) ?? [];
     if (section.id === 'causalChain') {
@@ -787,7 +796,7 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
           <span className="text-xs text-amber-500">5秒后自动消失</span>
         </div>
       )}
-      {!disabled && isFactorsSection && brainstormCauses.length > KEY_FACTOR_MAX && (
+      {!disabled && isFactorsSection && brainstormCauses.length > 0 && (
         <BrainstormPicker
           brainstormCauses={brainstormCauses}
           existingNames={existingNames}
@@ -795,14 +804,16 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
           maxSelect={KEY_FACTOR_MAX}
         />
       )}
-      {isBrainstormLike && entries.length > 0 && (
+      {section.id === 'brainstorm' && entries.length > 0 && (
         <BrainstormCardStrip
           section={section}
           values={values}
           activeIndex={activeIndex}
-          onCardClick={handleCardClick}
+          onCardClick={navigateToEntry}
           onAppendNew={handleAppend}
           similarPairs={similarPairs}
+          allExpanded={expanded.size >= entries.length}
+          onToggleExpandAll={toggleExpandAll}
           disabled={disabled}
         />
       )}
@@ -855,7 +866,7 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
                 <span key={p.idx}>
                   <button
                     type="button"
-                    onClick={() => handleCardClick(p.idx)}
+                    onClick={() => navigateToEntry(p.idx)}
                     className="font-medium text-amber-800 underline decoration-dotted underline-offset-2 hover:text-amber-950"
                   >
                     「原因 {p.idx + 1}」（相似度 {(p.score * 100).toFixed(0)}%）
@@ -899,7 +910,7 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
                 <button
                   type="button"
                   disabled={idx === 0 || disabled}
-                  onClick={() => handleCardClick(idx - 1)}
+                  onClick={() => navigateToEntry(idx - 1)}
                   className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   ← 上一条
@@ -908,7 +919,7 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
                 <button
                   type="button"
                   disabled={idx >= entries.length - 1 || disabled}
-                  onClick={() => handleCardClick(idx + 1)}
+                  onClick={() => navigateToEntry(idx + 1)}
                   className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   下一条 →
