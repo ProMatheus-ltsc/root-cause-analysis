@@ -1,0 +1,1416 @@
+{
+  "records": [
+    {
+      "id": "3d9cd145-fd83-4b3c-98c4-f6b408950f7b",
+      "templateId": "fiveWhy",
+      "problemId": "bf04338c-2334-495a-a69b-ae48a9c0fb2f",
+      "title": "广分物理和产品部自近两年起在出现在乐力PPT使用，九年级讲义使用中出现「在产品使用上不符合预期」，其过程为全面，影响全面。目标为100%使用产品部内部资料，现状与目标存在差距，二者之差即待分析的问题。",
+      "data": {
+        "whyChain": [
+          {
+            "why": "产品部的资料对于广州本地的适用性不高",
+            "evidenceType": "fact",
+            "evidence": "",
+            "dataCredibility": "",
+            "isRootCause": "continue"
+          },
+          {
+            "why": "",
+            "evidenceType": "",
+            "evidence": "",
+            "dataCredibility": "",
+            "isRootCause": ""
+          }
+        ]
+      },
+      "status": "draft",
+      "createdAt": "2026-08-12T16:35:21.666Z",
+      "updatedAt": "2026-08-12T16:35:41.666Z"
+    },
+    {
+      "id": "5976f4ab-84e5-4dd4-a71a-b12f7d203acc",
+      "templateId": "keyFactor",
+      "problemId": "bf04338c-2334-495a-a69b-ae48a9c0fb2f",
+      "title": "广分物理和产品部自近两年起在出现在乐力PPT使用，九年级讲义使用中出现「在产品使用上不符合预期」，其过程为全面，影响全面。目标为100%使用产品部内部资料，现状与目标存在差距，二者之差即待分析的问题。",
+      "data": {
+        "factors": [
+          {
+            "name": "没有把\\\"使用内部资料率\\\"纳入老师的考核或教学评估指标",
+            "description": ""
+          },
+          {
+            "name": "产品部内部资料覆盖度不足，九年级物理的知识点/题型没有完整对应的内部素材",
+            "description": ""
+          },
+          {
+            "name": "产品部的资料对于广州本地的适用性不高",
+            "description": ""
+          },
+          {
+            "name": "内部资料的质量（排版/难度梯度/讲解深度）不如广分现成的PPT和讲义",
+            "description": ""
+          },
+          {
+            "name": "老师认为\\\"广分的内容经过市场验证、更靠谱\\\"，对产品部资料缺乏信任",
+            "description": ""
+          },
+          {
+            "name": "备课流程中没有强制嵌入\\\"从产品部资料库取材\\\"的环节",
+            "description": ""
+          },
+          {
+            "name": "产品部和一线教学团队之间缺乏需求沟通渠道，产品部不知道老师实际要什么",
+            "description": ""
+          },
+          {
+            "name": "产品部PPT的模板/动画不如广分美观，课堂呈现效果打折扣",
+            "description": ""
+          },
+          {
+            "name": "产品部资料的更新频率跟不上教学进度或考试大纲变化",
+            "description": ""
+          },
+          {
+            "name": "老师试用过内部资料但体验不好，之后就没再用了",
+            "description": ""
+          },
+          {
+            "name": "广分需要本地化沉淀，能带走",
+            "description": ""
+          },
+          {
+            "name": "产品标准化理念传递不到位",
+            "description": ""
+          },
+          {
+            "name": "老师已经习惯了广分资料的使用方式和课堂节奏，切换成本高",
+            "description": ""
+          },
+          {
+            "name": "教研组长/校区负责人没有对资料使用情况做检查和反馈",
+            "description": ""
+          },
+          {
+            "name": "产品部产出资料后没有主动推送/宣导，全靠老师自己发现",
+            "description": ""
+          }
+        ],
+        "matrix": [
+          {
+            "c0": 0,
+            "c1": 1,
+            "c2": 2,
+            "c3": 1,
+            "c4": 0,
+            "c5": 4,
+            "c6": 1,
+            "c7": 0,
+            "c8": 1,
+            "c9": 4,
+            "c10": 4,
+            "c11": 0,
+            "c12": 4,
+            "c13": 4,
+            "c14": 1
+          },
+          {
+            "c0": 0,
+            "c1": 0,
+            "c2": 1,
+            "c3": 0,
+            "c4": 0,
+            "c5": 0,
+            "c6": 0,
+            "c7": 2,
+            "c8": 4,
+            "c9": 4,
+            "c10": 4,
+            "c11": 0,
+            "c12": 0,
+            "c13": 0,
+            "c14": 0
+          },
+          {
+            "c0": 0,
+            "c1": 0,
+            "c2": 0,
+            "c3": 0,
+            "c4": 1,
+            "c5": 1,
+            "c6": 1,
+            "c7": 1,
+            "c8": 0,
+            "c9": 0,
+            "c10": 0,
+            "c11": 0,
+            "c12": 1,
+            "c13": 1,
+            "c14": 2
+          },
+          {
+            "c0": 0,
+            "c1": 2,
+            "c2": 4,
+            "c3": 0,
+            "c4": 2,
+            "c5": 2,
+            "c6": 0,
+            "c7": 0,
+            "c8": 0,
+            "c9": 0,
+            "c10": 2,
+            "c11": 2,
+            "c12": 2,
+            "c13": 2,
+            "c14": 0
+          },
+          {
+            "c0": 2,
+            "c1": 2,
+            "c2": 0,
+            "c3": 0,
+            "c4": 0,
+            "c5": 0,
+            "c6": 0,
+            "c7": 0,
+            "c8": 4,
+            "c9": 4,
+            "c10": 4,
+            "c11": 4,
+            "c12": 4,
+            "c13": 0,
+            "c14": 0
+          },
+          {
+            "c0": 0,
+            "c1": 2,
+            "c2": 0,
+            "c3": 0,
+            "c4": 4,
+            "c5": 0,
+            "c6": 0,
+            "c7": 0,
+            "c8": 1,
+            "c9": 2,
+            "c10": 2,
+            "c11": 2,
+            "c12": 0,
+            "c13": 0,
+            "c14": 0
+          },
+          {
+            "c0": 0,
+            "c1": 2,
+            "c2": 0,
+            "c3": 2,
+            "c4": 4,
+            "c5": 1,
+            "c6": 0,
+            "c7": 0,
+            "c8": 2,
+            "c9": 4,
+            "c10": 4,
+            "c11": 4,
+            "c12": 4,
+            "c13": 0,
+            "c14": 0
+          },
+          {
+            "c0": 2,
+            "c1": 0,
+            "c2": 0,
+            "c3": 2,
+            "c4": 4,
+            "c5": 1,
+            "c6": 2,
+            "c7": 0,
+            "c8": 0,
+            "c9": 0,
+            "c10": 0,
+            "c11": 1,
+            "c12": 1,
+            "c13": 1,
+            "c14": 1
+          },
+          {
+            "c0": 0,
+            "c1": 0,
+            "c2": 1,
+            "c3": 2,
+            "c4": 0,
+            "c5": 0,
+            "c6": 0,
+            "c7": 4,
+            "c8": 0,
+            "c9": 0,
+            "c10": 0,
+            "c11": 0,
+            "c12": 0,
+            "c13": 2,
+            "c14": 2
+          },
+          {
+            "c0": 0,
+            "c1": 0,
+            "c2": 1,
+            "c3": 2,
+            "c4": 0,
+            "c5": 0,
+            "c6": 0,
+            "c7": 4,
+            "c8": 1,
+            "c9": 0,
+            "c10": 2,
+            "c11": 4,
+            "c12": 0,
+            "c13": 0,
+            "c14": 0
+          },
+          {
+            "c0": 0,
+            "c1": 0,
+            "c2": 1,
+            "c3": 0,
+            "c4": 0,
+            "c5": 0,
+            "c6": 0,
+            "c7": 4,
+            "c8": 1,
+            "c9": 0,
+            "c10": 0,
+            "c11": 0,
+            "c12": 0,
+            "c13": 0,
+            "c14": 0
+          },
+          {
+            "c0": 4,
+            "c1": 4,
+            "c2": 1,
+            "c3": 0,
+            "c4": 0,
+            "c5": 0,
+            "c6": 0,
+            "c7": 0,
+            "c8": 2,
+            "c9": 0,
+            "c10": 4,
+            "c11": 0,
+            "c12": 2,
+            "c13": 2,
+            "c14": 2
+          },
+          {
+            "c0": 0,
+            "c1": 4,
+            "c2": 0,
+            "c3": 0,
+            "c4": 0,
+            "c5": 2,
+            "c6": 0,
+            "c7": 0,
+            "c8": 2,
+            "c9": 4,
+            "c10": 4,
+            "c11": 0,
+            "c12": 0,
+            "c13": 2,
+            "c14": 2
+          },
+          {
+            "c0": 0,
+            "c1": 4,
+            "c2": 0,
+            "c3": 0,
+            "c4": 4,
+            "c5": 2,
+            "c6": 4,
+            "c7": 0,
+            "c8": 0,
+            "c9": 4,
+            "c10": 4,
+            "c11": 0,
+            "c12": 0,
+            "c13": 0,
+            "c14": 4
+          },
+          {
+            "c0": 0,
+            "c1": 4,
+            "c2": 0,
+            "c3": 4,
+            "c4": 1,
+            "c5": 2,
+            "c6": 4,
+            "c7": 0,
+            "c8": 0,
+            "c9": 4,
+            "c10": 2,
+            "c11": 0,
+            "c12": 0,
+            "c13": 0,
+            "c14": 0
+          }
+        ]
+      },
+      "status": "draft",
+      "createdAt": "2026-08-12T16:24:21.629Z",
+      "updatedAt": "2026-08-12T16:33:49.448Z"
+    },
+    {
+      "id": "b3bf6a44-ceb5-4485-9556-af29cf891c5e",
+      "templateId": "fishbone",
+      "problemId": "bf04338c-2334-495a-a69b-ae48a9c0fb2f",
+      "title": "广分物理和产品部自近两年起在出现在乐力PPT使用，九年级讲义使用中出现「在产品使用上不符合预期」，其过程为全面，影响全面。目标为100%使用产品部内部资料，现状与目标存在差距，二者之差即待分析的问题。",
+      "data": {
+        "manSkillGapChecked": true,
+        "manSkillGapDetail": "",
+        "manResponsibilityChecked": false,
+        "manTrainingChecked": true,
+        "manTrainingDetail": "",
+        "manNotes": "",
+        "machineFaultChecked": false,
+        "machineConfigChecked": false,
+        "machineNotes": "",
+        "materialQualityChecked": true,
+        "materialQualityDetail": "",
+        "materialUpstreamChecked": false,
+        "materialNotes": "",
+        "methodMissingChecked": false,
+        "methodWrongChecked": false,
+        "methodNotes": "",
+        "envChangeChecked": true,
+        "envChangeDetail": "",
+        "envPressureChecked": false,
+        "envNotes": "",
+        "measureMissingChecked": true,
+        "measureMissingDetail": "",
+        "measureDefinitionChecked": false,
+        "measureNotes": "",
+        "primaryDimensions": false,
+        "weightTable": [
+          {
+            "dimension": "",
+            "impactLevel": "",
+            "keyFinding": ""
+          }
+        ],
+        "rootCauseJudgement": "测试",
+        "confirmedCause": "",
+        "rootCauseSummary": "",
+        "rootCauseType": null,
+        "symptomRootCauseCheck": false,
+        "meceCheck": false,
+        "verificationPlan": ""
+      },
+      "status": "draft",
+      "createdAt": "2026-08-12T16:36:09.974Z",
+      "updatedAt": "2026-08-12T16:40:46.077Z"
+    },
+    {
+      "id": "d596f1f3-3337-4a07-a302-b2958dc67d40",
+      "templateId": "systemThinking",
+      "problemId": "bf04338c-2334-495a-a69b-ae48a9c0fb2f",
+      "title": "广分物理和产品部自近两年起在出现在乐力PPT使用，九年级讲义使用中出现「在产品使用上不符合预期」，其过程为全面，影响全面。目标为100%使用产品部内部资料，现状与目标存在差距，二者之差即待分析的问题。",
+      "data": {
+        "recurrence": "occasional",
+        "causalChain": [
+          {
+            "factorA": "产品部内部资料覆盖度不足，九年级物理的知识点/题型没有完整对应的内部素材",
+            "factorB": "产品部的资料对于广州本地的适用性不高",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部内部资料覆盖度不足，九年级物理的知识点/题型没有完整对应的内部素材",
+            "factorB": "产品标准化理念传递不到位",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部内部资料覆盖度不足，九年级物理的知识点/题型没有完整对应的内部素材",
+            "factorB": "老师已经习惯了广分资料的使用方式和课堂节奏，切换成本高",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部内部资料覆盖度不足，九年级物理的知识点/题型没有完整对应的内部素材",
+            "factorB": "教研组长/校区负责人没有对资料使用情况做检查和反馈",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部内部资料覆盖度不足，九年级物理的知识点/题型没有完整对应的内部素材",
+            "factorB": "产品部产出资料后没有主动推送/宣导，全靠老师自己发现",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部内部资料覆盖度不足，九年级物理的知识点/题型没有完整对应的内部素材",
+            "factorB": "没有把\\\"使用内部资料率\\\"纳入老师的考核或教学评估指标",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部内部资料覆盖度不足，九年级物理的知识点/题型没有完整对应的内部素材",
+            "factorB": "内部资料的质量（排版/难度梯度/讲解深度）不如广分现成的PPT和讲义",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部内部资料覆盖度不足，九年级物理的知识点/题型没有完整对应的内部素材",
+            "factorB": "老师认为\\\"广分的内容经过市场验证、更靠谱\\\"，对产品部资料缺乏信任",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部内部资料覆盖度不足，九年级物理的知识点/题型没有完整对应的内部素材",
+            "factorB": "备课流程中没有强制嵌入\\\"从产品部资料库取材\\\"的环节",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部内部资料覆盖度不足，九年级物理的知识点/题型没有完整对应的内部素材",
+            "factorB": "产品部和一线教学团队之间缺乏需求沟通渠道，产品部不知道老师实际要什么",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部内部资料覆盖度不足，九年级物理的知识点/题型没有完整对应的内部素材",
+            "factorB": "产品部PPT的模板/动画不如广分美观，课堂呈现效果打折扣",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部内部资料覆盖度不足，九年级物理的知识点/题型没有完整对应的内部素材",
+            "factorB": "产品部资料的更新频率跟不上教学进度或考试大纲变化",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部内部资料覆盖度不足，九年级物理的知识点/题型没有完整对应的内部素材",
+            "factorB": "老师试用过内部资料但体验不好，之后就没再用了",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部内部资料覆盖度不足，九年级物理的知识点/题型没有完整对应的内部素材",
+            "factorB": "广分需要本地化沉淀，能带走",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部的资料对于广州本地的适用性不高",
+            "factorB": "产品标准化理念传递不到位",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部的资料对于广州本地的适用性不高",
+            "factorB": "老师已经习惯了广分资料的使用方式和课堂节奏，切换成本高",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部的资料对于广州本地的适用性不高",
+            "factorB": "教研组长/校区负责人没有对资料使用情况做检查和反馈",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部的资料对于广州本地的适用性不高",
+            "factorB": "产品部产出资料后没有主动推送/宣导，全靠老师自己发现",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部的资料对于广州本地的适用性不高",
+            "factorB": "没有把\\\"使用内部资料率\\\"纳入老师的考核或教学评估指标",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部的资料对于广州本地的适用性不高",
+            "factorB": "内部资料的质量（排版/难度梯度/讲解深度）不如广分现成的PPT和讲义",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部的资料对于广州本地的适用性不高",
+            "factorB": "老师认为\\\"广分的内容经过市场验证、更靠谱\\\"，对产品部资料缺乏信任",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部的资料对于广州本地的适用性不高",
+            "factorB": "备课流程中没有强制嵌入\\\"从产品部资料库取材\\\"的环节",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部的资料对于广州本地的适用性不高",
+            "factorB": "产品部和一线教学团队之间缺乏需求沟通渠道，产品部不知道老师实际要什么",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部的资料对于广州本地的适用性不高",
+            "factorB": "产品部PPT的模板/动画不如广分美观，课堂呈现效果打折扣",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部的资料对于广州本地的适用性不高",
+            "factorB": "产品部资料的更新频率跟不上教学进度或考试大纲变化",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部的资料对于广州本地的适用性不高",
+            "factorB": "老师试用过内部资料但体验不好，之后就没再用了",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部的资料对于广州本地的适用性不高",
+            "factorB": "广分需要本地化沉淀，能带走",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品标准化理念传递不到位",
+            "factorB": "老师已经习惯了广分资料的使用方式和课堂节奏，切换成本高",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品标准化理念传递不到位",
+            "factorB": "教研组长/校区负责人没有对资料使用情况做检查和反馈",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品标准化理念传递不到位",
+            "factorB": "产品部产出资料后没有主动推送/宣导，全靠老师自己发现",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品标准化理念传递不到位",
+            "factorB": "没有把\\\"使用内部资料率\\\"纳入老师的考核或教学评估指标",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品标准化理念传递不到位",
+            "factorB": "内部资料的质量（排版/难度梯度/讲解深度）不如广分现成的PPT和讲义",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品标准化理念传递不到位",
+            "factorB": "老师认为\\\"广分的内容经过市场验证、更靠谱\\\"，对产品部资料缺乏信任",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品标准化理念传递不到位",
+            "factorB": "备课流程中没有强制嵌入\\\"从产品部资料库取材\\\"的环节",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品标准化理念传递不到位",
+            "factorB": "产品部和一线教学团队之间缺乏需求沟通渠道，产品部不知道老师实际要什么",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品标准化理念传递不到位",
+            "factorB": "产品部PPT的模板/动画不如广分美观，课堂呈现效果打折扣",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品标准化理念传递不到位",
+            "factorB": "产品部资料的更新频率跟不上教学进度或考试大纲变化",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品标准化理念传递不到位",
+            "factorB": "老师试用过内部资料但体验不好，之后就没再用了",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品标准化理念传递不到位",
+            "factorB": "广分需要本地化沉淀，能带走",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "老师已经习惯了广分资料的使用方式和课堂节奏，切换成本高",
+            "factorB": "教研组长/校区负责人没有对资料使用情况做检查和反馈",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "老师已经习惯了广分资料的使用方式和课堂节奏，切换成本高",
+            "factorB": "产品部产出资料后没有主动推送/宣导，全靠老师自己发现",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "老师已经习惯了广分资料的使用方式和课堂节奏，切换成本高",
+            "factorB": "没有把\\\"使用内部资料率\\\"纳入老师的考核或教学评估指标",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "老师已经习惯了广分资料的使用方式和课堂节奏，切换成本高",
+            "factorB": "内部资料的质量（排版/难度梯度/讲解深度）不如广分现成的PPT和讲义",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "老师已经习惯了广分资料的使用方式和课堂节奏，切换成本高",
+            "factorB": "老师认为\\\"广分的内容经过市场验证、更靠谱\\\"，对产品部资料缺乏信任",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "老师已经习惯了广分资料的使用方式和课堂节奏，切换成本高",
+            "factorB": "备课流程中没有强制嵌入\\\"从产品部资料库取材\\\"的环节",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "老师已经习惯了广分资料的使用方式和课堂节奏，切换成本高",
+            "factorB": "产品部和一线教学团队之间缺乏需求沟通渠道，产品部不知道老师实际要什么",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "老师已经习惯了广分资料的使用方式和课堂节奏，切换成本高",
+            "factorB": "产品部PPT的模板/动画不如广分美观，课堂呈现效果打折扣",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "老师已经习惯了广分资料的使用方式和课堂节奏，切换成本高",
+            "factorB": "产品部资料的更新频率跟不上教学进度或考试大纲变化",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "老师已经习惯了广分资料的使用方式和课堂节奏，切换成本高",
+            "factorB": "老师试用过内部资料但体验不好，之后就没再用了",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "老师已经习惯了广分资料的使用方式和课堂节奏，切换成本高",
+            "factorB": "广分需要本地化沉淀，能带走",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "教研组长/校区负责人没有对资料使用情况做检查和反馈",
+            "factorB": "产品部产出资料后没有主动推送/宣导，全靠老师自己发现",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "教研组长/校区负责人没有对资料使用情况做检查和反馈",
+            "factorB": "没有把\\\"使用内部资料率\\\"纳入老师的考核或教学评估指标",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "教研组长/校区负责人没有对资料使用情况做检查和反馈",
+            "factorB": "内部资料的质量（排版/难度梯度/讲解深度）不如广分现成的PPT和讲义",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "教研组长/校区负责人没有对资料使用情况做检查和反馈",
+            "factorB": "老师认为\\\"广分的内容经过市场验证、更靠谱\\\"，对产品部资料缺乏信任",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "教研组长/校区负责人没有对资料使用情况做检查和反馈",
+            "factorB": "备课流程中没有强制嵌入\\\"从产品部资料库取材\\\"的环节",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "教研组长/校区负责人没有对资料使用情况做检查和反馈",
+            "factorB": "产品部和一线教学团队之间缺乏需求沟通渠道，产品部不知道老师实际要什么",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "教研组长/校区负责人没有对资料使用情况做检查和反馈",
+            "factorB": "产品部PPT的模板/动画不如广分美观，课堂呈现效果打折扣",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "教研组长/校区负责人没有对资料使用情况做检查和反馈",
+            "factorB": "产品部资料的更新频率跟不上教学进度或考试大纲变化",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "教研组长/校区负责人没有对资料使用情况做检查和反馈",
+            "factorB": "老师试用过内部资料但体验不好，之后就没再用了",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "教研组长/校区负责人没有对资料使用情况做检查和反馈",
+            "factorB": "广分需要本地化沉淀，能带走",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部产出资料后没有主动推送/宣导，全靠老师自己发现",
+            "factorB": "没有把\\\"使用内部资料率\\\"纳入老师的考核或教学评估指标",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部产出资料后没有主动推送/宣导，全靠老师自己发现",
+            "factorB": "内部资料的质量（排版/难度梯度/讲解深度）不如广分现成的PPT和讲义",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部产出资料后没有主动推送/宣导，全靠老师自己发现",
+            "factorB": "老师认为\\\"广分的内容经过市场验证、更靠谱\\\"，对产品部资料缺乏信任",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部产出资料后没有主动推送/宣导，全靠老师自己发现",
+            "factorB": "备课流程中没有强制嵌入\\\"从产品部资料库取材\\\"的环节",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部产出资料后没有主动推送/宣导，全靠老师自己发现",
+            "factorB": "产品部和一线教学团队之间缺乏需求沟通渠道，产品部不知道老师实际要什么",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部产出资料后没有主动推送/宣导，全靠老师自己发现",
+            "factorB": "产品部PPT的模板/动画不如广分美观，课堂呈现效果打折扣",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部产出资料后没有主动推送/宣导，全靠老师自己发现",
+            "factorB": "产品部资料的更新频率跟不上教学进度或考试大纲变化",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部产出资料后没有主动推送/宣导，全靠老师自己发现",
+            "factorB": "老师试用过内部资料但体验不好，之后就没再用了",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部产出资料后没有主动推送/宣导，全靠老师自己发现",
+            "factorB": "广分需要本地化沉淀，能带走",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "没有把\\\"使用内部资料率\\\"纳入老师的考核或教学评估指标",
+            "factorB": "内部资料的质量（排版/难度梯度/讲解深度）不如广分现成的PPT和讲义",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "没有把\\\"使用内部资料率\\\"纳入老师的考核或教学评估指标",
+            "factorB": "老师认为\\\"广分的内容经过市场验证、更靠谱\\\"，对产品部资料缺乏信任",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "没有把\\\"使用内部资料率\\\"纳入老师的考核或教学评估指标",
+            "factorB": "备课流程中没有强制嵌入\\\"从产品部资料库取材\\\"的环节",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "没有把\\\"使用内部资料率\\\"纳入老师的考核或教学评估指标",
+            "factorB": "产品部和一线教学团队之间缺乏需求沟通渠道，产品部不知道老师实际要什么",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "没有把\\\"使用内部资料率\\\"纳入老师的考核或教学评估指标",
+            "factorB": "产品部PPT的模板/动画不如广分美观，课堂呈现效果打折扣",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "没有把\\\"使用内部资料率\\\"纳入老师的考核或教学评估指标",
+            "factorB": "产品部资料的更新频率跟不上教学进度或考试大纲变化",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "没有把\\\"使用内部资料率\\\"纳入老师的考核或教学评估指标",
+            "factorB": "老师试用过内部资料但体验不好，之后就没再用了",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "没有把\\\"使用内部资料率\\\"纳入老师的考核或教学评估指标",
+            "factorB": "广分需要本地化沉淀，能带走",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "内部资料的质量（排版/难度梯度/讲解深度）不如广分现成的PPT和讲义",
+            "factorB": "老师认为\\\"广分的内容经过市场验证、更靠谱\\\"，对产品部资料缺乏信任",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "内部资料的质量（排版/难度梯度/讲解深度）不如广分现成的PPT和讲义",
+            "factorB": "备课流程中没有强制嵌入\\\"从产品部资料库取材\\\"的环节",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "内部资料的质量（排版/难度梯度/讲解深度）不如广分现成的PPT和讲义",
+            "factorB": "产品部和一线教学团队之间缺乏需求沟通渠道，产品部不知道老师实际要什么",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "内部资料的质量（排版/难度梯度/讲解深度）不如广分现成的PPT和讲义",
+            "factorB": "产品部PPT的模板/动画不如广分美观，课堂呈现效果打折扣",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "内部资料的质量（排版/难度梯度/讲解深度）不如广分现成的PPT和讲义",
+            "factorB": "产品部资料的更新频率跟不上教学进度或考试大纲变化",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "内部资料的质量（排版/难度梯度/讲解深度）不如广分现成的PPT和讲义",
+            "factorB": "老师试用过内部资料但体验不好，之后就没再用了",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "内部资料的质量（排版/难度梯度/讲解深度）不如广分现成的PPT和讲义",
+            "factorB": "广分需要本地化沉淀，能带走",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "老师认为\\\"广分的内容经过市场验证、更靠谱\\\"，对产品部资料缺乏信任",
+            "factorB": "备课流程中没有强制嵌入\\\"从产品部资料库取材\\\"的环节",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "老师认为\\\"广分的内容经过市场验证、更靠谱\\\"，对产品部资料缺乏信任",
+            "factorB": "产品部和一线教学团队之间缺乏需求沟通渠道，产品部不知道老师实际要什么",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "老师认为\\\"广分的内容经过市场验证、更靠谱\\\"，对产品部资料缺乏信任",
+            "factorB": "产品部PPT的模板/动画不如广分美观，课堂呈现效果打折扣",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "老师认为\\\"广分的内容经过市场验证、更靠谱\\\"，对产品部资料缺乏信任",
+            "factorB": "产品部资料的更新频率跟不上教学进度或考试大纲变化",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "老师认为\\\"广分的内容经过市场验证、更靠谱\\\"，对产品部资料缺乏信任",
+            "factorB": "老师试用过内部资料但体验不好，之后就没再用了",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "老师认为\\\"广分的内容经过市场验证、更靠谱\\\"，对产品部资料缺乏信任",
+            "factorB": "广分需要本地化沉淀，能带走",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "备课流程中没有强制嵌入\\\"从产品部资料库取材\\\"的环节",
+            "factorB": "产品部和一线教学团队之间缺乏需求沟通渠道，产品部不知道老师实际要什么",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "备课流程中没有强制嵌入\\\"从产品部资料库取材\\\"的环节",
+            "factorB": "产品部PPT的模板/动画不如广分美观，课堂呈现效果打折扣",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "备课流程中没有强制嵌入\\\"从产品部资料库取材\\\"的环节",
+            "factorB": "产品部资料的更新频率跟不上教学进度或考试大纲变化",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "备课流程中没有强制嵌入\\\"从产品部资料库取材\\\"的环节",
+            "factorB": "老师试用过内部资料但体验不好，之后就没再用了",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "备课流程中没有强制嵌入\\\"从产品部资料库取材\\\"的环节",
+            "factorB": "广分需要本地化沉淀，能带走",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部和一线教学团队之间缺乏需求沟通渠道，产品部不知道老师实际要什么",
+            "factorB": "产品部PPT的模板/动画不如广分美观，课堂呈现效果打折扣",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部和一线教学团队之间缺乏需求沟通渠道，产品部不知道老师实际要什么",
+            "factorB": "产品部资料的更新频率跟不上教学进度或考试大纲变化",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部和一线教学团队之间缺乏需求沟通渠道，产品部不知道老师实际要什么",
+            "factorB": "老师试用过内部资料但体验不好，之后就没再用了",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部和一线教学团队之间缺乏需求沟通渠道，产品部不知道老师实际要什么",
+            "factorB": "广分需要本地化沉淀，能带走",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部PPT的模板/动画不如广分美观，课堂呈现效果打折扣",
+            "factorB": "产品部资料的更新频率跟不上教学进度或考试大纲变化",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部PPT的模板/动画不如广分美观，课堂呈现效果打折扣",
+            "factorB": "老师试用过内部资料但体验不好，之后就没再用了",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部PPT的模板/动画不如广分美观，课堂呈现效果打折扣",
+            "factorB": "广分需要本地化沉淀，能带走",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部资料的更新频率跟不上教学进度或考试大纲变化",
+            "factorB": "老师试用过内部资料但体验不好，之后就没再用了",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "产品部资料的更新频率跟不上教学进度或考试大纲变化",
+            "factorB": "广分需要本地化沉淀，能带走",
+            "relationType": "reinforcing",
+            "delayEffect": "",
+            "evidence": ""
+          },
+          {
+            "factorA": "老师试用过内部资料但体验不好，之后就没再用了",
+            "factorB": "广分需要本地化沉淀，能带走",
+            "relationType": "reinforcing",
+            "delayEffect": "shortTerm",
+            "evidence": "无"
+          }
+        ],
+        "leveragePoint": ""
+      },
+      "status": "draft",
+      "createdAt": "2026-08-12T16:41:28.552Z",
+      "updatedAt": "2026-08-12T16:43:48.552Z"
+    },
+    {
+      "id": "8a050654-dcda-441d-8180-00eacec55215",
+      "templateId": "timeline",
+      "problemId": "bf04338c-2334-495a-a69b-ae48a9c0fb2f",
+      "title": "广分物理和产品部自近两年起在出现在乐力PPT使用，九年级讲义使用中出现「在产品使用上不符合预期」，其过程为全面，影响全面。目标为100%使用产品部内部资料，现状与目标存在差距，二者之差即待分析的问题。",
+      "data": {
+        "occurredAt": "2026-08-10",
+        "duration": 480,
+        "impactScope": "department",
+        "severity": "P1",
+        "summary": "广分物理教师在九年级备课中未使用产品部内部资料，且产品部产出资料未被主动宣导，导致资料使用率长期偏低。",
+        "timelineEntries": [
+          {
+            "time": "14:00",
+            "eventDesc": "产品部完成九年级物理内部资料初稿",
+            "sourceType": "log",
+            "isKeyMoment": false,
+            "actionTaken": "资料存入内部库，未做宣导",
+            "actionCorrectness": "improvable"
+          },
+          {
+            "time": "09:30",
+            "eventDesc": "广分教师开始九年级备课，习惯性使用广分现成PPT",
+            "sourceType": "manual",
+            "isKeyMoment": true,
+            "actionTaken": "未检查产品部资料库",
+            "actionCorrectness": "wrong"
+          },
+          {
+            "time": "15:20",
+            "eventDesc": "教研抽查发现资料使用率为0",
+            "sourceType": "monitor",
+            "isKeyMoment": true,
+            "actionTaken": "启动专项分析",
+            "actionCorrectness": "correct"
+          }
+        ],
+        "directCause": "备课流程中没有强制嵌入产品部资料取材环节，且产品部未主动推送宣导",
+        "rootCause": "产品部与一线教学团队之间缺乏需求沟通与使用考核机制，导致资料适用性和使用率双低",
+        "whyNotDetectedEarlier": "没有对资料使用情况做检查和反馈的机制",
+        "whyImpactSoLarge": "广分教师习惯了自有资料，切换成本高，且无考核约束",
+        "improveDetection": "增加资料使用率周报和教研抽查",
+        "improveResponse": "产品部主动推送新资料并组织试用培训",
+        "improvePrevention": "把内部资料使用率纳入教师考核指标，建立需求沟通渠道",
+        "lessonsLearned": "产品产出后必须配套宣导和考核闭环，否则资源投入不会转化为使用"
+      },
+      "status": "completed",
+      "createdAt": "2026-08-12T20:00:00.000Z",
+      "updatedAt": "2026-08-12T20:00:00.000Z"
+    },
+    {
+      "id": "abbe29c0-c0f2-43a6-8701-dca5a6ddb651",
+      "templateId": "comparison",
+      "problemId": "bf04338c-2334-495a-a69b-ae48a9c0fb2f",
+      "title": "广分物理和产品部自近两年起在出现在乐力PPT使用，九年级讲义使用中出现「在产品使用上不符合预期」，其过程为全面，影响全面。目标为100%使用产品部内部资料，现状与目标存在差距，二者之差即待分析的问题。",
+      "data": {
+        "normalCase": "广分九年级物理组使用本地沉淀的PPT和讲义，备课顺畅、课堂反馈良好",
+        "abnormalCase": "教师不使用产品部内部资料，即使产品部资料已覆盖对应知识点",
+        "comparisonTable": [
+          {
+            "dimension": "内容来源",
+            "normal": "本地积累，经过市场验证",
+            "abnormal": "产品部统一产出，未经验证",
+            "diff": "信任度差异"
+          },
+          {
+            "dimension": "使用流程",
+            "normal": "备课默认使用本地资料",
+            "abnormal": "无强制取材环节",
+            "diff": "流程缺口"
+          },
+          {
+            "dimension": "反馈闭环",
+            "normal": "一线随时反馈、迭代快",
+            "abnormal": "无沟通渠道",
+            "diff": "反馈缺失"
+          }
+        ],
+        "keyDifference": "核心差异在信任度和流程：本地资料经过市场验证更受信任，而产品部资料缺乏使用流程和反馈闭环",
+        "mostLikelyCause": "产品部资料适用性不足 + 备课流程未强制取材 + 无考核反馈机制",
+        "verificationMethod": "连续4周统计资料使用率并抽查教师访谈",
+        "action": "建立需求沟通渠道、资料试用培训、使用率纳入考核",
+        "lessonsLearned": "对比正常/异常案例能快速定位关键差异，再针对差异设计对策"
+      },
+      "status": "completed",
+      "createdAt": "2026-08-12T20:00:00.000Z",
+      "updatedAt": "2026-08-12T20:00:00.000Z"
+    },
+    {
+      "id": "ef7c43b6-2aae-4084-ac68-6ba71ceedb4b",
+      "templateId": "technicalFault",
+      "problemId": "bf04338c-2334-495a-a69b-ae48a9c0fb2f",
+      "title": "广分物理和产品部自近两年起在出现在乐力PPT使用，九年级讲义使用中出现「在产品使用上不符合预期」，其过程为全面，影响全面。目标为100%使用产品部内部资料，现状与目标存在差距，二者之差即待分析的问题。",
+      "data": {
+        "affectedSystem": "乐力PPT内容分发服务 + 九年级讲义生成服务",
+        "environment": "production",
+        "errorSignature": "资料使用率指标持续为0，内容分发接口调用量为0",
+        "affectedComponents": "内容分发服务、讲义生成服务、教师端备课入口",
+        "hasRecentChange": "yes",
+        "changeDetail": "产品部资料库迁移后，未配置教师端入口的主动推送",
+        "monitoringEvidence": "内容分发接口调用量监控为0，使用率报表为空",
+        "reproducibility": "reproducible",
+        "diagnosisSteps": [
+          {
+            "time": "10:05",
+            "action": "查看内容分发接口调用监控",
+            "finding": "调用量为0，确认教师端从未调用",
+            "conclusion": "excluded"
+          },
+          {
+            "time": "10:20",
+            "action": "检查教师端备课入口配置",
+            "finding": "备课入口未接入产品部资料库",
+            "conclusion": "rootCause"
+          }
+        ],
+        "rootCauseJudgement": "教师端备课入口未接入产品部资料库，且无主动推送，导致产品部资料完全未被使用"
+      },
+      "status": "completed",
+      "createdAt": "2026-08-12T20:00:00.000Z",
+      "updatedAt": "2026-08-12T20:00:00.000Z"
+    }
+  ],
+  "problems": [
+    {
+      "id": "bf04338c-2334-495a-a69b-ae48a9c0fb2f",
+      "title": "广分物理和产品部自近两年起在出现在乐力PPT使用，九年级讲义使用中出现「在产品使用上不符合预期」，其过程为全面，影响全面。目标为100%使用产品部内部资料，现状与目标存在差距，二者之差即待分析的问题。",
+      "problemStatement": "广分物理和产品部自近两年起在出现在乐力PPT使用，九年级讲义使用中出现「在产品使用上不符合预期」，其过程为全面，影响全面。目标为100%使用产品部内部资料，现状与目标存在差距，二者之差即待分析的问题。",
+      "data": {
+        "w2hTable": [
+          {
+            "dimension": "what",
+            "description": "在产品使用上不符合预期"
+          },
+          {
+            "dimension": "who",
+            "description": "广分物理和产品部"
+          },
+          {
+            "dimension": "when",
+            "description": "近两年"
+          },
+          {
+            "dimension": "where",
+            "description": "出现在乐力PPT使用，九年级讲义使用"
+          },
+          {
+            "dimension": "how",
+            "description": "全面"
+          },
+          {
+            "dimension": "howMany",
+            "description": "全面"
+          }
+        ],
+        "gapTarget": "100%使用产品部内部资料",
+        "factCheck": false,
+        "problemCriteria": [
+          "deviation",
+          "gap"
+        ],
+        "problemType": "restore",
+        "whatProblemIsNotCheck": [
+          "notJudgment",
+          "notJustFact",
+          "notFeeling",
+          "notCause",
+          "notSolution",
+          "notHope"
+        ],
+        "currentState": "",
+        "expectedState": "",
+        "deviationDetail": "",
+        "riskFactor": "",
+        "riskTrigger": "",
+        "riskConsequence": "",
+        "currentLevel": "",
+        "targetLevel": "",
+        "gapValue": "",
+        "occurredAt": "2026-08-11",
+        "discoveryMethod": "active",
+        "impactScope": "department",
+        "severity": "P0",
+        "symptom": "无",
+        "title": "广分物理和产品部自近两年起在出现在乐力PPT使用，九年级讲义使用中出现「在产品使用上不符合预期」，其过程为全面，影响全面。目标为100%使用产品部内部资料，现状与目标存在差距，二者之差即待分析的问题。",
+        "problemStatement": "广分物理和产品部自近两年起在出现在乐力PPT使用，九年级讲义使用中出现「在产品使用上不符合预期」，其过程为全面，影响全面。目标为100%使用产品部内部资料，现状与目标存在差距，二者之差即待分析的问题。",
+        "brainstorm": [
+          {
+            "cause": "产品部内部资料覆盖度不足，九年级物理的知识点/题型没有完整对应的内部素材",
+            "evidence": ""
+          },
+          {
+            "cause": "产品部的资料对于广州本地的适用性不高",
+            "evidence": ""
+          },
+          {
+            "cause": "内部资料的质量（排版/难度梯度/讲解深度）不如广分现成的PPT和讲义",
+            "evidence": ""
+          },
+          {
+            "cause": "老师认为\\\"广分的内容经过市场验证、更靠谱\\\"，对产品部资料缺乏信任",
+            "evidence": ""
+          },
+          {
+            "cause": "备课流程中没有强制嵌入\\\"从产品部资料库取材\\\"的环节",
+            "evidence": ""
+          },
+          {
+            "cause": "产品部和一线教学团队之间缺乏需求沟通渠道，产品部不知道老师实际要什么",
+            "evidence": ""
+          },
+          {
+            "cause": "产品部PPT的模板/动画不如广分美观，课堂呈现效果打折扣",
+            "evidence": ""
+          },
+          {
+            "cause": "产品部资料的更新频率跟不上教学进度或考试大纲变化",
+            "evidence": ""
+          },
+          {
+            "cause": "老师试用过内部资料但体验不好，之后就没再用了",
+            "evidence": ""
+          },
+          {
+            "cause": "广分需要本地化沉淀，能带走",
+            "evidence": ""
+          },
+          {
+            "cause": "产品标准化理念传递不到位",
+            "evidence": ""
+          },
+          {
+            "cause": "老师已经习惯了广分资料的使用方式和课堂节奏，切换成本高",
+            "evidence": ""
+          },
+          {
+            "cause": "教研组长/校区负责人没有对资料使用情况做检查和反馈",
+            "evidence": ""
+          },
+          {
+            "cause": "产品部产出资料后没有主动推送/宣导，全靠老师自己发现",
+            "evidence": ""
+          },
+          {
+            "cause": "没有把\\\"使用内部资料率\\\"纳入老师的考核或教学评估指标",
+            "evidence": ""
+          }
+        ]
+      },
+      "createdAt": "2026-08-11T01:51:36.438Z",
+      "updatedAt": "2026-08-12T09:09:01.290Z"
+    }
+  ],
+  "settings": {
+    "lastExportedAt": "2026-08-12T20:00:00.000Z"
+  }
+}

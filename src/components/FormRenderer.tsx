@@ -73,7 +73,7 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
 
   const defaultValues = useMemo(() => buildDefaultValues(template, record, todayISO), [template, record, todayISO]);
   const methods = useForm<Record<string, unknown>>({ defaultValues });
-  const { getValues, reset } = methods;
+  const { getValues, reset, setValue } = methods;
 
   const createdAtISO = record?.createdAt ?? todayISO;
   const [committedValues, setCommittedValues] = useState(defaultValues);
@@ -128,6 +128,35 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
       }
     }, 10000);
     return () => clearInterval(timer);
+  }, []);
+
+  /**
+   * 对比分析法自动预填：新建 record（字段为空）时，把问题定义中的
+   * "目标/期望"填到 normalCase、"问题场景/症状"填到 abnormalCase。
+   * 用 ref 防重复执行，且不覆盖用户已填写的内容。
+   */
+  const prefillRef = useRef(false);
+  useEffect(() => {
+    if (prefillRef.current || template.id !== 'comparison' || !problem) return;
+    prefillRef.current = true;
+    const data = (problem.data ?? {}) as Record<string, unknown>;
+    const pick = (keys: string[]) => {
+      for (const k of keys) {
+        const v = data[k];
+        if (typeof v === 'string' && v.trim()) return v.trim();
+      }
+      return '';
+    };
+    const normal = pick(['gapTarget', 'expectedState', 'problemStatement', 'title']);
+    const abnormal = pick(['symptom', 'currentState', 'deviationDetail', 'problemStatement', 'title']);
+    const cur = getValues();
+    if (normal && (!cur.normalCase || String(cur.normalCase).trim() === '')) {
+      setValue('normalCase', normal, { shouldDirty: true });
+    }
+    if (abnormal && (!cur.abnormalCase || String(cur.abnormalCase).trim() === '')) {
+      setValue('abnormalCase', abnormal, { shouldDirty: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 标记"自上次保存后是否有未保存的改动"，用于关闭页面/离开路由时尽力补一次保存。
