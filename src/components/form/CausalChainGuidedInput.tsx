@@ -208,11 +208,9 @@ export const CausalChainGuidedInput = memo(function CausalChainGuidedInput({ dis
           <p className="mt-1 text-sm text-slate-500">这两个因素之间的因果关系是？（每组只需判断一次）</p>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-2">
+        <div className="flex flex-col gap-2">
           {RELATION_OPTIONS.map((opt) => {
-            const displayLabel = opt.label
-              .replace(/A/g, currentFactorA.length > 6 ? currentFactorA.slice(0, 6) + '…' : currentFactorA)
-              .replace(/B/g, currentFactorB.length > 6 ? currentFactorB.slice(0, 6) + '…' : currentFactorB);
+            const isSelected = currentEntry?.relationType === opt.value;
             return (
               <button
                 key={opt.value}
@@ -221,13 +219,33 @@ export const CausalChainGuidedInput = memo(function CausalChainGuidedInput({ dis
                 onClick={() => handleSetRelation(currentPairIndex, opt.value)}
                 title={opt.desc.replace(/A/g, currentFactorA).replace(/B/g, currentFactorB)}
                 className={clsx(
-                  'rounded-lg border-2 px-3 py-2 text-sm font-medium transition',
-                  currentEntry?.relationType === opt.value
-                    ? 'border-brand-500 bg-brand-50 text-brand-700'
-                                : 'border-surface-200 text-text-secondary hover:border-brand-300 hover:bg-brand-50',
+                  'flex w-full items-start gap-3 rounded-lg border-2 px-3.5 py-2.5 text-left transition',
+                  isSelected
+                    ? 'border-brand-500 bg-brand-50 text-brand-700 shadow-sm'
+                    : 'border-surface-200 text-text-secondary hover:border-brand-300 hover:bg-brand-50/60',
                 )}
               >
-                {displayLabel}
+                <span
+                  className={clsx(
+                    'mt-0.5 inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-semibold',
+                    isSelected ? 'bg-brand-500 text-white' : 'bg-slate-100 text-slate-500',
+                  )}
+                  aria-hidden="true"
+                >
+                  {isSelected ? '✓' : ''}
+                </span>
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="text-sm font-medium leading-relaxed text-slate-800 break-words">
+                    <RichRelationLabel
+                      template={opt.label}
+                      factorA={currentFactorA}
+                      factorB={currentFactorB}
+                    />
+                  </div>
+                  <p className="text-xs leading-relaxed text-slate-500 break-words">
+                    {opt.desc.replace(/A/g, currentFactorA).replace(/B/g, currentFactorB)}
+                  </p>
+                </div>
               </button>
             );
           })}
@@ -319,11 +337,9 @@ export const CausalChainGuidedInput = memo(function CausalChainGuidedInput({ dis
               const relLabel = RELATION_OPTIONS.find((o) => o.value === entry?.relationType)?.label ?? '';
               const delayLabel = DELAY_OPTIONS.find((o) => o.value === entry?.delayEffect)?.label ?? '';
               return (
-                <div key={idx} className="flex items-center gap-2 text-xs text-slate-600">
-                  <span className="font-medium">{a}</span>
-                  <span className="text-brand-600">{relLabel}</span>
-                  <span className="font-medium">{b}</span>
-                  {delayLabel && <span className="text-slate-400">({delayLabel})</span>}
+                <div key={idx} className="text-xs text-slate-600 break-words">
+                  <RichRelationLabel template={relLabel} factorA={a} factorB={b} />
+                  {delayLabel && <span className="ml-1 text-slate-400">（{delayLabel}）</span>}
                 </div>
               );
             })}
@@ -338,6 +354,35 @@ interface FactorSelectorProps {
   brainstormCauses: string[];
   initialSelected: string[];
   onConfirm: (factors: string[]) => void;
+}
+
+/**
+ * 关系按钮里 A/B 占位的富渲染：把模板字符串中的每个 A / B token 替换为带颜色 + 完整因子名的 span，
+ * 其余符号原样保留。这样长因子名也能完整展示、并自动换行，不会再被截断成省略号。
+ */
+function RichRelationLabel({ template, factorA, factorB }: { template: string; factorA: string; factorB: string }) {
+  const tokens = template.split(/(A|B)/g);
+  return (
+    <>
+      {tokens.map((token, idx) => {
+        if (token === 'A') {
+          return (
+            <span key={idx} className="font-semibold text-emerald-600">
+              {factorA}
+            </span>
+          );
+        }
+        if (token === 'B') {
+          return (
+            <span key={idx} className="font-semibold text-blue-600">
+              {factorB}
+            </span>
+          );
+        }
+        return <span key={idx}>{token}</span>;
+      })}
+    </>
+  );
 }
 
 function FactorSelector({ brainstormCauses, initialSelected, onConfirm }: FactorSelectorProps) {
