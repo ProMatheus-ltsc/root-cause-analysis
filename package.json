@@ -13,18 +13,25 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.6.0",
+    "@xyflow/react": "^12.11.2",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
+    "flexsearch": "^0.8.212",
     "idb": "^8.0.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.85.0",
     "react-router-dom": "^7.18.2",
     "recharts": "^3.10.1",
-    "uuid": "^14.0.1"
+    "uuid": "^14.0.1",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/flexsearch": "^0.7.6",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
