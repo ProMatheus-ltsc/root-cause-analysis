@@ -35,18 +35,18 @@ function SectionBlock({ section, disabled, templateId, historyRecords, problem }
 
   if (section.collapsedByDefault) {
     return (
-      <details className="rounded-lg border border-slate-200 p-4">
-        <summary className="cursor-pointer text-sm font-semibold text-slate-800">{section.title}</summary>
-        {section.description && <p className="mt-1 text-xs text-slate-500">{section.description}</p>}
+      <details className="rounded-xl border border-surface-200 bg-surface-0 p-5 shadow-sm">
+        <summary className="cursor-pointer text-sm font-bold text-text-primary">{section.title}</summary>
+        {section.description && <p className="mt-1.5 text-xs text-text-tertiary">{section.description}</p>}
         <div className="mt-4">{body}</div>
       </details>
     );
   }
 
   return (
-    <section>
-      <h3 className="mb-1 text-base font-semibold text-slate-800">{section.title}</h3>
-      {section.description && <p className="mb-3 text-xs text-slate-500">{section.description}</p>}
+    <section className="animate-fade-in">
+      <h3 className="mb-1.5 text-base font-bold text-text-primary">{section.title}</h3>
+      {section.description && <p className="mb-4 text-xs text-text-tertiary leading-relaxed">{section.description}</p>}
       {body}
     </section>
   );
