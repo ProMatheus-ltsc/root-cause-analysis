@@ -3,7 +3,8 @@
  * 填写当前条目时，以精简摘要展示前面已填写的内容，避免用户忘记上文。
  * 删除条目时提供短暂的"撤销删除"恢复机会（5秒内可撤销）。
  * causalChain section 使用专用的卡片式逐对引导填写组件。
- * 每条 entry 支持折叠/展开；entry 底部提供"上一条 / 下一条"专注导航；
+ * brainstorm 段有 sticky 置顶的横向卡片条（BrainstormCardStrip）导航并展示全部已填内容；
+ * 每条 entry 支持折叠/展开，entry 底部提供"上一条 / 下一条"专注导航；
  * 页面右侧悬浮按钮（FloatExpandToggleButton）可全局折叠/展开全部 entry。
  * factors 段（要因分析法）候选原因 ≤ 15 时自动全量引入，> 15 时由 BrainstormPicker 筛选。
  */
@@ -521,6 +522,181 @@ function WhyFirstLevelPicker({ causes, currentValue, onSelect, disabled }: WhyFi
   );
 }
 
+interface BrainstormCardStripProps {
+  section: FormSection;
+  values: Record<string, unknown>;
+  /** 哪个 entry 当前是焦点（高亮其卡片） */
+  activeIndex: number | null;
+  /** 点击某张卡片时回调（参数为 entry 索引），父组件负责滚动定位 */
+  onCardClick: (idx: number) => void;
+  /** 点击"添加新原因"卡片时回调，父组件负责 append */
+  onAppendNew: () => void;
+  /** 相似原因检测结果：entry 索引 → 与其相似的其它 entry 列表 */
+  similarPairs?: Map<number, SimilarPair[]>;
+  disabled?: boolean;
+}
+
+/**
+ * 横向卡片条（sticky 置顶）：每个 entry 一张卡片，完整展示已填写的"原因"和"证据"。
+ * 解决"已有原因截断看不清、容易重复填写"的问题：
+ *   - 显示完整内容（不截断），并展示证据字段；
+ *   - 点击卡片跳转到对应 entry 编辑器；
+ *   - 当前激活 entry 对应的卡片高亮（其它自动收起，避免屏幕拥挤）。
+ *   - 与其它原因高度相似时，卡片右上角显示 "≈ 与 #N 相似" 徽标。
+ * 滚动时 sticky 吸顶常驻，随时可点跳转；全局折叠/展开由右侧悬浮按钮控制。
+ */
+function BrainstormCardStrip({
+  section,
+  values,
+  activeIndex,
+  onCardClick,
+  onAppendNew,
+  similarPairs,
+  disabled,
+}: BrainstormCardStripProps) {
+  const sectionEntries = (values[section.id] as Record<string, unknown>[] | undefined) ?? [];
+  const primaryField = section.fields[0];
+  const secondaryField = section.fields[1];
+
+  function getEntryText(entry: Record<string, unknown>, fieldId: string | undefined): string {
+    if (!fieldId) return '';
+    const v = entry[fieldId];
+    return typeof v === 'string' ? v.trim() : '';
+  }
+
+  const filledCount = sectionEntries.filter((e) => getEntryText(e, primaryField?.id).length > 0).length;
+  const totalCount = sectionEntries.length;
+
+  const stripRef = useRef<HTMLDivElement>(null);
+
+  // 当 activeIndex 变化时，把对应卡片滚动到条带可视区域（横向）
+  useEffect(() => {
+    if (activeIndex === null || !stripRef.current) return;
+    const activeCard = stripRef.current.querySelector<HTMLElement>(`[data-card-index="${activeIndex}"]`);
+    if (activeCard) {
+      activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [activeIndex]);
+
+  return (
+    <div className="sticky top-2 z-20 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-baseline gap-2">
+          <p className="text-xs font-semibold text-slate-600">
+            已有原因{' '}
+            <span className="text-brand-600">
+              {filledCount} / {totalCount}
+            </span>
+          </p>
+          {totalCount > filledCount && (
+            <p className="text-xs text-slate-400">
+              · 待补充 {totalCount - filledCount} 项
+            </p>
+          )}
+        </div>
+        <p className="text-xs text-slate-400">点击卡片跳转查看/编辑该原因</p>
+      </div>
+      <div
+        ref={stripRef}
+        className="flex items-start gap-2.5 overflow-x-auto pb-2 -mx-1 px-1 [scrollbar-width:thin]"
+        role="list"
+      >
+        {sectionEntries.map((entry, idx) => {
+          const cause = getEntryText(entry, primaryField?.id);
+          const evidence = getEntryText(entry, secondaryField?.id);
+          const isFilled = cause.length > 0;
+          const isActive = idx === activeIndex;
+
+          return (
+            <button
+              key={idx}
+              type="button"
+              role="listitem"
+              data-card-index={idx}
+              onClick={() => onCardClick(idx)}
+              className={clsx(
+                'group relative flex min-h-44 w-72 flex-shrink-0 snap-start flex-col gap-1.5 rounded-lg border-2 p-3 text-left transition',
+                isActive
+                  ? 'border-brand-500 bg-brand-50/70 shadow-md ring-2 ring-brand-200'
+                  : isFilled
+                    ? 'border-success/40 bg-success/5 hover:border-success/60 hover:shadow-sm'
+                    : 'border-dashed border-slate-300 bg-slate-50/50 hover:border-brand-300 hover:bg-brand-50/40',
+              )}
+            >
+              <div className="flex items-baseline justify-between">
+                <span
+                  className={clsx(
+                    'text-xs font-semibold tracking-wide',
+                    isActive ? 'text-brand-700' : isFilled ? 'text-emerald-700' : 'text-slate-400',
+                  )}
+                >
+                  原因 {idx + 1}
+                </span>
+                <span
+                  className={clsx(
+                    'text-xs',
+                    isFilled ? 'text-slate-400' : 'text-slate-400',
+                  )}
+                >
+                  {isFilled ? `${cause.length} 字` : '空'}
+                </span>
+              </div>
+              {isFilled && similarPairs?.get(idx) && similarPairs.get(idx)!.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {(similarPairs.get(idx) as SimilarPair[]).map((p) => (
+                    <span
+                      key={p.idx}
+                      className="inline-flex items-center gap-0.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700"
+                      title={p.text}
+                    >
+                      ≈ 与 #{p.idx + 1} 相似 {(p.score * 100).toFixed(0)}%
+                    </span>
+                  ))}
+                </div>
+              )}
+              {isFilled ? (
+                <>
+                  <p className="text-sm leading-relaxed text-slate-800 break-words">
+                    {cause}
+                  </p>
+                  {evidence && (
+                    <div className="mt-auto border-t border-slate-200/70 pt-1.5">
+                      <p className="text-xs leading-relaxed text-slate-500 break-words">
+                        <span className="font-medium text-slate-400">证据：</span>
+                        {evidence}
+                      </p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex flex-1 items-center justify-center text-center">
+                  <p className="text-xs italic text-slate-400">
+                    尚未填写
+                    <br />
+                    点击下方区域补充
+                  </p>
+                </div>
+              )}
+              {isActive && (
+                <span className="absolute right-2 top-2 inline-flex h-1.5 w-1.5 rounded-full bg-brand-500" aria-hidden="true" />
+              )}
+            </button>
+          );
+        })}
+        {!disabled && (
+          <button
+            type="button"
+            onClick={onAppendNew}
+            className="flex min-h-44 w-32 flex-shrink-0 snap-start flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50/50 px-3 text-slate-500 transition hover:border-brand-400 hover:bg-brand-50/60 hover:text-brand-600"
+          >
+            <span className="text-2xl leading-none">+</span>
+            <p className="text-xs">添加新原因</p>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function RepeatableSection({ section, disabled, templateId, historyRecords, problem }: RepeatableSectionProps) {
   if (section.id === 'causalChain') {
@@ -838,6 +1014,17 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
           maxSelect={KEY_FACTOR_MAX}
         />
       )}
+      {section.id === 'brainstorm' && entries.length > 0 && (
+        <BrainstormCardStrip
+          section={section}
+          values={values}
+          activeIndex={activeIndex}
+          onCardClick={navigateToEntry}
+          onAppendNew={handleAppend}
+          similarPairs={similarPairs}
+          disabled={disabled}
+        />
+      )}
       {entries.map((entry, idx) => {
         const isExpanded = expanded.has(idx);
         return (
@@ -951,7 +1138,7 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
         </div>
         );
       })}
-      {!disabled && !shouldStopAppend && (
+      {!disabled && !shouldStopAppend && section.id !== 'brainstorm' && (
         <button
           type="button"
           onClick={handleAppend}
