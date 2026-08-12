@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import FlexSearch from 'flexsearch';
+import { Index as FlexSearchIndex } from 'flexsearch';
 import type { Problem } from '../types';
 
 interface SearchableDoc {
@@ -9,12 +9,12 @@ interface SearchableDoc {
 }
 
 export function useSearchProblems(problems: Problem[], query: string) {
-  const indexRef = useRef<FlexSearch.Index | null>(null);
+  const indexRef = useRef<FlexSearchIndex | null>(null);
   const docsRef = useRef<Map<string, SearchableDoc>>(new Map());
   const [resultIds, setResultIds] = useState<Set<string> | null>(null);
 
   useEffect(() => {
-    const idx = new FlexSearch.Index({
+    const idx = new FlexSearchIndex({
       tokenize: 'forward',
       resolution: 9,
     });
