@@ -27,11 +27,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={clsx('rounded-lg px-4 py-2 text-sm text-white shadow-lg', {
-              'bg-emerald-600': t.type === 'success',
-              'bg-rose-600': t.type === 'error',
-              'bg-slate-800': t.type === 'info',
+            className={clsx('animate-slide-up rounded-xl px-5 py-3 text-sm font-medium text-white shadow-lg', {
+              'bg-success': t.type === 'success',
+              'bg-danger': t.type === 'error',
+              'bg-text-primary': t.type === 'info',
             })}
+            role="alert"
+            aria-live="polite"
           >
             {t.message}
           </div>
