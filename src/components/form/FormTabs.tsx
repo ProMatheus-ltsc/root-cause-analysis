@@ -12,21 +12,45 @@ interface FormTabsProps {
   templateId: TemplateId;
   historyRecords: FormRecord[];
   problem?: Problem;
+  /** factors 段候选 ≤ 15 自动引入填满后回调（自动进入关系矩阵阶段） */
+  onAutoFilled?: () => void;
 }
 
-export function FormTabs({ sections, disabled, templateId, historyRecords, problem }: FormTabsProps) {
+export function FormTabs({ sections, disabled, templateId, historyRecords, problem, onAutoFilled }: FormTabsProps) {
   return (
     <div className="space-y-8">
       {sections.map((section) => (
-        <SectionBlock key={section.id} section={section} disabled={disabled} templateId={templateId} historyRecords={historyRecords} problem={problem} />
+        <SectionBlock
+          key={section.id}
+          section={section}
+          disabled={disabled}
+          templateId={templateId}
+          historyRecords={historyRecords}
+          problem={problem}
+          onAutoFilled={onAutoFilled}
+        />
       ))}
     </div>
   );
 }
 
-function SectionBlock({ section, disabled, templateId, historyRecords, problem }: { section: FormSection } & Omit<FormTabsProps, 'sections'>) {
+function SectionBlock({
+  section,
+  disabled,
+  templateId,
+  historyRecords,
+  problem,
+  onAutoFilled,
+}: { section: FormSection } & Omit<FormTabsProps, 'sections'>) {
   const body = section.repeatable ? (
-    <RepeatableSection section={section} disabled={disabled} templateId={templateId} historyRecords={historyRecords} problem={problem} />
+    <RepeatableSection
+      section={section}
+      disabled={disabled}
+      templateId={templateId}
+      historyRecords={historyRecords}
+      problem={problem}
+      onAutoFilled={onAutoFilled}
+    />
   ) : (
     <div className="grid gap-5 sm:grid-cols-2">
       <FieldList fields={section.fields} basePath="" disabled={disabled} templateId={templateId} historyRecords={historyRecords} />

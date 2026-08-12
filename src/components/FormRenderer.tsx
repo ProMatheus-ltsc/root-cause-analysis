@@ -268,7 +268,19 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
             onLockedClick={handleLockedClick}
           />
         )}
-        <FormTabs sections={activeSections} disabled={disabled} templateId={template.id} historyRecords={historyRecords} problem={problem} />
+        <FormTabs
+          sections={activeSections}
+          disabled={disabled}
+          templateId={template.id}
+          historyRecords={historyRecords}
+          problem={problem}
+          onAutoFilled={() => {
+            // 要因分析法：候选 ≤ 15 自动引入填满因素清单后，直接进入关系矩阵阶段
+            if (activePhaseIndex === 0 && template.phases && template.phases.length > 1) {
+              handleSelectPhase(1);
+            }
+          }}
+        />
         {activePhase?.id !== 'factors' && (
           <VisualizationPanel templateId={template.id} values={committedValues} problemTitle={problemTitle} />
         )}

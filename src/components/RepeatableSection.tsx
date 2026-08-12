@@ -23,6 +23,8 @@ interface RepeatableSectionProps {
   templateId: TemplateId;
   historyRecords: FormRecord[];
   problem?: Problem;
+  /** factors 段候选 ≤ 15 自动引入填满后回调（用于自动进入关系矩阵阶段，仅触发一次） */
+  onAutoFilled?: () => void;
 }
 
 function EntrySummary({ section, idx, values }: { section: FormSection; idx: number; values: Record<string, unknown> }) {
@@ -698,15 +700,24 @@ function BrainstormCardStrip({
   );
 }
 
-export function RepeatableSection({ section, disabled, templateId, historyRecords, problem }: RepeatableSectionProps) {
+export function RepeatableSection({ section, disabled, templateId, historyRecords, problem, onAutoFilled }: RepeatableSectionProps) {
   if (section.id === 'causalChain') {
     return <CausalChainGuidedInput disabled={disabled} problem={problem} />;
   }
 
-  return <DefaultRepeatableSection section={section} disabled={disabled} templateId={templateId} historyRecords={historyRecords} problem={problem} />;
+  return (
+    <DefaultRepeatableSection
+      section={section}
+      disabled={disabled}
+      templateId={templateId}
+      historyRecords={historyRecords}
+      problem={problem}
+      onAutoFilled={onAutoFilled}
+    />
+  );
 }
 
-function DefaultRepeatableSection({ section, disabled, templateId, historyRecords, problem }: RepeatableSectionProps) {
+function DefaultRepeatableSection({ section, disabled, templateId, historyRecords, problem, onAutoFilled }: RepeatableSectionProps) {
   const { control, watch, setValue } = useFormContext();
   const { fields: entries, append, remove, insert } = useFieldArray({ control, name: section.id });
   const values = watch();
@@ -716,6 +727,11 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
   const isBrainstormLike = section.id === 'brainstorm' || section.id === 'factors';
   const isFactorsSection = section.id === 'factors';
   const isWhyChain = section.id === 'whyChain';
+
+  /** factors 自动引入完成回调：用 ref 持有最新函数，并确保只触发一次 */
+  const onAutoFilledRef = useRef(onAutoFilled);
+  onAutoFilledRef.current = onAutoFilled;
+  const autoFilledRef = useRef(false);
 
   /**
    * 每条 entry 的折叠/展开状态：使用 React state 持久化。
@@ -927,6 +943,11 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
     if (missing.length > 0) {
       for (const cause of missing) {
         append({ name: cause, description: '' });
+      }
+      // 自动引入完成（本次补齐了内容）→ 通知父组件直接进入关系矩阵阶段，仅一次
+      if (!autoFilledRef.current) {
+        autoFilledRef.current = true;
+        onAutoFilledRef.current?.();
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
