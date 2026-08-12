@@ -35,7 +35,6 @@ export function FishboneDiagram({ problemTitle, categories }: FishboneDiagramPro
       const baseX = tailX + 40 + idx * spacing;
       const isTop = idx % 2 === 0;
       const branchEndY = isTop ? spineY - 100 : spineY + 100;
-      const angle = isTop ? -45 : 45;
 
       lines.push(`<line x1="${baseX}" y1="${spineY}" x2="${baseX}" y2="${branchEndY}" stroke="#94a3b8" stroke-width="2" />`);
 
@@ -94,7 +93,7 @@ export function FishboneDiagram({ problemTitle, categories }: FishboneDiagramPro
             y={t.y}
             fontSize={t.size}
             fontWeight={t.weight}
-            textAnchor={t.anchor}
+            textAnchor={t.anchor as 'start' | 'middle' | 'end'}
             fill="#334155"
           >
             {t.text}
