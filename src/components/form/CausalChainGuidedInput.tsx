@@ -388,18 +388,48 @@ function FactorSelector({ brainstormCauses, initialSelected, onConfirm }: Factor
       </div>
 
       {brainstormCauses.length > 0 && (
-        <div className="max-h-60 overflow-y-auto space-y-1">
-          {brainstormCauses.map((cause, idx) => (
-            <label key={idx} className="flex items-start gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-brand-100 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={selected.has(idx)}
-                onChange={() => handleToggle(idx)}
-                className="mt-0.5"
-              />
-              <span className="text-text-secondary">{idx + 1}. {cause}</span>
-            </label>
-          ))}
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const all = new Set(brainstormCauses.map((_, idx) => idx));
+                setSelected(all);
+              }}
+              className="rounded border border-brand-300 px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100 transition"
+            >
+              {selected.size === brainstormCauses.length ? '取消全选' : '全选'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const inverted = new Set<number>();
+                for (let i = 0; i < brainstormCauses.length; i++) {
+                  if (!selected.has(i)) inverted.add(i);
+                }
+                setSelected(inverted);
+              }}
+              className="rounded border border-brand-300 px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100 transition"
+            >
+              反选
+            </button>
+            {selected.size > 0 && (
+              <span className="text-xs text-brand-600 leading-6">已选 {selected.size} / {brainstormCauses.length} 项</span>
+            )}
+          </div>
+          <div className="max-h-60 overflow-y-auto space-y-1">
+            {brainstormCauses.map((cause, idx) => (
+              <label key={idx} className="flex items-start gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-brand-100 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selected.has(idx)}
+                  onChange={() => handleToggle(idx)}
+                  className="mt-0.5"
+                />
+                <span className="text-text-secondary">{idx + 1}. {cause}</span>
+              </label>
+            ))}
+          </div>
         </div>
       )}
 
