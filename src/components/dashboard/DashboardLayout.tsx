@@ -1,6 +1,7 @@
 /**
  * 仪表盘布局：组合状态统计卡片、根因类型分布、高频经验教训、待跟进提醒与最近记录。
  */
+import { lazy, Suspense } from 'react';
 import type { ReactNode } from 'react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -12,9 +13,12 @@ import {
   rootCauseTypeDistribution,
 } from '../../utils/dashboard';
 import { StatCard } from '../stats/StatCard';
-import { RootCauseTypePie } from '../stats/RootCauseTypePie';
 import { KeywordList } from '../stats/KeywordList';
 import { RecordRow } from '../stats/RecordRow';
+
+const RootCauseTypePie = lazy(() =>
+  import('../stats/RootCauseTypePie').then((m) => ({ default: m.RootCauseTypePie }))
+);
 
 interface DashboardLayoutProps {
   records: FormRecord[];
@@ -38,7 +42,9 @@ export function DashboardLayout({ records, templates }: DashboardLayoutProps) {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Panel title="根因类型分布">
-          <RootCauseTypePie data={rootCauseDist} />
+          <Suspense fallback={<div className="flex h-48 items-center justify-center text-sm text-slate-400">加载图表中…</div>}>
+            <RootCauseTypePie data={rootCauseDist} />
+          </Suspense>
         </Panel>
         <Panel title="高频经验教训">
           <KeywordList keywords={keywords} />
@@ -69,9 +75,9 @@ export function DashboardLayout({ records, templates }: DashboardLayoutProps) {
 
 function Panel({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+    <div className="rounded-xl border border-surface-200 bg-surface-0 p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-sm font-bold text-text-primary">{title}</h3>
         {action}
       </div>
       {children}
