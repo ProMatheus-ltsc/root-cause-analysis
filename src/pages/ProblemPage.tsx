@@ -7,7 +7,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { TEMPLATE_LIST } from '../templates';
 import type { TemplateId } from '../types';
-import { useProblem, useRecordsByProblem, useSaveRecord, useDeleteRecord } from '../hooks/useDB';
+import { useProblem, useRecordsByProblem, useDeleteRecord } from '../hooks/useDB';
 import { useToast } from '../hooks/useToast';
 import { ProblemSummaryCard } from '../components/ProblemSummaryCard';
 import { TEMPLATE_COLORS } from '../constants/templateMeta';
@@ -15,7 +15,6 @@ import { TEMPLATE_COLORS } from '../constants/templateMeta';
 export default function ProblemPage() {
   const { problemId } = useParams<{ problemId: string }>();
   const navigate = useNavigate();
-  const saveRecord = useSaveRecord();
   const { showToast } = useToast();
   const { problem, loading } = useProblem(problemId);
   const { records, loading: recordsLoading } = useRecordsByProblem(problemId);
@@ -23,16 +22,10 @@ export default function ProblemPage() {
   const [adding, setAdding] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  async function handleAddAnalysis(templateId: TemplateId) {
+  function handleAddAnalysis(templateId: TemplateId) {
     if (!problem) return;
-    const saved = await saveRecord({
-      templateId,
-      problemId: problem.id,
-      title: problem.title,
-      data: {},
-      status: 'draft',
-    });
-    navigate(`/analysis/${problem.id}/${templateId}/${saved.id}`);
+    // 直接进入分析页：FormRenderer 会在首次自动保存时创建 record（避免空草稿残留）
+    navigate(`/analysis/${problem.id}/${templateId}`);
   }
 
   async function handleDeleteAnalysis(id: string) {
