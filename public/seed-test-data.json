@@ -1158,57 +1158,110 @@
       "updatedAt": "2026-08-12T16:43:48.552Z"
     },
     {
-      "id": "8a050654-dcda-441d-8180-00eacec55215",
-      "templateId": "timeline",
+      "id": "d5deab26-53ef-4fe8-a1c1-ac3fff56173d",
+      "templateId": "techIncident",
       "problemId": "bf04338c-2334-495a-a69b-ae48a9c0fb2f",
       "title": "广分物理和产品部自近两年起在出现在乐力PPT使用，九年级讲义使用中出现「在产品使用上不符合预期」，其过程为全面，影响全面。目标为100%使用产品部内部资料，现状与目标存在差距，二者之差即待分析的问题。",
       "data": {
         "occurredAt": "2026-08-10",
-        "duration": 480,
-        "impactScope": "department",
+        "impactScope": "company",
         "severity": "P1",
-        "summary": "广分物理教师在九年级备课中未使用产品部内部资料，且产品部产出资料未被主动宣导，导致资料使用率长期偏低。",
+        "summary": "订单服务支付回调处理超时率飙升，大量订单状态未及时更新，用户支付后长时间显示待支付。",
         "timelineEntries": [
           {
-            "time": "14:00",
-            "eventDesc": "产品部完成九年级物理内部资料初稿",
-            "sourceType": "log",
-            "isKeyMoment": false,
-            "actionTaken": "资料存入内部库，未做宣导",
+            "time": "11:58",
+            "eventDesc": "监控面板发现支付回调 P95 延迟从 200ms 升至 3.8s",
+            "sourceType": "monitor",
+            "isKeyMoment": true,
+            "actionTaken": "观察，未立即处理",
             "actionCorrectness": "improvable"
           },
           {
-            "time": "09:30",
-            "eventDesc": "广分教师开始九年级备课，习惯性使用广分现成PPT",
-            "sourceType": "manual",
+            "time": "12:15",
+            "eventDesc": "告警触发：支付回调超时率超过 30%，持续 5 分钟",
+            "sourceType": "alarm",
             "isKeyMoment": true,
-            "actionTaken": "未检查产品部资料库",
-            "actionCorrectness": "wrong"
+            "actionTaken": "拉起 on-call 群，开始排查",
+            "actionCorrectness": "correct"
           },
           {
-            "time": "15:20",
-            "eventDesc": "教研抽查发现资料使用率为0",
-            "sourceType": "monitor",
+            "time": "12:30",
+            "eventDesc": "查看日志发现大量『callback timeout: connect DB pool exhausted』错误",
+            "sourceType": "log",
             "isKeyMoment": true,
-            "actionTaken": "启动专项分析",
+            "actionTaken": "检查数据库连接池指标",
+            "actionCorrectness": "correct"
+          },
+          {
+            "time": "13:00",
+            "eventDesc": "定位根因：昨晚上线了新的促销活动，回调流量翻倍，但连接池配置未同步调整",
+            "sourceType": "manual",
+            "isKeyMoment": true,
+            "actionTaken": "临时扩容连接池恢复，制定配置变更预案",
             "actionCorrectness": "correct"
           }
         ],
-        "directCause": "备课流程中没有强制嵌入产品部资料取材环节，且产品部未主动推送宣导",
-        "rootCause": "产品部与一线教学团队之间缺乏需求沟通与使用考核机制，导致资料适用性和使用率双低",
-        "whyNotDetectedEarlier": "没有对资料使用情况做检查和反馈的机制",
-        "whyImpactSoLarge": "广分教师习惯了自有资料，切换成本高，且无考核约束",
-        "improveDetection": "增加资料使用率周报和教研抽查",
-        "improveResponse": "产品部主动推送新资料并组织试用培训",
-        "improvePrevention": "把内部资料使用率纳入教师考核指标，建立需求沟通渠道",
-        "lessonsLearned": "产品产出后必须配套宣导和考核闭环，否则资源投入不会转化为使用"
+        "affectedSystem": "order-service（订单支付回调模块）",
+        "environment": "production",
+        "errorSignature": "callback timeout: connect DB pool exhausted；回调超时率 30%+，P95 延迟 3.8s",
+        "affectedComponents": "order-service、支付网关回调入口、MySQL 主库连接池",
+        "hasRecentChange": "yes",
+        "changeDetail": "前一晚 20:00 上线暑期促销活动，订单量翻倍",
+        "monitoringEvidence": "连接池活跃连接数打满 100%，等待获取连接线程数持续攀升",
+        "reproducibility": "reproducible",
+        "diagnosisSteps": [
+          {
+            "time": "12:15",
+            "action": "查看告警详情与回调超时监控",
+            "finding": "超时集中在支付回调处理链路，其他接口正常",
+            "conclusion": "continue"
+          },
+          {
+            "time": "12:30",
+            "action": "拉取回调模块错误日志",
+            "finding": "大量『DB pool exhausted』，怀疑数据库连接池不足",
+            "conclusion": "continue"
+          },
+          {
+            "time": "12:45",
+            "action": "检查 MySQL 连接池与活跃连接指标",
+            "finding": "连接池打满，等待连接线程堆积",
+            "conclusion": "rootCause"
+          }
+        ],
+        "problemSummary": "支付回调处理因数据库连接池耗尽而超时堆积，根源是促销活动导致流量翻倍而连接池配置未同步扩容。",
+        "whyChain": [
+          {
+            "why": "为什么回调会超时？——数据库连接池耗尽，线程等待获取连接",
+            "evidenceType": "data",
+            "evidence": "连接池活跃连接数 100%，等待线程数 300+",
+            "isRootCause": "continue"
+          },
+          {
+            "why": "为什么连接池会耗尽？——促销活动使回调流量翻倍，但连接池上限未调整",
+            "evidenceType": "fact",
+            "evidence": "20:00 上线促销，12:00 开始超时；连接池 max 一直是 100",
+            "isRootCause": "continue"
+          },
+          {
+            "why": "为什么流量翻倍时连接池配置没有同步更新？——配置变更流程缺少容量评估与压测环节",
+            "evidenceType": "fact",
+            "evidence": "上线 Checklist 中无容量评估项，变更未做压测",
+            "isRootCause": "yes"
+          }
+        ],
+        "rootCauseJudgement": "上线流程缺少容量评估与压测环节，导致流量翻倍时数据库连接池配置未同步扩容，回调处理耗尽连接池而超时。",
+        "confirmedCause": "变更上线 Checklist 缺少容量评估与压测；连接池容量配置为静态硬编码，未随流量动态调整",
+        "rootCauseSummary": "促销上线未做容量评估与压测，数据库连接池配置未随流量翻倍同步扩容，导致支付回调处理超时堆积。",
+        "rootCauseType": "process",
+        "verificationPlan": "上线后连续 7 天监控回调 P95 延迟与连接池使用率，P95 < 500ms、连接池使用率 < 70%；后续每次上线执行容量评估与压测 Checklist"
       },
       "status": "completed",
       "createdAt": "2026-08-12T20:00:00.000Z",
       "updatedAt": "2026-08-12T20:00:00.000Z"
     },
     {
-      "id": "abbe29c0-c0f2-43a6-8701-dca5a6ddb651",
+      "id": "956bf080-5014-4ea4-985b-424401463369",
       "templateId": "comparison",
       "problemId": "bf04338c-2334-495a-a69b-ae48a9c0fb2f",
       "title": "广分物理和产品部自近两年起在出现在乐力PPT使用，九年级讲义使用中出现「在产品使用上不符合预期」，其过程为全面，影响全面。目标为100%使用产品部内部资料，现状与目标存在差距，二者之差即待分析的问题。",
@@ -1240,40 +1293,6 @@
         "verificationMethod": "连续4周统计资料使用率并抽查教师访谈",
         "action": "建立需求沟通渠道、资料试用培训、使用率纳入考核",
         "lessonsLearned": "对比正常/异常案例能快速定位关键差异，再针对差异设计对策"
-      },
-      "status": "completed",
-      "createdAt": "2026-08-12T20:00:00.000Z",
-      "updatedAt": "2026-08-12T20:00:00.000Z"
-    },
-    {
-      "id": "ef7c43b6-2aae-4084-ac68-6ba71ceedb4b",
-      "templateId": "technicalFault",
-      "problemId": "bf04338c-2334-495a-a69b-ae48a9c0fb2f",
-      "title": "广分物理和产品部自近两年起在出现在乐力PPT使用，九年级讲义使用中出现「在产品使用上不符合预期」，其过程为全面，影响全面。目标为100%使用产品部内部资料，现状与目标存在差距，二者之差即待分析的问题。",
-      "data": {
-        "affectedSystem": "乐力PPT内容分发服务 + 九年级讲义生成服务",
-        "environment": "production",
-        "errorSignature": "资料使用率指标持续为0，内容分发接口调用量为0",
-        "affectedComponents": "内容分发服务、讲义生成服务、教师端备课入口",
-        "hasRecentChange": "yes",
-        "changeDetail": "产品部资料库迁移后，未配置教师端入口的主动推送",
-        "monitoringEvidence": "内容分发接口调用量监控为0，使用率报表为空",
-        "reproducibility": "reproducible",
-        "diagnosisSteps": [
-          {
-            "time": "10:05",
-            "action": "查看内容分发接口调用监控",
-            "finding": "调用量为0，确认教师端从未调用",
-            "conclusion": "excluded"
-          },
-          {
-            "time": "10:20",
-            "action": "检查教师端备课入口配置",
-            "finding": "备课入口未接入产品部资料库",
-            "conclusion": "rootCause"
-          }
-        ],
-        "rootCauseJudgement": "教师端备课入口未接入产品部资料库，且无主动推送，导致产品部资料完全未被使用"
       },
       "status": "completed",
       "createdAt": "2026-08-12T20:00:00.000Z",

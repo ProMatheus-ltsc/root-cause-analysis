@@ -1,0 +1,176 @@
+/**
+ * 手动桥接外部 AI 分析（系统思考）：
+ * - buildSystemThinkPrompt：把问题详情 + 候选原因组装成给外部 AI 的提示词（要求返回 JSON）
+ * - parseAiAnalysis：解析并校验 AI 返回的 JSON（回路 + 杠杆点），失败抛中文错误
+ */
+import type { Problem } from '../types';
+
+export interface AiLoop {
+  name: string;
+  type: 'reinforcing' | 'balancing';
+  causes: string[];
+  description?: string;
+}
+
+export interface AiLeveragePoint {
+  cause: string;
+  intervention?: string;
+  reason?: string;
+}
+
+export interface AiAnalysisResult {
+  loops: AiLoop[];
+  leveragePoints: AiLeveragePoint[];
+}
+
+/** 组装"问题详情 + 候选原因"的导出 JSON（供 AI 分析）。 */
+export function buildProblemJson(problem?: Problem): string {
+  const data = (problem?.data ?? {}) as Record<string, unknown>;
+  const w2h: Record<string, string> = {};
+  if (Array.isArray(data.w2hTable)) {
+    for (const row of data.w2hTable as Array<Record<string, unknown>>) {
+      if (typeof row?.dimension === 'string' && typeof row?.description === 'string' && row.description.trim()) {
+        w2h[row.dimension] = row.description.trim();
+      }
+    }
+  }
+  const candidateCauses = Array.isArray(data.brainstorm)
+    ? (data.brainstorm as Array<Record<string, unknown>>)
+        .map((item) => (typeof item?.cause === 'string' ? item.cause.trim() : ''))
+        .filter((c) => c.length > 0)
+    : [];
+
+  return JSON.stringify(
+    {
+      problem: {
+        title: problem?.title ?? '',
+        statement: problem?.problemStatement ?? '',
+        gapTarget: typeof data.gapTarget === 'string' ? data.gapTarget : '',
+        symptom: typeof data.symptom === 'string' ? data.symptom : '',
+        w2h,
+      },
+      candidateCauses,
+    },
+    null,
+    2,
+  );
+}
+
+/** 组装给外部 AI 的完整提示词（要求严格返回 JSON）。 */
+export function buildSystemThinkPrompt(problem?: Problem): string {
+  const payload = buildProblemJson(problem);
+  return `你是系统动力学分析师。请基于下面的"问题详情与候选原因"识别系统中的反馈回路和杠杆点。
+判断标准：
+- 回路（loop）必须形成闭环：原因1→原因2→…→原因1
+- 只关注会让"问题越来越坏"的回路（恶性循环 / reinforcing），若确实存在被抑制的平衡环（balancing）也可列出
+- 杠杆点（leverage point）是"施加最小干预能产生最大系统改变"的环节
+请严格按以下 JSON 格式返回，不要输出任何其他文字：
+{
+  "loops": [
+    {
+      "name": "回路名称",
+      "type": "reinforcing | balancing",
+      "causes": ["环节1", "环节2", "环节3"],
+      "description": "用一段话说明这个循环如何自我强化/自我抑制"
+    }
+  ],
+  "leveragePoints": [
+    {
+      "cause": "杠杆点对应的环节",
+      "intervention": "建议的最小干预",
+      "reason": "为什么这里是杠杆点"
+    }
+  ]
+}
+若未识别到任何闭环回路，请返回：{"loops": [], "leveragePoints": [], "note": "未识别到反馈回路，可能需要补充候选原因"}
+
+问题详情与候选原因：
+${payload}`;
+}
+
+/**
+ * 解析并校验 AI 返回的 JSON。
+ * @throws Error 携带中文可读的错误信息
+ */
+export function parseAiAnalysis(raw: string): AiAnalysisResult {
+  const text = raw.trim();
+  if (!text) {
+    throw new Error('粘贴内容为空');
+  }
+  let obj: unknown;
+  try {
+    obj = JSON.parse(text);
+  } catch {
+    throw new Error('JSON 解析失败——请确认 AI 只返回了 JSON 对象，没有多余文字（可用 ```json 包裹，解析时会自动去除）');
+  }
+  if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
+    throw new Error('JSON 顶层应为对象 { loops, leveragePoints }');
+  }
+  const root = obj as Record<string, unknown>;
+  if (!Array.isArray(root.loops) || !Array.isArray(root.leveragePoints)) {
+    throw new Error('缺少字段：loops 或 leveragePoints（必须都是数组）');
+  }
+  const loops: AiLoop[] = [];
+  for (let i = 0; i < root.loops.length; i++) {
+    const l = root.loops[i] as Record<string, unknown> | null;
+    if (!l || typeof l !== 'object') {
+      throw new Error(`loops[${i}] 不是对象`);
+    }
+    if (typeof l.name !== 'string' || !l.name.trim()) {
+      throw new Error(`loops[${i}].name 缺失或为空`);
+    }
+    if (l.type !== 'reinforcing' && l.type !== 'balancing') {
+      throw new Error(`loops[${i}].type 必须为 "reinforcing" 或 "balancing"`);
+    }
+    if (!Array.isArray(l.causes) || l.causes.length < 2 || !l.causes.every((c) => typeof c === 'string')) {
+      throw new Error(`loops[${i}].causes 必须是不小于 2 个字符串的数组`);
+    }
+    loops.push({
+      name: l.name.trim(),
+      type: l.type,
+      causes: (l.causes as string[]).map((c) => c.trim()).filter(Boolean),
+      description: typeof l.description === 'string' && l.description.trim() ? l.description.trim() : undefined,
+    });
+  }
+  const leveragePoints: AiLeveragePoint[] = [];
+  for (let i = 0; i < root.leveragePoints.length; i++) {
+    const lp = root.leveragePoints[i] as Record<string, unknown> | null;
+    if (!lp || typeof lp !== 'object') {
+      throw new Error(`leveragePoints[${i}] 不是对象`);
+    }
+    if (typeof lp.cause !== 'string' || !lp.cause.trim()) {
+      throw new Error(`leveragePoints[${i}].cause 缺失或为空`);
+    }
+    leveragePoints.push({
+      cause: lp.cause.trim(),
+      intervention: typeof lp.intervention === 'string' && lp.intervention.trim() ? lp.intervention.trim() : undefined,
+      reason: typeof lp.reason === 'string' && lp.reason.trim() ? lp.reason.trim() : undefined,
+    });
+  }
+  return { loops, leveragePoints };
+}
+
+/** 把解析结果格式化为可读文本（存 form data 或展示）。 */
+export function formatAiAnalysis(result: AiAnalysisResult): string {
+  const lines: string[] = [];
+  if (result.loops.length === 0) {
+    lines.push('未识别到反馈回路');
+  } else {
+    lines.push(`识别到 ${result.loops.length} 条回路：`);
+    result.loops.forEach((l, i) => {
+      lines.push(`${i + 1}. ${l.name}（${l.type === 'reinforcing' ? '恶性循环/正反馈' : '平衡环/负反馈'}）`);
+      lines.push(`   链路：${l.causes.join(' → ')}`);
+      if (l.description) lines.push(`   说明：${l.description}`);
+    });
+  }
+  if (result.leveragePoints.length > 0) {
+    lines.push('');
+    lines.push(`杠杆点（${result.leveragePoints.length} 个）：`);
+    result.leveragePoints.forEach((p, i) => {
+      lines.push(`${i + 1}. ${p.cause}`);
+      if (p.intervention) lines.push(`   干预：${p.intervention}`);
+      if (p.reason) lines.push(`   依据：${p.reason}`);
+    });
+  }
+  return lines.join('\n');
+}

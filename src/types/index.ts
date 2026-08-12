@@ -10,7 +10,8 @@ export type TemplateId =
   | 'timeline'
   | 'comparison'
   | 'systemThinking'
-  | 'technicalFault';
+  | 'technicalFault'
+  | 'techIncident';
 
 export type FieldType =
   | 'text'
@@ -21,7 +22,8 @@ export type FieldType =
   | 'radio'
   | 'checkbox'
   | 'rating'
-  | 'table';
+  | 'table'
+  | 'custom';
 
 export interface FieldOption {
   value: string;

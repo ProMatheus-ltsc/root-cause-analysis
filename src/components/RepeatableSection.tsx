@@ -1132,6 +1132,7 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
                   disabled={disabled}
                   templateId={templateId}
                   historyRecords={historyRecords}
+                  problem={problem}
                 />
               </div>
               {/* 上一条/下一条导航：填写完不必滚回顶部卡片条，直接切到相邻条目 */}

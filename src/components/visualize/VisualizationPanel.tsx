@@ -47,7 +47,8 @@ export function VisualizationPanel({ templateId, values, problemTitle }: Visuali
         return { type: 'heatmap' as const, factorNames, matrix };
       }
 
-      case 'timeline': {
+      case 'timeline':
+      case 'techIncident': {
         const entries = Array.isArray(values.timelineEntries) ? (values.timelineEntries as Array<Record<string, unknown>>) : [];
         const cleaned = entries
           .map((e) => ({

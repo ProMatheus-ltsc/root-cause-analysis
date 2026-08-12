@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
-import { TEMPLATE_LIST } from '../templates';
+import { TEMPLATE_LIST, TEMPLATES } from '../templates';
 import type { TemplateId } from '../types';
 import { useProblem, useRecordsByProblem, useDeleteRecord } from '../hooks/useDB';
 import { useToast } from '../hooks/useToast';
@@ -73,10 +73,9 @@ export default function ProblemPage() {
                 <li><strong>要因分析法</strong>（推荐）：适合多因素复杂问题，通过 DEMATEL 矩阵量化因果关系、帕累托找出关键少数</li>
                 <li><strong>5 Why 追问法</strong>：适合因果链条清晰的问题，通过层层追问抵达根因</li>
                 <li><strong>鱼骨图分析法</strong>：适合需要从人/机/料/法/环/测多维度排查的系统性问题</li>
-                <li><strong>时间线分析法</strong>：适合事故/故障的事后复盘，按时间还原事件经过</li>
                 <li><strong>对比分析法</strong>：适合"为什么有时正常有时异常"的问题，对比找差异</li>
                 <li><strong>系统思考分析</strong>：适合反复出现的循环性问题，找出系统杠杆点</li>
-                <li><strong>技术故障根因分析</strong>：适合生产/系统故障，记录排查过程并归因</li>
+                <li><strong>技术专题分析</strong>：适合生产/系统故障，时间线发现影响面 → 日志定位问题 → 5Why 追溯根因</li>
               </ul>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -110,7 +109,7 @@ export default function ProblemPage() {
         ) : (
           <div className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
             {records.map((record) => {
-              const template = TEMPLATE_LIST.find((t) => t.id === record.templateId);
+              const template = TEMPLATES[record.templateId];
               return (
                 <div key={record.id} className="flex items-center justify-between gap-3 px-4 py-3">
                   <Link to={`/analysis/${problem.id}/${record.templateId}/${record.id}`} className="min-w-0 flex-1">
@@ -143,7 +142,7 @@ export default function ProblemPage() {
           <h3 className="mb-3 text-base font-semibold text-slate-900">根因汇总对比</h3>
           <div className="rounded-lg border border-slate-200 bg-white divide-y divide-slate-100">
             {records.filter((r) => r.status === 'completed').map((record) => {
-              const template = TEMPLATE_LIST.find((t) => t.id === record.templateId);
+              const template = TEMPLATES[record.templateId];
               const rootCauseSummary = typeof record.data['rootCauseSummary'] === 'string' ? record.data['rootCauseSummary'] : '';
               const rootCauseType = typeof record.data['rootCauseType'] === 'string' ? record.data['rootCauseType'] : '';
               return (

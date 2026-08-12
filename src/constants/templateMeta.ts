@@ -12,4 +12,5 @@ export const TEMPLATE_COLORS: Record<TemplateId, string> = {
   comparison: 'bg-violet-100 text-violet-700 border-violet-200',
   systemThinking: 'bg-rose-100 text-rose-700 border-rose-200',
   technicalFault: 'bg-orange-100 text-orange-700 border-orange-200',
+  techIncident: 'bg-orange-100 text-orange-700 border-orange-200',
 };

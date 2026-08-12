@@ -5,7 +5,7 @@
 import { memo, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import clsx from 'clsx';
-import type { FormField } from '../types';
+import type { FormField, Problem } from '../types';
 import {
   CheckboxInput,
   DateInput,
@@ -18,6 +18,7 @@ import {
   TextareaInput,
 } from './form/FieldInputs';
 import { MatrixGuidedInput } from './form/MatrixGuidedInput';
+import { SystemThinkAiPanel } from './form/SystemThinkAiPanel';
 
 /** 计算字段的快速复制按钮：点击把生成内容复制到剪贴板，便于在后续流程中粘贴修改。 */
 function CopyButton({ text }: { text: string }) {
@@ -67,9 +68,10 @@ interface FieldRendererProps {
   name: string;
   disabled?: boolean;
   suggestions?: string[];
+  problem?: Problem;
 }
 
-function FieldRendererImpl({ field, name, disabled, suggestions }: FieldRendererProps) {
+function FieldRendererImpl({ field, name, disabled, suggestions, problem }: FieldRendererProps) {
   const { watch, formState } = useFormContext();
   const values = watch();
   const error = getErrorAtPath(formState.errors as Record<string, unknown>, name);
@@ -103,7 +105,7 @@ function FieldRendererImpl({ field, name, disabled, suggestions }: FieldRenderer
     <div className="space-y-1">
       <FieldLabel field={field} />
       {hint && <p className="text-xs text-slate-400">{hint}</p>}
-      <FieldInput field={field} name={name} disabled={disabled} suggestions={suggestions} />
+      <FieldInput field={field} name={name} disabled={disabled} suggestions={suggestions} problem={problem} />
       {error?.message && <p className="text-xs text-rose-600">{error.message}</p>}
     </div>
   );
@@ -119,7 +121,7 @@ function FieldLabel({ field }: { field: FormField }) {
   );
 }
 
-function FieldInput({ field, name, disabled, suggestions }: FieldRendererProps) {
+function FieldInput({ field, name, disabled, suggestions, problem }: FieldRendererProps) {
   switch (field.type) {
     case 'textarea':
       return <TextareaInput field={field} name={name} disabled={disabled} />;
@@ -140,6 +142,11 @@ function FieldInput({ field, name, disabled, suggestions }: FieldRendererProps) 
         return <MatrixGuidedInput field={field} name={name} disabled={disabled} />;
       }
       return <TableFieldInput field={field} name={name} disabled={disabled} />;
+    case 'custom':
+      if (field.id === 'aiLoopAnalysis') {
+        return <SystemThinkAiPanel problem={problem} disabled={disabled} />;
+      }
+      return <p className="text-sm text-slate-400">未知的自定义字段：{field.id}</p>;
     case 'text':
     default:
       return <TextInput field={field} name={name} disabled={disabled} suggestions={suggestions} />;

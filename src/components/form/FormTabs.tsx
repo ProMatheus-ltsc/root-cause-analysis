@@ -53,7 +53,7 @@ function SectionBlock({
     />
   ) : (
     <div className="grid gap-5 sm:grid-cols-2">
-      <FieldList fields={section.fields} basePath="" disabled={disabled} templateId={templateId} historyRecords={historyRecords} />
+      <FieldList fields={section.fields} basePath="" disabled={disabled} templateId={templateId} historyRecords={historyRecords} problem={problem} />
     </div>
   );
 

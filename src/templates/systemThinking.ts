@@ -39,7 +39,7 @@ export const systemThinkingTemplate: FormTemplate = {
       repeatLabel: '因果链 {n}',
       minEntries: 1,
       fields: [
-        { id: 'factorA', label: '因素 A', type: 'text', required: true },
+        { id: 'factorA', label: '因素 A', type: 'text' },
         {
           id: 'relationType',
           label: '关系类型',
@@ -50,7 +50,7 @@ export const systemThinkingTemplate: FormTemplate = {
             { value: 'causal', label: 'A 触发 → B 发生（因果链）' },
           ],
         },
-        { id: 'factorB', label: '因素 B', type: 'text', required: true },
+        { id: 'factorB', label: '因素 B', type: 'text' },
         {
           id: 'delayEffect',
           label: '延迟效应',
@@ -68,17 +68,23 @@ export const systemThinkingTemplate: FormTemplate = {
     {
       id: 'loopAnalysis',
       title: '回路与杠杆点',
+      description: '使用"手动调 AI"模式：把问题与候选原因导出给外部 AI，AI 返回回路与杠杆点 JSON，粘贴回来即可解析应用。也可继续手动补充因果链后由系统检测回路（可选）。',
       fields: [
         {
+          id: 'aiLoopAnalysis',
+          label: 'AI 辅助识别回路与杠杆点',
+          type: 'custom',
+        },
+        {
           id: 'detectedLoops',
-          label: '系统自动检测的回路（基于因果链数据）',
+          label: '系统自动检测的回路（基于因果链数据，可选）',
           type: 'text',
           computed: {
             dependsOn: ['causalChain'],
             formula: (values) => detectLoopsText(values),
           },
         },
-        { id: 'leveragePoint', label: '系统杠杆点在哪里？', type: 'textarea', required: true, placeholder: '参考上方自动检测的回路，在哪个环节施加最小干预能产生最大系统改变？' },
+        { id: 'leveragePoint', label: '系统杠杆点在哪里？', type: 'textarea', required: true, placeholder: '参考上方 AI 识别的回路/杠杆点，或自动检测的回路，在哪个环节施加最小干预能产生最大系统改变？' },
       ],
     },
     {
@@ -96,10 +102,11 @@ export const systemThinkingTemplate: FormTemplate = {
   phases: [
     {
       id: 'causalAnalysis',
-      label: '因果链分析',
+      label: '系统分析',
       icon: '🔄',
       sectionIndices: [0, 1, 2],
-      completionFields: ['factorA', 'factorB', 'leveragePoint'],
+      // AI 模式下无需手动录因果链；杠杆点（来自 AI 结果或手动分析）为完成条件
+      completionFields: ['leveragePoint'],
     },
     {
       id: 'intervention',

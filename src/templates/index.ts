@@ -11,6 +11,7 @@ import { timelineTemplate } from './timeline';
 import { comparisonTemplate } from './comparison';
 import { systemThinkingTemplate } from './systemThinking';
 import { technicalFaultTemplate } from './technicalFault';
+import { techIncidentTemplate } from './techIncident';
 
 export const TEMPLATES: Record<TemplateId, FormTemplate> = {
   problemWizard: problemWizardTemplate,
@@ -21,10 +22,16 @@ export const TEMPLATES: Record<TemplateId, FormTemplate> = {
   comparison: comparisonTemplate,
   systemThinking: systemThinkingTemplate,
   technicalFault: technicalFaultTemplate,
+  techIncident: techIncidentTemplate,
 };
 
-/** 分析方法模板列表（不含 problemWizard），推荐模板优先展示。 */
-export const TEMPLATE_LIST: FormTemplate[] = Object.values(TEMPLATES).filter((t) => t.id !== 'problemWizard');
+/**
+ * 分析方法模板列表（不含 problemWizard）。
+ * 时间线分析（timeline）与技术故障根因分析（technicalFault）已二合一为"技术专题分析"（techIncident），
+ * 旧模板保留在 TEMPLATES 中以兼容历史数据的打开/导出，但不再出现在新增入口。
+ */
+const HIDDEN_FROM_LIST: TemplateId[] = ['timeline', 'technicalFault'];
+export const TEMPLATE_LIST: FormTemplate[] = Object.values(TEMPLATES).filter((t) => t.id !== 'problemWizard' && !HIDDEN_FROM_LIST.includes(t.id));
 
 export function getTemplate(templateId: TemplateId): FormTemplate {
   return TEMPLATES[templateId];
