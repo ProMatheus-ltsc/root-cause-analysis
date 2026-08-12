@@ -10,10 +10,14 @@ import type { FormRecord, FormTemplate, Problem } from '../types';
 import { useRecords, useSaveRecord } from '../hooks/useDB';
 import { usePhaseLogic } from '../hooks/usePhaseLogic';
 import { useToast } from '../hooks/useToast';
+import { useSnapshots } from '../hooks/useSnapshots';
 import { getCurrentPhaseIndex, isPhaseCompletionSatisfied, resolveDefaultValue, validateRequiredFields } from '../utils/formValidation';
 import { buildAnalysisExportJson } from '../utils/exportAnalysis';
 import { PhaseIndicator } from './PhaseIndicator';
 import { FormTabs } from './form/FormTabs';
+import { VisualizationPanel } from './visualize/VisualizationPanel';
+import { SnapshotList } from './history/SnapshotList';
+import { PdfExportButton } from './export/PdfExportButton';
 
 /** 解析模板默认值：按 section/field 遍历，注入 defaultValue（问题向导页与编辑页共用）。 */
 export function buildDefaultValues(template: FormTemplate, record: FormRecord | undefined, todayISO: string): Record<string, unknown> {
@@ -68,7 +72,7 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
 
   const defaultValues = useMemo(() => buildDefaultValues(template, record, todayISO), [template, record, todayISO]);
   const methods = useForm<Record<string, unknown>>({ defaultValues });
-  const { getValues } = methods;
+  const { getValues, reset } = methods;
 
   const createdAtISO = record?.createdAt ?? todayISO;
   const [committedValues, setCommittedValues] = useState(defaultValues);
@@ -84,6 +88,9 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
   const dirtyRef = useRef(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | undefined>(undefined);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  const { snapshots, loading: snapshotsLoading, createSnapshot, removeSnapshot } = useSnapshots(recordIdRef.current);
 
   async function persist(status: 'draft' | 'completed', { commitPhase = false } = {}): Promise<FormRecord> {
     const currentValues = getValues();
@@ -243,9 +250,9 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={(e) => e.preventDefault()} className="print-area">
+      <form onSubmit={(e) => e.preventDefault()} className="print-area animate-fade-in">
         {isCompleted && (
-          <div className="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
+          <div className="mb-5 rounded-xl border border-success/30 bg-success/5 px-5 py-3.5 text-sm font-medium text-success">
             ✓ 本次分析已标记完成，内容为只读状态。
           </div>
         )}
@@ -260,10 +267,11 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
           />
         )}
         <FormTabs sections={activeSections} disabled={disabled} templateId={template.id} historyRecords={historyRecords} problem={problem} />
+        <VisualizationPanel templateId={template.id} values={committedValues} problemTitle={problemTitle} />
         {validationErrors.length > 0 && (
-          <div className="no-print mt-4 rounded-md border border-rose-200 bg-rose-50 px-4 py-3">
-            <p className="text-sm font-medium text-rose-700">⚠ 以下必填项尚未完成：</p>
-            <ul className="mt-1 list-disc pl-5 text-sm text-rose-600">
+          <div className="no-print mt-5 rounded-xl border border-danger/30 bg-danger/5 px-5 py-3.5" role="alert">
+            <p className="text-sm font-semibold text-danger">⚠ 以下必填项尚未完成：</p>
+            <ul className="mt-2 list-disc pl-5 text-sm text-danger/80">
               {validationErrors.map((err, idx) => (
                 <li key={idx}>{err}</li>
               ))}
@@ -271,12 +279,12 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
           </div>
         )}
         {!disabled && (
-          <div className="no-print mt-8 flex flex-wrap items-center gap-3 border-t border-slate-200 pt-4">
+          <div className="no-print mt-8 flex flex-wrap items-center gap-3 border-t border-surface-200 pt-5">
             {phases && activePhaseIndex > 0 && (
               <button
                 type="button"
                 onClick={() => handleSelectPhase(activePhaseIndex - 1)}
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-100"
+                className="rounded-xl border border-surface-200 bg-surface-0 px-4 py-2.5 text-sm font-medium text-text-secondary transition hover:border-brand-300 hover:text-brand-600"
               >
                 ← 上一阶段
               </button>
@@ -284,27 +292,73 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
             <button
               type="button"
               onClick={handlePrimaryAction}
-              className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
+              className="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-brand-200 hover:bg-brand-700 transition"
             >
               {!phases ? '完成' : activePhase?.completesRecord ? '保存并标记完成' : isLastPhase ? '保存' : '保存并进入下一阶段'}
             </button>
             <button
               type="button"
               onClick={handleCopyJson}
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-100"
+              className="rounded-xl border border-surface-200 bg-surface-0 px-4 py-2.5 text-sm font-medium text-text-secondary transition hover:border-brand-300 hover:text-brand-600"
             >
-              {copiedJson ? '已复制 JSON ✓' : '复制 JSON（问题描述 / 根因 / 果因）'}
+              {copiedJson ? '已复制 JSON ✓' : '复制 JSON'}
             </button>
             <button
               type="button"
               onClick={() => { persist(statusRef.current); showToast('已手动保存', 'success'); }}
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-100"
+              className="rounded-xl border border-surface-200 bg-surface-0 px-4 py-2.5 text-sm font-medium text-text-secondary transition hover:border-brand-300 hover:text-brand-600"
             >
               手动保存
             </button>
-            <span className="text-xs text-slate-400">
+            <button
+              type="button"
+              onClick={() => setShowHistory(!showHistory)}
+              className="rounded-xl border border-surface-200 bg-surface-0 px-4 py-2.5 text-sm font-medium text-text-secondary transition hover:border-brand-300 hover:text-brand-600"
+            >
+              {showHistory ? '隐藏历史' : '版本历史'}
+            </button>
+            <PdfExportButton
+              problem={problem}
+              record={{
+                id: recordIdRef.current ?? 'draft',
+                templateId: template.id,
+                problemId,
+                title: getRecordTitle(template, getValues(), problemTitle),
+                data: getValues(),
+                status: statusRef.current,
+                createdAt: recordCreatedAtRef.current ?? todayISO,
+                updatedAt: new Date().toISOString(),
+              }}
+              template={template}
+              values={getValues()}
+            />
+            <span className="text-xs text-text-tertiary">
               {lastSavedAt ? `上次保存于 ${format(lastSavedAt, 'HH:mm:ss')}` : '系统每 10 秒自动保存草稿'}
             </span>
+          </div>
+        )}
+        {showHistory && (
+          <div className="no-print mt-4">
+            <SnapshotList
+              snapshots={snapshots}
+              loading={snapshotsLoading}
+              onRestore={(snapshot) => {
+                if (confirm('确定恢复到此快照？当前未保存的内容将被覆盖。')) {
+                  reset(snapshot.data);
+                  setCommittedValues(snapshot.data);
+                  showToast(`已恢复到快照：${snapshot.label}`, 'success');
+                }
+              }}
+              onDelete={(id) => {
+                if (confirm('确定删除此快照？')) {
+                  removeSnapshot(id);
+                }
+              }}
+              onCreateSnapshot={() => {
+                createSnapshot(getValues());
+                showToast('已创建快照', 'success');
+              }}
+            />
           </div>
         )}
       </form>
