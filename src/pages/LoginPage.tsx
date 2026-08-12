@@ -72,15 +72,18 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="mb-1 text-xl font-semibold text-slate-900">根因分析系统</h1>
-        <p className="mb-6 text-sm text-slate-500">{MODE_TITLE[mode]}</p>
+    <div className="flex min-h-screen items-center justify-center bg-surface-50 px-4">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-2xl border border-surface-200 bg-surface-0 p-8 shadow-lg shadow-brand-100/20 animate-slide-up">
+        <div className="mb-2 flex items-center gap-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold text-white">R</span>
+          <h1 className="text-xl font-bold text-text-primary">根因分析系统</h1>
+        </div>
+        <p className="mb-7 text-sm text-text-tertiary">{MODE_TITLE[mode]}</p>
         <div className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm text-slate-700">用户名</label>
+            <label className="mb-1.5 block text-xs font-medium text-text-secondary">用户名</label>
             <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-surface-200 bg-surface-50 px-4 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-brand-400 focus:bg-surface-0 focus:outline-none focus:ring-2 focus:ring-brand-100 transition"
               placeholder="输入用户名"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -89,11 +92,11 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm text-slate-700">{mode === 'reset' ? '新密码' : '密码'}</label>
+            <label className="mb-1.5 block text-xs font-medium text-text-secondary">{mode === 'reset' ? '新密码' : '密码'}</label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 pr-10 text-sm"
+                className="w-full rounded-xl border border-surface-200 bg-surface-50 px-4 py-2.5 pr-10 text-sm text-text-primary placeholder:text-text-tertiary focus:border-brand-400 focus:bg-surface-0 focus:outline-none focus:ring-2 focus:ring-brand-100 transition"
                 placeholder="至少 4 位"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -104,16 +107,16 @@ export default function LoginPage() {
               <PasswordToggle visible={showPassword} onToggle={() => setShowPassword((v) => !v)} />
             </div>
             {mode === 'register' && password.length > 0 && password.length < 4 && (
-              <p className="mt-1 text-xs text-amber-600">已输入 {password.length}/4 位，还需 {4 - password.length} 位</p>
+              <p className="mt-1.5 text-xs text-warning">已输入 {password.length}/4 位，还需 {4 - password.length} 位</p>
             )}
           </div>
           {mode === 'reset' && (
             <div>
-              <label className="mb-1 block text-sm text-slate-700">确认新密码</label>
+              <label className="mb-1.5 block text-xs font-medium text-text-secondary">确认新密码</label>
               <div className="relative">
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 pr-10 text-sm"
+                  className="w-full rounded-xl border border-surface-200 bg-surface-50 px-4 py-2.5 pr-10 text-sm text-text-primary placeholder:text-text-tertiary focus:border-brand-400 focus:bg-surface-0 focus:outline-none focus:ring-2 focus:ring-brand-100 transition"
                   placeholder="再次输入新密码"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -124,33 +127,33 @@ export default function LoginPage() {
                 <PasswordToggle visible={showConfirmPassword} onToggle={() => setShowConfirmPassword((v) => !v)} />
               </div>
               {confirmPassword.length > 0 && password !== confirmPassword && (
-                <p className="mt-1 text-xs text-rose-600">两次密码不一致</p>
+                <p className="mt-1.5 text-xs text-danger">两次密码不一致</p>
               )}
             </div>
           )}
         </div>
         {mode === 'reset' && (
-          <p className="mt-3 text-xs text-slate-400">
+          <p className="mt-3 text-xs text-text-tertiary leading-relaxed">
             本系统数据仅存于本地浏览器，无法验证旧密码；输入正确的用户名即可设置新密码并直接登入，历史记录不受影响。
           </p>
         )}
-        {error && <p className="mt-3 text-sm text-rose-600">{error}</p>}
-        <button type="submit" className="mt-6 w-full rounded-md bg-sky-600 py-2 text-sm font-medium text-white hover:bg-sky-700">
+        {error && <p className="mt-3 text-sm font-medium text-danger">{error}</p>}
+        <button type="submit" className="mt-7 w-full rounded-xl bg-brand-600 py-2.5 text-sm font-semibold text-white shadow-sm shadow-brand-200 hover:bg-brand-700 transition">
           {mode === 'login' ? '登录' : mode === 'register' ? '注册' : '重置密码并登录'}
         </button>
-        <div className="mt-3 flex flex-col items-center gap-2 text-sm">
+        <div className="mt-4 flex flex-col items-center gap-2 text-sm">
           {mode === 'login' && (
             <>
-              <button type="button" onClick={() => switchMode('register')} className="text-slate-500 hover:underline">
+              <button type="button" onClick={() => switchMode('register')} className="text-text-secondary hover:text-brand-600 transition">
                 没有账户？去注册
               </button>
-              <button type="button" onClick={() => switchMode('reset')} className="text-slate-400 hover:underline">
+              <button type="button" onClick={() => switchMode('reset')} className="text-text-tertiary hover:text-text-secondary transition">
                 忘记密码？
               </button>
             </>
           )}
           {mode !== 'login' && (
-            <button type="button" onClick={() => switchMode('login')} className="text-slate-500 hover:underline">
+            <button type="button" onClick={() => switchMode('login')} className="text-text-secondary hover:text-brand-600 transition">
               已有账户？去登录
             </button>
           )}
