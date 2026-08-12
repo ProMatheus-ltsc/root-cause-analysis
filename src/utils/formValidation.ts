@@ -146,17 +146,24 @@ export function validateRequiredFields(template: FormTemplate, values: Record<st
       section.fields.forEach((f) => {
         if (f.type === 'table' && f.validation?.min !== undefined) {
           const rows = Array.isArray(values[f.id]) ? (values[f.id] as unknown[]) : [];
-          // 兼容字符串与数字两种数据：字符串非空、数字非 0 都算"有效单元格"
-          const filledRows = rows.filter((row) => {
-            if (typeof row !== 'object' || row === null) return false;
-            return Object.values(row as Record<string, unknown>).some((v) => {
-              if (typeof v === 'string') return v.trim() !== '';
-              if (typeof v === 'number') return v !== 0 && !Number.isNaN(v);
-              return v !== undefined && v !== null;
-            });
-          });
-          if (filledRows.length < f.validation.min) {
-            missing.push({ sectionId: section.id, fieldId: f.id, label: `${f.label}（至少需要 ${f.validation.min} 行有效数据）` });
+          // 对 15×15 因果矩阵这类"行列数固定、每格是数字"的 table：
+          // validation.min 视为"至少需要多少个有效单元格"（count 非零/非空），而不是"多少行有效"。
+          // 这样填写 N 对因果关系 → N 个有效单元格 → 满足阈值即可，不必强制 N 行都有数据。
+          let validCellCount = 0;
+          for (const row of rows) {
+            if (typeof row !== 'object' || row === null) continue;
+            for (const v of Object.values(row as Record<string, unknown>)) {
+              if (typeof v === 'string') {
+                if (v.trim()) validCellCount++;
+              } else if (typeof v === 'number') {
+                if (v !== 0 && !Number.isNaN(v)) validCellCount++;
+              } else if (v !== undefined && v !== null) {
+                validCellCount++;
+              }
+            }
+          }
+          if (validCellCount < f.validation.min) {
+            missing.push({ sectionId: section.id, fieldId: f.id, label: `${f.label}（至少需要 ${f.validation.min} 个有效数据，当前 ${validCellCount} 个）` });
           }
         }
       });

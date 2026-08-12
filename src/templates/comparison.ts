@@ -2,6 +2,7 @@
  * 对比分析法：通过 A/B 对比找出"为什么同样条件下有时出问题有时不出"的关键差异。
  */
 import type { FormTemplate } from '../types';
+import { W2H_OPTIONS } from './shared';
 
 export const comparisonTemplate: FormTemplate = {
   id: 'comparison',
@@ -44,15 +45,15 @@ export const comparisonTemplate: FormTemplate = {
           hint: '默认按 4W2H（Who/What/When/Where/Why/How）拆分 6 个维度，可点击"+ 添加一行"补充更多维度；每行填写两边表现并标注关键差异',
           validation: { min: 3 },
           defaultValue: [
-            { dimension: '执行人员（Who）', normal: '', abnormal: '', diff: '' },
-            { dimension: '执行内容（What）', normal: '', abnormal: '', diff: '' },
-            { dimension: '执行时间（When）', normal: '', abnormal: '', diff: '' },
-            { dimension: '执行地点/环境（Where）', normal: '', abnormal: '', diff: '' },
-            { dimension: '执行原因/动机（Why）', normal: '', abnormal: '', diff: '' },
-            { dimension: '执行方式（How）', normal: '', abnormal: '', diff: '' },
+            { dimension: 'who', normal: '', abnormal: '', diff: '' },
+            { dimension: 'what', normal: '', abnormal: '', diff: '' },
+            { dimension: 'when', normal: '', abnormal: '', diff: '' },
+            { dimension: 'where', normal: '', abnormal: '', diff: '' },
+            { dimension: 'why', normal: '', abnormal: '', diff: '' },
+            { dimension: 'how', normal: '', abnormal: '', diff: '' },
           ],
           tableColumns: [
-            { id: 'dimension', label: '对比维度', placeholder: '如：执行人员/执行内容/时间地点' },
+            { id: 'dimension', label: '对比维度', type: 'select', options: W2H_OPTIONS },
             { id: 'normal', label: '正常时表现', placeholder: '正常情况下此维度的具体表现' },
             { id: 'abnormal', label: '异常时表现', placeholder: '异常情况下此维度的具体表现' },
             { id: 'diff', label: '关键差异', placeholder: '两者的关键差异是什么（能解释问题的那一项）' },

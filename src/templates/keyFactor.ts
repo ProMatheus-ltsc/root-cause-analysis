@@ -74,7 +74,9 @@ export const keyFactorTemplate: FormTemplate = {
           label: `关系矩阵（${KEY_FACTOR_MAX}×${KEY_FACTOR_MAX}）`,
           type: 'table',
           hint: `行 i → 列 j 表示"因素 i 对因素 j"的影响强度。行列号对应上方因素清单顺序（因素 1 → 因素 1…${KEY_FACTOR_MAX}）。`,
-          validation: { min: KEY_FACTOR_MAX },
+          // 因果矩阵的 validation.min 表示"有效单元格数"：KEY_FACTOR_MAX*2 = 30 表示至少
+          // 需要 15 对因果方向并填了强度（每对贡献 1 个非零单元格），确保有足够的有效数据。
+          validation: { min: KEY_FACTOR_MAX * 2 },
           defaultValue: buildDefaultKeyFactorMatrix(),
           tableColumns: keyFactorMatrixColumns(),
         },
