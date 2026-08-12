@@ -35,8 +35,8 @@ interface PairData {
 }
 
 export const CausalChainGuidedInput = memo(function CausalChainGuidedInput({ disabled, problem }: CausalChainGuidedInputProps) {
-  const { control, watch, setValue } = useFormContext();
-  const { append, remove } = useFieldArray({ control, name: 'causalChain' });
+  const { control, watch } = useFormContext();
+  const { append, update, remove } = useFieldArray({ control, name: 'causalChain' });
   const causalChainValues = watch('causalChain') as PairData[] | undefined;
 
   /**
@@ -158,35 +158,21 @@ export const CausalChainGuidedInput = memo(function CausalChainGuidedInput({ dis
     const factorB = selectedFactors[pair.j];
     const entryIdx = getEntryIndex(factorA, factorB);
     if (entryIdx >= 0) {
-      setValue(`causalChain.${entryIdx}.relationType`, relationType, { shouldDirty: true });
-      if (relationType === 'none') {
-        setValue(`causalChain.${entryIdx}.delayEffect`, '', { shouldDirty: true });
-      }
+      // 用 update 改写整条 entry（react-hook-form 在 array 下 setValue 嵌套字段在某些时序下不生效）
+      const cur = causalChainValues?.[entryIdx];
+      update(entryIdx, {
+        factorA: cur?.factorA ?? factorA,
+        factorB: cur?.factorB ?? factorB,
+        relationType,
+        delayEffect: cur?.delayEffect ?? '',
+        evidence: cur?.evidence ?? '',
+      });
+    } else {
+      // entry 不存在（时序问题：factors 已选但 causalChainValues 还没刷新），主动 append
+      append({ factorA, factorB, relationType, delayEffect: '', evidence: '' });
     }
     if (currentPairIndex < allPairs.length - 1) {
       setCurrentPairIndex(currentPairIndex + 1);
-    }
-  }
-
-  function handleSetDelay(pairIdx: number, delayEffect: string) {
-    const pair = allPairs[pairIdx];
-    if (!pair) return;
-    const factorA = selectedFactors[pair.i];
-    const factorB = selectedFactors[pair.j];
-    const entryIdx = getEntryIndex(factorA, factorB);
-    if (entryIdx >= 0) {
-      setValue(`causalChain.${entryIdx}.delayEffect`, delayEffect, { shouldDirty: true });
-    }
-  }
-
-  function handleSetEvidence(pairIdx: number, evidence: string) {
-    const pair = allPairs[pairIdx];
-    if (!pair) return;
-    const factorA = selectedFactors[pair.i];
-    const factorB = selectedFactors[pair.j];
-    const entryIdx = getEntryIndex(factorA, factorB);
-    if (entryIdx >= 0) {
-      setValue(`causalChain.${entryIdx}.evidence`, evidence, { shouldDirty: true });
     }
   }
 
@@ -290,43 +276,6 @@ export const CausalChainGuidedInput = memo(function CausalChainGuidedInput({ dis
             );
           })}
         </div>
-
-        {currentEntry?.relationType && currentEntry.relationType !== 'none' && (
-          <div className="mt-4 space-y-3">
-            <div>
-              <p className="mb-1.5 text-xs font-medium text-slate-500">延迟效应</p>
-              <div className="flex flex-wrap gap-2">
-                {DELAY_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => handleSetDelay(currentPairIndex, opt.value)}
-                    className={clsx(
-                      'rounded-md border px-3 py-1.5 text-xs transition',
-                      currentEntry?.delayEffect === opt.value
-                        ? 'border-brand-400 bg-brand-50 text-brand-700'
-                                    : 'border-surface-200 text-text-tertiary hover:border-brand-300',
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="mb-1 text-xs font-medium text-slate-500">证据（可选）</p>
-              <textarea
-                disabled={disabled}
-                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
-                rows={2}
-                placeholder="有什么数据或观察能证明这条因果关系存在？"
-                value={currentEntry?.evidence ?? ''}
-                onChange={(e) => handleSetEvidence(currentPairIndex, e.target.value)}
-              />
-            </div>
-          </div>
-        )}
 
         <div className="mt-5 flex items-center justify-between">
           <button
