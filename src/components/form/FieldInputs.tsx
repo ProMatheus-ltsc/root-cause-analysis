@@ -2,7 +2,7 @@
  * 各 FieldType 对应的具体输入组件。均通过 useFormContext 拿到 register/control，
  * 用点路径 name（如 sectionId.0.fieldId）直接映射到表单值树。
  */
-import { useFieldArray, useFormContext } from 'react-hook-form';
+import { useFieldArray, useFormContext, useController, type Control } from 'react-hook-form';
 import type { FormField } from '../../types';
 
 export const INPUT_CLASS =
@@ -195,9 +195,12 @@ export function RatingInput({ field, name, disabled }: InputProps) {
 }
 
 export function TableFieldInput({ field, name, disabled }: InputProps) {
-  const { register, control } = useFormContext();
-  const { fields: rows, append, remove } = useFieldArray({ control, name });
+  const { control, watch } = useFormContext();
+  const { append, remove } = useFieldArray({ control, name });
   const columns = field.tableColumns ?? [];
+  // 用 watch 监听行数，绕开 useFieldArray fields 的初始化时序问题
+  const rowValues = watch(name) as Array<Record<string, unknown>> | undefined;
+  const rowCount = Array.isArray(rowValues) ? rowValues.length : 0;
 
   return (
     <div>
@@ -214,31 +217,18 @@ export function TableFieldInput({ field, name, disabled }: InputProps) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, idx) => (
-              <tr key={row.id}>
+            {Array.from({ length: rowCount }, (_, idx) => (
+              <tr key={idx}>
                 {columns.map((col) => (
                   <td key={col.id} className="border-b border-surface-100 px-2 py-1">
-                    {col.type === 'select' ? (
-                      <select className={INPUT_CLASS} disabled={disabled} {...register(`${name}.${idx}.${col.id}`)}>
-                        <option value="">请选择</option>
-                        {col.options?.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input type="text" className={INPUT_CLASS} placeholder={col.placeholder} disabled={disabled} {...register(`${name}.${idx}.${col.id}`)} />
-                    )}
+                    <CellInput name={`${name}.${idx}.${col.id}`} col={col} disabled={disabled} control={control} />
                   </td>
                 ))}
                 {!disabled && (
                   <td className="border-b border-surface-100 px-2 py-1">
                     <button
                       type="button"
-                      onClick={() => {
-                        if (confirm('确定删除这一行吗？')) remove(idx);
-                      }}
+                      onClick={() => remove(idx)}
                       className="text-xs text-danger-600 hover:underline"
                       aria-label={`删除第 ${idx + 1} 行`}
                     >
@@ -252,16 +242,14 @@ export function TableFieldInput({ field, name, disabled }: InputProps) {
         </table>
       </div>
       <div className="sm:hidden space-y-3">
-        {rows.map((row, idx) => (
-          <div key={row.id} className="rounded-xl border border-surface-200 bg-surface-0 p-3 space-y-2">
+        {Array.from({ length: rowCount }, (_, idx) => (
+          <div key={idx} className="rounded-xl border border-surface-200 bg-surface-0 p-3 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-text-tertiary">第 {idx + 1} 行</span>
               {!disabled && (
                 <button
                   type="button"
-                  onClick={() => {
-                    if (confirm('确定删除这一行吗？')) remove(idx);
-                  }}
+                  onClick={() => remove(idx)}
                   className="text-xs text-danger-600 hover:underline"
                   aria-label={`删除第 ${idx + 1} 行`}
                 >
@@ -272,18 +260,7 @@ export function TableFieldInput({ field, name, disabled }: InputProps) {
             {columns.map((col) => (
               <div key={col.id}>
                 <label className="mb-0.5 block text-xs font-medium text-text-secondary">{col.label}</label>
-                {col.type === 'select' ? (
-                  <select className={INPUT_CLASS} disabled={disabled} {...register(`${name}.${idx}.${col.id}`)}>
-                    <option value="">请选择</option>
-                    {col.options?.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input type="text" className={INPUT_CLASS} placeholder={col.placeholder} disabled={disabled} {...register(`${name}.${idx}.${col.id}`)} />
-                )}
+                <CellInput name={`${name}.${idx}.${col.id}`} col={col} disabled={disabled} control={control} />
               </div>
             ))}
           </div>
@@ -299,5 +276,53 @@ export function TableFieldInput({ field, name, disabled }: InputProps) {
         </button>
       )}
     </div>
+  );
+}
+
+/** 每个单元格用 useController 独立受控，确保用户输入实时写入表单值树。 */
+function CellInput({
+  name,
+  col,
+  disabled,
+  control,
+}: {
+  name: string;
+  col: { id: string; label: string; placeholder?: string; type?: string; options?: Array<{ value: string; label: string }> };
+  disabled?: boolean;
+  control: Control<Record<string, unknown>>;
+}) {
+  const { field } = useController({ name, control });
+  if (col.type === 'select') {
+    return (
+      <select
+        disabled={disabled}
+        className={INPUT_CLASS}
+        value={(field.value as string | undefined) ?? ''}
+        onChange={(e) => field.onChange(e.target.value)}
+        onBlur={field.onBlur}
+        ref={field.ref}
+        name={field.name}
+      >
+        <option value="">请选择</option>
+        {col.options?.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    );
+  }
+  return (
+    <input
+      type="text"
+      className={INPUT_CLASS}
+      placeholder={col.placeholder}
+      disabled={disabled}
+      value={(field.value as string | undefined) ?? ''}
+      onChange={(e) => field.onChange(e.target.value)}
+      onBlur={field.onBlur}
+      ref={field.ref}
+      name={field.name}
+    />
   );
 }
