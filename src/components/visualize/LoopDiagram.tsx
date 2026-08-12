@@ -32,7 +32,7 @@ export function LoopDiagram({ result }: LoopDiagramProps) {
 
   if (!loops || loops.length === 0) return null;
 
-  const PER_RING = 300;
+  const PER_RING = 360;
   const LEVERAGE_HEADER = 26;
   const leverageItems = (leveragePoints ?? [])
     .map((p) => {

@@ -62,6 +62,27 @@ export function SystemThinkAiPanel({ problem, disabled }: SystemThinkAiPanelProp
       setValue('aiLoopsText', text, { shouldDirty: true });
       setValue('aiLeverageText', text, { shouldDirty: true });
       setValue('aiAnalysisRaw', aiRaw.trim(), { shouldDirty: true });
+      // 把 AI 给出的杠杆点/干预自动填到后续字段，避免用户手动复制粘贴
+      if (parsed.leveragePoints.length > 0) {
+        const lp = parsed.leveragePoints;
+        const coreLeverage = lp[0];
+        setValue(
+          'leveragePoint',
+          `${coreLeverage.cause}${coreLeverage.reason ? '（依据：' + coreLeverage.reason + '）' : ''}`,
+          { shouldDirty: true },
+        );
+        const summaryText = lp
+          .map((p, i) => `${i + 1}. ${p.cause}\n   干预：${p.intervention || '—'}\n   依据：${p.reason || '—'}`)
+          .join('\n\n');
+        setValue('leveragePointSummary', summaryText, { shouldDirty: true });
+        const interventionText = lp
+          .filter((p) => p.intervention)
+          .map((p, i) => `${i + 1}. [${p.cause}] ${p.intervention}`)
+          .join('\n\n');
+        if (interventionText) {
+          setValue('interventionPlan', interventionText, { shouldDirty: true });
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setPhase('error');
