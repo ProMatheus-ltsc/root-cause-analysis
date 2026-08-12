@@ -4,7 +4,7 @@
  *
  * 向后兼容：所有使用 useDB hooks 的组件无需修改，接口签名保持不变。
  */
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useShallow } from 'zustand/react/shallow';
 import type { FormRecord, Problem, TemplateId } from '../types';
