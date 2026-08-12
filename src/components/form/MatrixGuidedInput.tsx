@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import clsx from 'clsx';
 import type { FormField } from '../../types';
@@ -22,7 +22,7 @@ interface CellPair {
   j: number;
 }
 
-export function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputProps) {
+export const MatrixGuidedInput = React.memo(function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputProps) {
   const { watch, setValue } = useFormContext();
   const factors = watch('factors') as Array<Record<string, unknown>> | undefined;
   const matrixValue = watch(name) as Array<Record<string, unknown>> | undefined;
@@ -123,7 +123,7 @@ export function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputPr
           disabled={disabled}
           className={clsx(
             'rounded-md px-3 py-1.5 text-sm font-medium transition',
-            mode === 'guided' ? 'bg-sky-600 text-white' : 'border border-slate-300 text-slate-600 hover:bg-slate-100',
+            mode === 'guided' ? 'bg-brand-600 text-white' : 'border border-surface-300 text-text-secondary hover:bg-surface-100',
           )}
         >
           逐对填写
@@ -134,7 +134,7 @@ export function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputPr
           disabled={disabled}
           className={clsx(
             'rounded-md px-3 py-1.5 text-sm font-medium transition',
-            mode === 'overview' ? 'bg-sky-600 text-white' : 'border border-slate-300 text-slate-600 hover:bg-slate-100',
+            mode === 'overview' ? 'bg-brand-600 text-white' : 'border border-surface-300 text-text-secondary hover:bg-surface-100',
           )}
         >
           矩阵总览
@@ -145,7 +145,7 @@ export function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputPr
           disabled={disabled}
           className={clsx(
             'rounded-md px-3 py-1.5 text-sm font-medium transition',
-            mode === 'scores' ? 'bg-sky-600 text-white' : 'border border-slate-300 text-slate-600 hover:bg-slate-100',
+            mode === 'scores' ? 'bg-brand-600 text-white' : 'border border-surface-300 text-text-secondary hover:bg-surface-100',
           )}
         >
           因果得分
@@ -252,8 +252,8 @@ function GuidedMode({
             className={clsx(
               'rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition',
               currentValue === opt.value
-                ? 'border-sky-500 bg-sky-50 text-sky-700'
-                : 'border-slate-200 text-slate-600 hover:border-sky-300 hover:bg-sky-50',
+                ? 'border-brand-500 bg-brand-50 text-brand-700'
+                            : 'border-surface-200 text-text-secondary hover:border-brand-300 hover:bg-brand-50',
             )}
             title={opt.desc}
           >
@@ -279,7 +279,7 @@ function GuidedMode({
               onClick={() => setCurrentPairIndex(idx)}
               className={clsx(
                 'h-2 w-2 rounded-full transition',
-                idx === currentPairIndex ? 'bg-sky-500' : getCellValue(allPairs[idx].i, allPairs[idx].j) !== 0 ? 'bg-sky-200' : 'bg-slate-200',
+                idx === currentPairIndex ? 'bg-brand-500' : getCellValue(allPairs[idx].i, allPairs[idx].j) !== 0 ? 'bg-brand-200' : 'bg-surface-200',
               )}
               style={{ display: totalPairs > 50 ? 'none' : undefined }}
             />
@@ -343,8 +343,8 @@ function OverviewMode({ factorNames, n, getCellValue, setCellValue, disabled }: 
                     key={j}
                     className={clsx(
                       'border border-slate-100 px-1 py-1 text-center cursor-pointer transition',
-                      val > 0 ? 'bg-sky-50 font-semibold text-sky-700' : 'text-slate-400',
-                      isEditing && 'ring-2 ring-sky-400',
+                      val > 0 ? 'bg-brand-50 font-semibold text-brand-700' : 'text-text-tertiary',
+                                          isEditing && 'ring-2 ring-brand-400',
                     )}
                     onClick={() => !disabled && setEditingCell({ i, j })}
                     title={`${rowName} → ${factorNames[j]}`}
@@ -433,7 +433,7 @@ function CauseScorePanel({ causeScores }: { causeScores: CauseScoreItem[] }) {
           </tbody>
         </table>
       </div>
-      <div className="rounded-md border border-sky-100 bg-sky-50 px-3 py-2 text-xs text-sky-700 space-y-0.5">
+      <div className="rounded-md border border-brand-100 bg-brand-50 px-3 py-2 text-xs text-brand-700 space-y-0.5">
         <p>▸ <strong>根因</strong>（得分 &lt; −2）：影响其他因素多、被影响少 → 最源头的原因</p>
         <p>▸ <strong>过因</strong>（得分 −2~2）：既影响其他也被影响 → 中间传导因素</p>
         <p>▸ <strong>表因</strong>（得分 &gt; 2）：被影响多、影响其他少 → 最表面的现象</p>
