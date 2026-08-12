@@ -5,10 +5,9 @@ import type { FormField } from '../../types';
 import { CAUSE_SCORE_ROOT, CAUSE_SCORE_SURFACE, KEY_FACTOR_MAX } from '../../templates/shared';
 
 const STRENGTH_OPTIONS = [
-  { value: 0, label: '0 无关', desc: '两因素之间无因果关联' },
-  { value: 1, label: '1 弱', desc: '单向弱关联（i 轻微影响 j）' },
+  { value: 1, label: '1 弱', desc: '单向弱关联' },
   { value: 2, label: '2 中', desc: '双向关联或单向强关联' },
-  { value: 4, label: '4 强', desc: '互为强因果（i 强烈驱动 j）' },
+  { value: 4, label: '4 强', desc: '互为强因果' },
 ];
 
 interface MatrixGuidedInputProps {
@@ -21,6 +20,8 @@ interface CellPair {
   i: number;
   j: number;
 }
+
+type Step = 'direction' | 'scores' | 'strength';
 
 export const MatrixGuidedInput = memo(function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputProps) {
   const { watch, setValue } = useFormContext();
@@ -39,15 +40,16 @@ export const MatrixGuidedInput = memo(function MatrixGuidedInput({ field, name, 
   const allPairs = useMemo(() => {
     const pairs: CellPair[] = [];
     for (let i = 0; i < n; i++) {
-      for (let j = 0; j < n; j++) {
-        if (i !== j) pairs.push({ i, j });
+      for (let j = i + 1; j < n; j++) {
+        pairs.push({ i, j });
       }
     }
     return pairs;
   }, [n]);
 
-  const [mode, setMode] = useState<'guided' | 'overview' | 'scores'>('guided');
-  const [currentPairIndex, setCurrentPairIndex] = useState(0);
+  const [step, setStep] = useState<Step>('direction');
+  const [dirPairIndex, setDirPairIndex] = useState(0);
+  const [strPairIndex, setStrPairIndex] = useState(0);
 
   const getCellValue = useCallback(
     (i: number, j: number): number => {
@@ -73,13 +75,67 @@ export const MatrixGuidedInput = memo(function MatrixGuidedInput({ field, name, 
     [matrixValue, name, setValue],
   );
 
-  const filledCount = useMemo(() => {
+  const setDirectionPair = useCallback(
+    (i: number, j: number, direction: 'i2j' | 'j2i' | 'none') => {
+      const rows = Array.isArray(matrixValue) ? [...matrixValue] : [];
+      while (rows.length < KEY_FACTOR_MAX) {
+        rows.push(Object.fromEntries(Array.from({ length: KEY_FACTOR_MAX }, (_, k) => [`c${k}`, 0])));
+      }
+      const rowI = { ...rows[i] };
+      const rowJ = { ...rows[j] };
+      if (direction === 'i2j') {
+        rowI[`c${j}`] = 1;
+        rowJ[`c${i}`] = 0;
+      } else if (direction === 'j2i') {
+        rowI[`c${j}`] = 0;
+        rowJ[`c${i}`] = 1;
+      } else {
+        rowI[`c${j}`] = 0;
+        rowJ[`c${i}`] = 0;
+      }
+      rows[i] = rowI;
+      rows[j] = rowJ;
+      setValue(name, rows, { shouldDirty: true });
+    },
+    [matrixValue, name, setValue],
+  );
+
+  const getDirectionValue = useCallback(
+    (i: number, j: number): 'i2j' | 'j2i' | 'none' => {
+      const vIJ = getCellValue(i, j);
+      const vJI = getCellValue(j, i);
+      if (vIJ > 0 && vJI === 0) return 'i2j';
+      if (vJI > 0 && vIJ === 0) return 'j2i';
+      return 'none';
+    },
+    [getCellValue],
+  );
+
+  const dirFilledCount = useMemo(() => {
     let count = 0;
     for (const pair of allPairs) {
-      if (getCellValue(pair.i, pair.j) !== 0) count++;
+      if (getDirectionValue(pair.i, pair.j) !== 'none') count++;
     }
     return count;
-  }, [allPairs, getCellValue]);
+  }, [allPairs, getDirectionValue]);
+
+  const causalPairs = useMemo(() => {
+    const result: Array<{ cause: number; effect: number }> = [];
+    for (const pair of allPairs) {
+      const dir = getDirectionValue(pair.i, pair.j);
+      if (dir === 'i2j') result.push({ cause: pair.i, effect: pair.j });
+      else if (dir === 'j2i') result.push({ cause: pair.j, effect: pair.i });
+    }
+    return result;
+  }, [allPairs, getDirectionValue]);
+
+  const strFilledCount = useMemo(() => {
+    let count = 0;
+    for (const cp of causalPairs) {
+      if (getCellValue(cp.cause, cp.effect) >= 2) count++;
+    }
+    return count;
+  }, [causalPairs, getCellValue]);
 
   if (n < 2) {
     return (
@@ -90,7 +146,7 @@ export const MatrixGuidedInput = memo(function MatrixGuidedInput({ field, name, 
   }
 
   const totalPairs = allPairs.length;
-  const currentPair = allPairs[Math.min(currentPairIndex, totalPairs - 1)];
+  const currentDirPair = allPairs[Math.min(dirPairIndex, totalPairs - 1)];
 
   const causeScores = useMemo(() => {
     const outCount = Array.from({ length: n }, () => 0);
@@ -116,76 +172,65 @@ export const MatrixGuidedInput = memo(function MatrixGuidedInput({ field, name, 
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={() => setMode('guided')}
+      <div className="flex flex-wrap items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-2">
+        <StepTab
+          label={`① 因果判定 (${dirFilledCount}/${totalPairs})`}
+          active={step === 'direction'}
+          onClick={() => setStep('direction')}
           disabled={disabled}
-          className={clsx(
-            'rounded-md px-3 py-1.5 text-sm font-medium transition',
-            mode === 'guided' ? 'bg-brand-600 text-white' : 'border border-surface-300 text-text-secondary hover:bg-surface-100',
-          )}
-        >
-          逐对填写
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode('overview')}
+        />
+        <span className="text-slate-300 text-xs">→</span>
+        <StepTab
+          label="② 得分结果"
+          active={step === 'scores'}
+          onClick={() => setStep('scores')}
           disabled={disabled}
-          className={clsx(
-            'rounded-md px-3 py-1.5 text-sm font-medium transition',
-            mode === 'overview' ? 'bg-brand-600 text-white' : 'border border-surface-300 text-text-secondary hover:bg-surface-100',
-          )}
-        >
-          矩阵总览
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode('scores')}
-          disabled={disabled}
-          className={clsx(
-            'rounded-md px-3 py-1.5 text-sm font-medium transition',
-            mode === 'scores' ? 'bg-brand-600 text-white' : 'border border-surface-300 text-text-secondary hover:bg-surface-100',
-          )}
-        >
-          因果得分
-        </button>
-        <span className="text-xs text-slate-400">
-          已填写 {filledCount}/{totalPairs} 对（不含对角线和"无关"项）
-        </span>
+        />
+        <span className="text-slate-300 text-xs">→</span>
+        <StepTab
+          label={`③ 影响强度 (${strFilledCount}/${causalPairs.length})`}
+          active={step === 'strength'}
+          onClick={() => setStep('strength')}
+          disabled={disabled || causalPairs.length === 0}
+          dimmed={causalPairs.length === 0}
+          optional
+        />
       </div>
 
-      <div className="rounded-md border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-500 space-y-1">
-        <p><strong>第一类：影响强度矩阵</strong> — 行 i 对列 j 的影响强度：0=无关｜1=弱（单向弱关联）｜2=中（双向/单向强关联）｜4=强（互为强因果）</p>
-        <p><strong>第二类：因果方向得分（自动计算）</strong> — 两两比较：若 i→j 有影响（强度&gt;0），则 i 是"因"（−1）、j 是"果"（+1）累计得分。得分最低→根因，最高→表因，接近 0（−2~2）→过因</p>
-      </div>
-
-      {mode === 'guided' && (
-        <GuidedMode
+      {step === 'direction' && (
+        <DirectionStep
           factorNames={factorNames}
           allPairs={allPairs}
-          currentPairIndex={currentPairIndex}
-          setCurrentPairIndex={setCurrentPairIndex}
-          getCellValue={getCellValue}
-          setCellValue={setCellValue}
-          currentPair={currentPair}
+          currentPairIndex={dirPairIndex}
+          setCurrentPairIndex={setDirPairIndex}
+          getDirectionValue={getDirectionValue}
+          setDirectionPair={setDirectionPair}
+          currentPair={currentDirPair}
           totalPairs={totalPairs}
           disabled={disabled}
+          onComplete={() => setStep('scores')}
+          dirFilledCount={dirFilledCount}
         />
       )}
 
-      {mode === 'overview' && (
-        <OverviewMode
+      {step === 'scores' && (
+        <ScoresStep
+          causeScores={causeScores}
+          hasCausalPairs={causalPairs.length > 0}
+          onGoStrength={() => setStep('strength')}
+        />
+      )}
+
+      {step === 'strength' && (
+        <StrengthStep
           factorNames={factorNames}
-          n={n}
+          causalPairs={causalPairs}
+          currentPairIndex={strPairIndex}
+          setCurrentPairIndex={setStrPairIndex}
           getCellValue={getCellValue}
           setCellValue={setCellValue}
           disabled={disabled}
         />
-      )}
-
-      {mode === 'scores' && (
-        <CauseScorePanel causeScores={causeScores} />
       )}
 
       {field.hint && <p className="text-xs text-slate-400">{field.hint}</p>}
@@ -193,218 +238,221 @@ export const MatrixGuidedInput = memo(function MatrixGuidedInput({ field, name, 
   );
 });
 
-interface GuidedModeProps {
+function StepTab({ label, active, onClick, disabled, dimmed, optional }: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+  dimmed?: boolean;
+  optional?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={clsx(
+        'rounded-md px-3 py-1.5 text-xs font-medium transition',
+        active
+          ? 'bg-brand-600 text-white shadow-sm'
+          : dimmed
+            ? 'text-slate-300 cursor-not-allowed'
+            : 'text-text-secondary hover:bg-surface-100',
+      )}
+    >
+      {label}
+      {optional && !active && <span className="ml-1 text-[10px] text-slate-400">(可选)</span>}
+    </button>
+  );
+}
+
+interface DirectionStepProps {
   factorNames: string[];
   allPairs: CellPair[];
   currentPairIndex: number;
   setCurrentPairIndex: (idx: number) => void;
-  getCellValue: (i: number, j: number) => number;
-  setCellValue: (i: number, j: number, value: number) => void;
+  getDirectionValue: (i: number, j: number) => 'i2j' | 'j2i' | 'none';
+  setDirectionPair: (i: number, j: number, direction: 'i2j' | 'j2i' | 'none') => void;
   currentPair: CellPair;
   totalPairs: number;
   disabled?: boolean;
+  onComplete: () => void;
+  dirFilledCount: number;
 }
 
-function GuidedMode({
+function DirectionStep({
   factorNames,
   allPairs,
   currentPairIndex,
   setCurrentPairIndex,
-  getCellValue,
-  setCellValue,
+  getDirectionValue,
+  setDirectionPair,
   currentPair,
   totalPairs,
   disabled,
-}: GuidedModeProps) {
-  const currentValue = getCellValue(currentPair.i, currentPair.j);
+  onComplete,
+  dirFilledCount,
+}: DirectionStepProps) {
+  const currentDir = getDirectionValue(currentPair.i, currentPair.j);
+  const nameI = factorNames[currentPair.i];
+  const nameJ = factorNames[currentPair.j];
+  const shortI = nameI.length > 8 ? nameI.slice(0, 8) + '…' : nameI;
+  const shortJ = nameJ.length > 8 ? nameJ.slice(0, 8) + '…' : nameJ;
 
-  function handleSelect(value: number) {
-    setCellValue(currentPair.i, currentPair.j, value);
+  function handleSelect(dir: 'i2j' | 'j2i' | 'none') {
+    setDirectionPair(currentPair.i, currentPair.j, dir);
     if (currentPairIndex < totalPairs - 1) {
       setCurrentPairIndex(currentPairIndex + 1);
     }
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-5">
-      <div className="mb-2 text-xs text-slate-400">
-        第 {currentPairIndex + 1} / {totalPairs} 对
-      </div>
-      <div className="mb-4 text-center">
-        <span className="text-base font-semibold text-slate-800">
-          「{factorNames[currentPair.i]}」
-        </span>
-        <span className="mx-2 text-slate-400">→ 对 →</span>
-        <span className="text-base font-semibold text-slate-800">
-          「{factorNames[currentPair.j]}」
-        </span>
-        <p className="mt-1 text-sm text-slate-500">的影响强度是？</p>
-        <p className="mt-0.5 text-xs text-slate-400">（若选 1/2/4，系统将计「{factorNames[currentPair.i]}」为因(−1)、「{factorNames[currentPair.j]}」为果(+1)）</p>
+    <div className="space-y-4">
+      <div className="rounded-md border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+        逐组判断两个因素之间是否存在因果关系。选"A→B"表示 A 是因、B 是果；选"无关"表示两者之间没有因果关系。
       </div>
 
-      <div className="flex flex-wrap justify-center gap-3">
-        {STRENGTH_OPTIONS.map((opt) => (
+      <div className="rounded-lg border border-slate-200 bg-white p-5">
+        <div className="mb-2 text-xs text-slate-400">
+          第 {currentPairIndex + 1} / {totalPairs} 组
+        </div>
+        <div className="mb-4 text-center">
+          <span className="text-base font-semibold text-slate-800">
+            「{nameI}」
+          </span>
+          <span className="mx-2 text-slate-400">⟷</span>
+          <span className="text-base font-semibold text-slate-800">
+            「{nameJ}」
+          </span>
+          <p className="mt-1 text-sm text-slate-500">这两个因素之间的因果关系是？</p>
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-3">
           <button
-            key={opt.value}
             type="button"
             disabled={disabled}
-            onClick={() => handleSelect(opt.value)}
+            onClick={() => handleSelect('i2j')}
             className={clsx(
               'rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition',
-              currentValue === opt.value
-                ? 'border-brand-500 bg-brand-50 text-brand-700'
-                            : 'border-surface-200 text-text-secondary hover:border-brand-300 hover:bg-brand-50',
+              currentDir === 'i2j'
+                ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                : 'border-surface-200 text-text-secondary hover:border-emerald-300 hover:bg-emerald-50',
             )}
-            title={opt.desc}
+            title={`${nameI} 是因，${nameJ} 是果`}
           >
-            {opt.label}
+            {shortI} → {shortJ}
           </button>
-        ))}
-      </div>
-
-      <div className="mt-5 flex items-center justify-between">
-        <button
-          type="button"
-          disabled={currentPairIndex === 0 || disabled}
-          onClick={() => setCurrentPairIndex(currentPairIndex - 1)}
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-100 disabled:opacity-40"
-        >
-          ← 上一对
-        </button>
-        <div className="flex gap-1">
-          {allPairs.map((_, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => setCurrentPairIndex(idx)}
-              className={clsx(
-                'h-2 w-2 rounded-full transition',
-                idx === currentPairIndex ? 'bg-brand-500' : getCellValue(allPairs[idx].i, allPairs[idx].j) !== 0 ? 'bg-brand-200' : 'bg-surface-200',
-              )}
-              style={{ display: totalPairs > 50 ? 'none' : undefined }}
-            />
-          ))}
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => handleSelect('j2i')}
+            className={clsx(
+              'rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition',
+              currentDir === 'j2i'
+                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                : 'border-surface-200 text-text-secondary hover:border-blue-300 hover:bg-blue-50',
+            )}
+            title={`${nameJ} 是因，${nameI} 是果`}
+          >
+            {shortJ} → {shortI}
+          </button>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => handleSelect('none')}
+            className={clsx(
+              'rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition',
+              currentDir === 'none'
+                ? 'border-slate-500 bg-slate-100 text-slate-700'
+                : 'border-surface-200 text-text-secondary hover:border-slate-300 hover:bg-slate-50',
+            )}
+            title="两者之间无因果关系"
+          >
+            无关
+          </button>
         </div>
-        <button
-          type="button"
-          disabled={currentPairIndex >= totalPairs - 1 || disabled}
-          onClick={() => setCurrentPairIndex(currentPairIndex + 1)}
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-100 disabled:opacity-40"
-        >
-          下一对 →
-        </button>
-      </div>
-    </div>
-  );
-}
 
-interface OverviewModeProps {
-  factorNames: string[];
-  n: number;
-  getCellValue: (i: number, j: number) => number;
-  setCellValue: (i: number, j: number, value: number) => void;
-  disabled?: boolean;
-}
+        <div className="mt-3 text-center text-xs text-slate-400">
+          {currentDir === 'i2j' && <span>已选：<strong>{nameI}</strong> 是因，<strong>{nameJ}</strong> 是果</span>}
+          {currentDir === 'j2i' && <span>已选：<strong>{nameJ}</strong> 是因，<strong>{nameI}</strong> 是果</span>}
+          {currentDir === 'none' && <span>已选：两者无因果关系</span>}
+        </div>
 
-function OverviewMode({ factorNames, n, getCellValue, setCellValue, disabled }: OverviewModeProps) {
-  const [editingCell, setEditingCell] = useState<CellPair | null>(null);
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="border-collapse text-xs">
-        <thead>
-          <tr>
-            <th className="sticky left-0 z-10 bg-white px-2 py-1 text-left font-medium text-slate-500">↓行 \ 列→</th>
-            {factorNames.slice(0, n).map((fname, j) => (
-              <th key={j} className="min-w-[60px] border-b border-slate-200 px-1 py-1 text-center font-medium text-slate-600" title={fname}>
-                {fname.length > 4 ? fname.slice(0, 4) + '…' : fname}
-              </th>
+        <div className="mt-5 flex items-center justify-between">
+          <button
+            type="button"
+            disabled={currentPairIndex === 0 || disabled}
+            onClick={() => setCurrentPairIndex(currentPairIndex - 1)}
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-100 disabled:opacity-40"
+          >
+            ← 上一组
+          </button>
+          <div className="flex gap-1">
+            {allPairs.map((pair, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setCurrentPairIndex(idx)}
+                className={clsx(
+                  'h-2 w-2 rounded-full transition',
+                  idx === currentPairIndex
+                    ? 'bg-brand-500'
+                    : getDirectionValue(pair.i, pair.j) !== 'none'
+                      ? 'bg-emerald-300'
+                      : 'bg-surface-200',
+                )}
+                style={{ display: totalPairs > 50 ? 'none' : undefined }}
+              />
             ))}
-          </tr>
-        </thead>
-        <tbody>
-          {factorNames.slice(0, n).map((rowName, i) => (
-            <tr key={i}>
-              <td className="sticky left-0 z-10 bg-white border-r border-slate-100 px-2 py-1 text-left font-medium text-slate-600 whitespace-nowrap" title={rowName}>
-                {rowName.length > 6 ? rowName.slice(0, 6) + '…' : rowName}
-              </td>
-              {factorNames.slice(0, n).map((_, j) => {
-                if (i === j) {
-                  return (
-                    <td key={j} className="border border-slate-100 bg-slate-50 px-1 py-1 text-center text-slate-300">
-                      —
-                    </td>
-                  );
-                }
-                const val = getCellValue(i, j);
-                const isEditing = editingCell?.i === i && editingCell?.j === j;
-                return (
-                  <td
-                    key={j}
-                    className={clsx(
-                      'border border-slate-100 px-1 py-1 text-center cursor-pointer transition',
-                      val > 0 ? 'bg-brand-50 font-semibold text-brand-700' : 'text-text-tertiary',
-                                          isEditing && 'ring-2 ring-brand-400',
-                    )}
-                    onClick={() => !disabled && setEditingCell({ i, j })}
-                    title={`${rowName} → ${factorNames[j]}`}
-                  >
-                    {isEditing ? (
-                      <select
-                        autoFocus
-                        className="w-full border-none bg-transparent text-center text-xs outline-none"
-                        value={val}
-                        onChange={(e) => {
-                          setCellValue(i, j, Number(e.target.value));
-                          setEditingCell(null);
-                        }}
-                        onBlur={() => setEditingCell(null)}
-                      >
-                        {STRENGTH_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>{opt.value}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      val
-                    )}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="mt-2 text-xs text-slate-400">点击单元格可直接修改。行 → 列 表示"行因素对列因素"的影响强度（0=无关 / 1=弱 / 2=中 / 4=强）。若 i→j 强度&gt;0，系统自动计为 i 是"因"（−1）、j 是"果"（+1）。</p>
+          </div>
+          <button
+            type="button"
+            disabled={currentPairIndex >= totalPairs - 1 || disabled}
+            onClick={() => setCurrentPairIndex(currentPairIndex + 1)}
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-100 disabled:opacity-40"
+          >
+            下一组 →
+          </button>
+        </div>
+      </div>
+
+      {dirFilledCount > 0 && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onComplete}
+            className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700"
+          >
+            查看得分结果 →
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-interface CauseScoreItem {
-  name: string;
-  outCount: number;
-  inCount: number;
-  score: number;
-  role: string;
+interface ScoresStepProps {
+  causeScores: CauseScoreItem[];
+  hasCausalPairs: boolean;
+  onGoStrength: () => void;
 }
 
-function CauseScorePanel({ causeScores }: { causeScores: CauseScoreItem[] }) {
+function ScoresStep({ causeScores, hasCausalPairs, onGoStrength }: ScoresStepProps) {
   const sorted = [...causeScores].sort((a, b) => a.score - b.score);
 
-  if (sorted.length === 0) {
-    return <p className="text-sm text-slate-400">填写矩阵后自动计算因果得分</p>;
-  }
-
-  function roleColor(role: string) {
-    if (role === '根因') return 'bg-rose-100 text-rose-700 border-rose-200';
-    if (role === '表因') return 'bg-amber-100 text-amber-700 border-amber-200';
-    return 'bg-slate-100 text-slate-600 border-slate-200';
+  if (sorted.length === 0 || sorted.every((s) => s.outCount === 0 && s.inCount === 0)) {
+    return (
+      <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+        请先完成第一步因果判定，至少确认一组因果关系后自动计算得分。
+      </div>
+    );
   }
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-slate-500">
-        因果方向得分 = 作为果次数(inCount) − 作为因次数(outCount)。得分最低→根因（最源头），最高→表因（最表象），接近 0（−2~2）→过因（中间传导）。
-      </p>
+      <div className="rounded-md border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+        因果方向得分 = 作为果次数 − 作为因次数。得分最低→根因（最源头），最高→表因（最表象），接近 0→过因（中间传导）。
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
@@ -438,6 +486,202 @@ function CauseScorePanel({ causeScores }: { causeScores: CauseScoreItem[] }) {
         <p>▸ <strong>过因</strong>（得分 −2~2）：既影响其他也被影响 → 中间传导因素</p>
         <p>▸ <strong>表因</strong>（得分 &gt; 2）：被影响多、影响其他少 → 最表面的现象</p>
       </div>
+
+      {hasCausalPairs && (
+        <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700 flex items-center justify-between">
+          <span>如需进一步做 DEMATEL 中心度 + 帕累托分析，可对已确认的因果关系组填写影响强度。</span>
+          <button
+            type="button"
+            onClick={onGoStrength}
+            className="ml-3 shrink-0 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700"
+          >
+            填写影响强度 →
+          </button>
+        </div>
+      )}
     </div>
   );
+}
+
+interface StrengthStepProps {
+  factorNames: string[];
+  causalPairs: Array<{ cause: number; effect: number }>;
+  currentPairIndex: number;
+  setCurrentPairIndex: (idx: number) => void;
+  getCellValue: (i: number, j: number) => number;
+  setCellValue: (i: number, j: number, value: number) => void;
+  disabled?: boolean;
+}
+
+function StrengthStep({
+  factorNames,
+  causalPairs,
+  currentPairIndex,
+  setCurrentPairIndex,
+  getCellValue,
+  setCellValue,
+  disabled,
+}: StrengthStepProps) {
+  if (causalPairs.length === 0) {
+    return (
+      <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+        没有需要填写影响强度的因果关系对。请回到第一步确认因果判定。
+      </div>
+    );
+  }
+
+  const safeIndex = Math.min(currentPairIndex, causalPairs.length - 1);
+  const currentCP = causalPairs[safeIndex];
+  const currentValue = getCellValue(currentCP.cause, currentCP.effect);
+  const causeName = factorNames[currentCP.cause];
+  const effectName = factorNames[currentCP.effect];
+
+  function handleSelect(value: number) {
+    setCellValue(currentCP.cause, currentCP.effect, value);
+    if (safeIndex < causalPairs.length - 1) {
+      setCurrentPairIndex(safeIndex + 1);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+        对已确认存在因果关系的 {causalPairs.length} 组，逐个填写影响强度（因在前 → 果在后）。强度用于 DEMATEL 中心度计算和帕累托 80/20 分析。
+      </div>
+
+      <div className="rounded-lg border border-slate-200 bg-white p-5">
+        <div className="mb-2 text-xs text-slate-400">
+          第 {safeIndex + 1} / {causalPairs.length} 组
+        </div>
+        <div className="mb-4 text-center">
+          <span className="inline-block rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 mr-1">因</span>
+          <span className="text-base font-semibold text-slate-800">
+            「{causeName}」
+          </span>
+          <span className="mx-2 text-slate-400">→</span>
+          <span className="text-base font-semibold text-slate-800">
+            「{effectName}」
+          </span>
+          <span className="inline-block rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 ml-1">果</span>
+          <p className="mt-1 text-sm text-slate-500">「{causeName}」对「{effectName}」的影响强度是？</p>
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-3">
+          {STRENGTH_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              disabled={disabled}
+              onClick={() => handleSelect(opt.value)}
+              className={clsx(
+                'rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition',
+                currentValue === opt.value
+                  ? 'border-brand-500 bg-brand-50 text-brand-700'
+                  : 'border-surface-200 text-text-secondary hover:border-brand-300 hover:bg-brand-50',
+              )}
+              title={opt.desc}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-5 flex items-center justify-between">
+          <button
+            type="button"
+            disabled={safeIndex === 0 || disabled}
+            onClick={() => setCurrentPairIndex(safeIndex - 1)}
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-100 disabled:opacity-40"
+          >
+            ← 上一组
+          </button>
+          <div className="flex gap-1">
+            {causalPairs.map((cp, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setCurrentPairIndex(idx)}
+                className={clsx(
+                  'h-2 w-2 rounded-full transition',
+                  idx === safeIndex
+                    ? 'bg-brand-500'
+                    : getCellValue(cp.cause, cp.effect) >= 2
+                      ? 'bg-brand-200'
+                      : 'bg-surface-200',
+                )}
+                style={{ display: causalPairs.length > 50 ? 'none' : undefined }}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            disabled={safeIndex >= causalPairs.length - 1 || disabled}
+            onClick={() => setCurrentPairIndex(safeIndex + 1)}
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-100 disabled:opacity-40"
+          >
+            下一组 →
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white p-3">
+        <p className="mb-2 text-xs font-medium text-slate-500">已确认的因果关系（因→果）：</p>
+        <table className="w-full border-collapse text-xs">
+          <thead>
+            <tr className="border-b border-slate-200 text-left text-xs font-medium text-slate-500">
+              <th className="px-2 py-1">因</th>
+              <th className="px-2 py-1 text-center">→</th>
+              <th className="px-2 py-1">果</th>
+              <th className="px-2 py-1 text-center">强度</th>
+            </tr>
+          </thead>
+          <tbody>
+            {causalPairs.map((cp, idx) => {
+              const strength = getCellValue(cp.cause, cp.effect);
+              return (
+                <tr
+                  key={idx}
+                  className={clsx(
+                    'border-b border-slate-50 cursor-pointer transition',
+                    idx === safeIndex && 'bg-brand-50',
+                  )}
+                  onClick={() => setCurrentPairIndex(idx)}
+                >
+                  <td className="px-2 py-1 font-medium text-slate-700">{factorNames[cp.cause]}</td>
+                  <td className="px-2 py-1 text-center text-slate-400">→</td>
+                  <td className="px-2 py-1 font-medium text-slate-700">{factorNames[cp.effect]}</td>
+                  <td className="px-2 py-1 text-center">
+                    {strength >= 1 ? (
+                      <span className={clsx(
+                        'inline-block rounded px-1.5 py-0.5 text-xs font-medium',
+                        strength >= 4 ? 'bg-rose-100 text-rose-700' : strength >= 2 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600',
+                      )}>
+                        {strength}
+                      </span>
+                    ) : (
+                      <span className="text-slate-300">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+interface CauseScoreItem {
+  name: string;
+  outCount: number;
+  inCount: number;
+  score: number;
+  role: string;
+}
+
+function roleColor(role: string) {
+  if (role === '根因') return 'bg-rose-100 text-rose-700 border-rose-200';
+  if (role === '表因') return 'bg-amber-100 text-amber-700 border-amber-200';
+  return 'bg-slate-100 text-slate-600 border-slate-200';
 }
