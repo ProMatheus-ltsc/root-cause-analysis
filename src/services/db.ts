@@ -28,6 +28,19 @@ interface BusinessDBSchema extends DBSchema {
     key: string;
     value: { key: string; value: unknown };
   };
+  snapshots: {
+    key: string;
+    value: Snapshot;
+    indexes: { recordId: string; createdAt: string };
+  };
+}
+
+export interface Snapshot {
+  id: string;
+  recordId: string;
+  data: Record<string, unknown>;
+  label: string;
+  createdAt: string;
 }
 
 const META_DB_NAME = 'rca-app';
@@ -63,7 +76,7 @@ function getBusinessDB(): Promise<IDBPDatabase<BusinessDBSchema>> {
   }
   if (!businessDBPromise) {
     const dbName = `rca-app-${currentAccountId}`;
-    businessDBPromise = openDB<BusinessDBSchema>(dbName, 2, {
+    businessDBPromise = openDB<BusinessDBSchema>(dbName, 3, {
       upgrade(db, oldVersion, _newVersion, transaction) {
         if (oldVersion < 1) {
           const recordStore = db.createObjectStore('records', { keyPath: 'id' });
@@ -73,11 +86,15 @@ function getBusinessDB(): Promise<IDBPDatabase<BusinessDBSchema>> {
           db.createObjectStore('settings', { keyPath: 'key' });
         }
         if (oldVersion < 2) {
-          // v2：新增 problems store，并用升级事务给已有 records store 补建 problemId 索引
           const problemStore = db.createObjectStore('problems', { keyPath: 'id' });
           problemStore.createIndex('createdAt', 'createdAt');
           problemStore.createIndex('updatedAt', 'updatedAt');
           transaction.objectStore('records').createIndex('problemId', 'problemId');
+        }
+        if (oldVersion < 3) {
+          const snapshotStore = db.createObjectStore('snapshots', { keyPath: 'id' });
+          snapshotStore.createIndex('recordId', 'recordId');
+          snapshotStore.createIndex('createdAt', 'createdAt');
         }
       },
     });
@@ -186,5 +203,28 @@ export async function clearAllData(): Promise<void> {
   await tx.objectStore('records').clear();
   await tx.objectStore('problems').clear();
   await tx.objectStore('settings').clear();
+  await tx.done;
+}
+
+export async function getSnapshotsByRecord(recordId: string): Promise<Snapshot[]> {
+  const db = await getBusinessDB();
+  return db.getAllFromIndex('snapshots', 'recordId', recordId);
+}
+
+export async function putSnapshot(snapshot: Snapshot): Promise<void> {
+  const db = await getBusinessDB();
+  await db.put('snapshots', snapshot);
+}
+
+export async function deleteSnapshot(id: string): Promise<void> {
+  const db = await getBusinessDB();
+  await db.delete('snapshots', id);
+}
+
+export async function deleteSnapshotsByRecord(recordId: string): Promise<void> {
+  const db = await getBusinessDB();
+  const all = await db.getAllFromIndex('snapshots', 'recordId', recordId);
+  const tx = db.transaction('snapshots', 'readwrite');
+  await Promise.all(all.map((s) => tx.store.delete(s.id)));
   await tx.done;
 }
