@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo } from 'react';
-import type { FormRecord, FormTemplate, TemplateId } from '../../types';
+import type { TemplateId } from '../../types';
 
 const MatrixHeatmap = lazy(() => import('./MatrixHeatmap').then((m) => ({ default: m.MatrixHeatmap })));
 const FishboneDiagram = lazy(() => import('./FishboneDiagram').then((m) => ({ default: m.FishboneDiagram })));
