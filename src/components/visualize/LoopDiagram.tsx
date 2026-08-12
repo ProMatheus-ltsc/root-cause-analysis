@@ -65,8 +65,13 @@ export function LoopDiagram({ result }: LoopDiagramProps) {
         </defs>
 
         {loops.map((loop, loopIdx) => {
+          // ---- 环形布局的数学原理（初学者看这里）----
+          // 把 n 个原因节点均匀分布在半径为 R 的圆周上：
+          //   角度 angle_i = -90° + i × (360°/n)
+          //  -90° 起点的作用：让第 1 个节点位于正上方（12 点方向），符合阅读习惯。
+          //   节点坐标 = 圆心 + R × (cos angle, sin angle)，即极坐标 → 直角坐标。
           const cx = 360;
-          const cy = loopIdx * PER_RING + 140;
+          const cy = loopIdx * PER_RING + 140; // 每个 loop 纵向错开 PER_RING，避免上下重叠
           const R = 104;
           const n = loop.causes.length;
           const color = RING_COLORS[loop.type] ?? RING_COLORS.reinforcing;
@@ -81,15 +86,19 @@ export function LoopDiagram({ result }: LoopDiagramProps) {
 
           return (
             <g key={loopIdx}>
-              {/* 主环 */}
+              {/* 主环：虚线圆示意回路的边界 */}
               <circle cx={cx} cy={cy} r={R} fill="none" stroke={color.stroke} strokeWidth={2} strokeDasharray="6 4" opacity={0.4} />
 
-              {/* 环上箭头 + 序号 */}
+              {/* 环上箭头 + 序号：每段相邻节点之间画一条贝塞尔曲线箭头，表示"因果关系方向" */}
               {points.map((p, i) => {
-                const p2 = points[(i + 1) % n];
+                const p2 = points[(i + 1) % n]; // (i+1) % n：最后一个节点指向第 0 个，首尾相连成环
+                // 弧线中点（放在圆周外侧 20px），用于放置序号文字
                 const midAngle = -Math.PI / 2 + ((i + 0.5) * 2 * Math.PI) / n;
                 const mx = cx + (R + 20) * Math.cos(midAngle);
                 const my = cy + (R + 20) * Math.sin(midAngle);
+                // 切线方向：圆周上某点的切线 = (-sin θ, cos θ)。
+                // 贝塞尔曲线的控制点沿切线方向外推 46px，让曲线"贴着圆周走"而不是切直线，
+                // 视觉上形成顺滑的弧线箭头。
                 const tang1 = {
                   x: -Math.sin(-Math.PI / 2 + (i * 2 * Math.PI) / n),
                   y: Math.cos(-Math.PI / 2 + (i * 2 * Math.PI) / n),
@@ -124,10 +133,13 @@ export function LoopDiagram({ result }: LoopDiagramProps) {
                 const labelR = R + 22;
                 const lx = cx + labelR * Math.cos(angle);
                 const ly = cy + labelR * Math.sin(angle);
-                // 文字锚点：根据 cos(angle) 决定 start/middle/end，对应左/中/右
+                // 文字锚点：根据 cos(angle) 决定 start/middle/end，对应左/中/右。
+                // 原理：节点在圆右侧（cos>0.3）时文字往右排（start）；在左侧（cos<-0.3）往左排（end），
+                // 中间（正上/正下）居中——保证文字始终朝外、不会探进圆内遮挡中央回路名。
                 const cosA = Math.cos(angle);
                 const sinA = Math.sin(angle);
                 const anchor: 'start' | 'middle' | 'end' = cosA > 0.3 ? 'start' : cosA < -0.3 ? 'end' : 'middle';
+                // 垂直微调：正上/正下的文字上下偏移 4px，避免与节点圆相切
                 const dy = sinA < -0.3 ? -4 : sinA > 0.3 ? 4 : 0;
                 const labelLines = cause.length > 8 ? [cause.slice(0, 8), cause.slice(8, 16)] : [cause];
                 return (

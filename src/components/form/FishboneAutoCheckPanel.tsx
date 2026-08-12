@@ -77,14 +77,25 @@ export function FishboneAutoCheckPanel({ problem, sectionId, disabled }: Fishbon
 
   const checkItems: CheckItem[] = DIM_CHECK_ITEMS[sectionId] ?? [];
 
+  /**
+   * 候选原因 → 最佳匹配 check item 的打分逻辑（简单关键词统计，非语义分析）：
+   * 1. 对每个候选原因，遍历本维度所有 check item；
+   * 2. 每个 check item 预置一组关键词（如"培训/覆盖/讲师"），
+   *    统计原因文本里命中了几个关键词，命中数即分数；
+   * 3. 取分数最高的 check item 作为"建议归属"，分数为 0 表示没有合适匹配（不显示建议按钮）。
+   *
+   * 局限：关键词匹配是启发式，可能建议不准——所以 UI 上只是"建议"，
+   * 用户仍可自由选择其他 check item 或自己填写，不会强制归属。
+   */
   const matched = useMemo<Candidate[]>(() => {
     return candidates.map((cause) => {
       const text = cause.toLowerCase();
       const scores = checkItems.map((ci) => ({
         ...ci,
+        // filter().length 即"命中关键词数"；toLowerCase 保证中英文大小写无关匹配
         score: ci.keywords.filter((kw) => text.includes(kw.toLowerCase())).length,
       }));
-      const top = scores.sort((a, b) => b.score - a.score)[0];
+      const top = scores.sort((a, b) => b.score - a.score)[0]; // 分数最高者胜出
       return {
         idx: 0,
         cause,
@@ -96,6 +107,13 @@ export function FishboneAutoCheckPanel({ problem, sectionId, disabled }: Fishbon
 
   if (candidates.length === 0) return null;
 
+  /**
+   * 用户确认"此原因属于某 check item"后，一次性做三件事：
+   * 1. 勾选该 check item 的 checkbox（ci.id → true）；
+   * 2. 把原因文本追加到对应的"详情" textarea（换行累加，保留用户已有内容）；
+   * 3. 追加到本维度（sectionId）的发现数组，供鱼骨图可视化和根因结论自动汇总使用。
+   * 全部 setValue 都带 shouldDirty，确保触发自动保存。
+   */
   function handlePick(candidate: Candidate, ci: CheckItem) {
     const curDetail = (watch(ci.detailId) as string | undefined) ?? '';
     const line = candidate.cause;

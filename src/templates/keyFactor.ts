@@ -2,9 +2,9 @@
  * 要因分析法（DEMATEL + 帕累托）：处理复杂、非量化、多因素因果关系问题的主推方法。
  *
  * 流程：
- * ① 因素清单 —— 从头脑风暴候选原因中筛选 ≤ 8 个核心因素
+ * ① 因素清单 —— 从头脑风暴候选原因中筛选核心因素
  * ② 关系矩阵 —— 两两因素间的因果影响强度（0=无关/1=弱/2=中/4=强）
- * ③ 自动计算中心度（影响度 + 被影响度），按帕累托 80/20 标出关键根因
+ * ③ 自动分析 —— 区分源头/传导/表象，并标出优先关注的关键原因
  * ④ 根因结论 —— 从关键因素中收敛
  */
 import type { FormTemplate } from '../types';
@@ -23,27 +23,27 @@ export const keyFactorTemplate: FormTemplate = {
   name: '要因分析法',
   icon: '🎯',
   description:
-    '两套自动分析：① 因 −1/果 +1 得分分类（根因/过因/表因）；② DEMATEL 要因分析（中心度 + 帕累托 80/20 找关键少数根因）。',
+    '通过两两对比因素间的因果影响，自动帮你区分：最源头的原因（根因）、中间传导的原因、最表面的现象，并标出优先关注的关键原因，据此收敛结论。',
   recommended: true,
   scenarios: [
     '复杂、多因素交织的问题，无法简单追问 5 个为什么',
     '非量化原因（文化/组织/管理类），需要系统化梳理因素间的因果关系',
     '需要客观区分根因（源头）/过因（传导）/表因（表象）',
-    '需要按帕累托 80/20 找出"关键的少数"根因',
-    '从头脑风暴的 ≥ 15 个候选原因中收敛出核心根因',
+    '需要从多个原因中找出"关键的少数"，优先解决最有杠杆作用的根因',
+    '从头脑风暴的多个候选原因中收敛出核心根因',
   ],
   flowSteps: [
-    '从头脑风暴清单筛选 ≤ 8 个核心因素',
-    '逐对因素填关系强度（0/1/2/4）',
-    '自动分析①：因 −1/果 +1 → 根因（得分最低）/ 过因（接近 0）/ 表因（得分最高）',
-    '自动分析②：DEMATEL 要因分析（中心度 + 帕累托 80/20）',
-    '从两套分析的"根因/关键"因素收敛最终结论',
+    '从头脑风暴清单筛选核心因素（最多 15 个）',
+    '逐对判断因素间是否有因果影响、影响有多强（0 无关 / 1 弱 / 2 中 / 4 强）',
+    '系统自动区分：最源头（根因）/ 中间传导（过因）/ 最表面（表因）',
+    '系统自动标出优先关注的关键原因',
+    '从"根因"与"关键原因"中收敛最终结论',
   ],
   sections: [
     {
       id: 'factors',
       title: '① 因素清单',
-      description: `从头脑风暴清单中筛选 ≤ ${KEY_FACTOR_MAX} 个核心因素（顺序对应矩阵行列）。`,
+      description: `从头脑风暴清单中筛选核心因素（最多 ${KEY_FACTOR_MAX} 个，顺序对应矩阵行列）。`,
       repeatable: true,
       repeatLabel: '因素 {n}',
       minEntries: 2,
@@ -67,7 +67,7 @@ export const keyFactorTemplate: FormTemplate = {
       id: 'matrix',
       title: '② 因果关系强度矩阵',
       description:
-        '逐对判断因素间的因果关系与影响强度，系统将自动完成得分计算与分类。如想跳过逐对判断的繁琐流程，可使用下方快捷通道让 AI 一次性给出所有因果方向+影响强度。',
+        '逐对判断因素间"谁影响谁、影响多强"。填完矩阵后，系统会自动告诉你：哪些因素是源头、哪些只是表象。如想跳过逐对判断的繁琐流程，可使用下方快捷通道让 AI 一次性给出所有因果方向与影响强度。',
       fields: [
         {
           id: 'keyFactorAiAnalysis',
@@ -89,11 +89,11 @@ export const keyFactorTemplate: FormTemplate = {
     },
     {
       id: 'analysis',
-      title: '③ 两套自动分析：得分分类 + DEMATEL 要因分析',
+      title: '③ 自动分析结果',
       fields: [
         {
           id: 'causeScore',
-          label: '因/果得分分类（因 −1 / 果 +1 → 根因/过因/表因）（自动）',
+          label: '因果定位（自动）：区分最源头 / 中间传导 / 最表面',
           type: 'text',
           computed: {
             dependsOn: ['factors', 'matrix'],
@@ -102,7 +102,7 @@ export const keyFactorTemplate: FormTemplate = {
         },
         {
           id: 'keyFactorRanking',
-          label: 'DEMATEL 要因分析（中心度 + 帕累托 80/20）（自动）',
+          label: '关键因素排序（自动）：优先关注哪些原因',
           type: 'text',
           computed: {
             dependsOn: ['factors', 'matrix'],
@@ -114,8 +114,8 @@ export const keyFactorTemplate: FormTemplate = {
           label: '最终确认的根因',
           type: 'textarea',
           required: true,
-          hint: '从上方"根因"类因素（得分最低、最源头）中，结合实际证据选出 1-3 个作为最终根因；可参考头脑风暴清单中的原因编号/描述。',
-          placeholder: '如：上游依赖稳定性（因素 1）——得分最低为源头，且与证据吻合',
+          hint: '从上方"最源头"的因素中，结合实际证据选出 1-3 个作为最终根因；可参考头脑风暴清单中的原因编号/描述。',
+          placeholder: '如：上游依赖稳定性（因素 1）——位于最源头，且与证据吻合',
         },
       ],
     },
@@ -127,10 +127,10 @@ export const keyFactorTemplate: FormTemplate = {
         const root = sorted.filter((r) => r.role === 'root');
         const keyNames = [...results].sort((a, b) => b.centrality - a.centrality).filter((r) => r.isKey).map((r) => r.name);
         const lines: string[] = [];
-        root.forEach((r, i) => lines.push(`${i + 1}. ${r.name}：得分 ${r.score}（作为因 ${r.outCount} 次 / 作为果 ${r.inCount} 次）→ 根因`));
+        root.forEach((r, i) => lines.push(`${i + 1}. ${r.name}（影响其他因素 ${r.outCount} 次，被其他因素影响 ${r.inCount} 次）→ 最源头`));
         if (keyNames.length) {
           lines.push('');
-          lines.push('【DEMATEL 帕累托 80/20 关键因素】');
+          lines.push('【优先关注的关键原因】');
           keyNames.forEach((n) => lines.push(`★ ${n}`));
         }
         if (sorted[0]) {
@@ -146,10 +146,10 @@ export const keyFactorTemplate: FormTemplate = {
         const root = sorted.filter((r) => r.role === 'root');
         const keyNames = [...results].sort((a, b) => b.centrality - a.centrality).filter((r) => r.isKey).map((r) => r.name);
         if (root.length > 0) {
-          return `${root.map((r) => r.name).join('、')} 是最源头（得分最低 ${root[0].score}），叠加 DEMATEL 关键因素 ${keyNames.slice(0, 3).join('、') || '—'}，判定为最终根因`;
+          return `${root.map((r) => r.name).join('、')} 位于因果关系的最源头，叠加优先关注的关键原因 ${keyNames.slice(0, 3).join('、') || '—'}，判定为最终根因`;
         }
         if (sorted.length > 0) {
-          return `相对视角：最源头为 ${sorted[0].name}（得分 ${sorted[0].score}），最表象为 ${sorted[sorted.length - 1].name}（得分 ${sorted[sorted.length - 1].score}）。`;
+          return `相对视角：最源头为 ${sorted[0].name}，最表象为 ${sorted[sorted.length - 1].name}。`;
         }
         return '';
       },
@@ -172,7 +172,7 @@ export const keyFactorTemplate: FormTemplate = {
     },
     {
       id: 'analysis',
-      label: '帕累托分析',
+      label: '结果分析',
       icon: '📊',
       sectionIndices: [2],
       completionFields: ['keyFactorsConfirmed'],

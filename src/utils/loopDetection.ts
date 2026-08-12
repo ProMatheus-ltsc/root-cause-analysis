@@ -1,9 +1,21 @@
 /**
  * 回路检测算法：从因果链数据构建有向图，通过 DFS 找出所有环路。
- * 根据环路中"负反馈"(balancing)边的数量判断回路类型：
- * - 偶数个负反馈边 → 增强回路（Reinforcing Loop）：偏差会被放大
- * - 奇数个负反馈边 → 调节回路（Balancing Loop）：偏差会被抑制
- * 杠杆点识别：出现在最多回路中的因素节点，干预此处效果最大。
+ *
+ * 核心概念（初学者先看这里）：
+ * - 把每个因素当成"节点"，把每条"A 影响 B"当成一条"从 A 指向 B 的有向边"，
+ *   这些边组成一张有向图。
+ * - 回路（loop）= 从某个节点出发，沿有向边走一圈又能回到自己的路径，如 A→B→C→A。
+ *   有回路的系统才会"自我强化/自我抑制"，这是系统思考分析的对象。
+ *
+ * 回路类型判定：奇偶法则
+ * - 回路里若只有"增强型"边（正反馈）或有偶数条"抑制型"边（负反馈）→ 增强回路：
+ *   偏差被放大（如越吵越凶），判断标准：抑制边数量为偶数（0、2、4…）
+ * - 若"抑制型"边数量为奇数（1、3、5…）→ 调节回路：偏差被抑制，系统趋于稳定。
+ *   直觉解释：奇数个负号相乘还是负号——整条回路表现为"负"（抑制）；
+ *   偶数个负号相乘为正——表现为"正"（放大）。
+ *
+ * 杠杆点识别：出现在最多回路中的节点 = 牵一发而动全身的位置，干预它收益最大。
+ * 这是启发式近似（真实系统动力学还有更精细的判定），对用户引导足够直观。
  */
 
 interface CausalEdge {
@@ -24,6 +36,7 @@ export interface LoopDetectionResult {
   leveragePoints: { factor: string; loopCount: number }[];
 }
 
+/** 邻接表：from → 从 from 出发的所有边。用 Map 而非数组是因为节点是字符串（因素名）。 */
 function buildGraph(edges: CausalEdge[]): Map<string, CausalEdge[]> {
   const graph = new Map<string, CausalEdge[]>();
   for (const edge of edges) {
@@ -33,6 +46,24 @@ function buildGraph(edges: CausalEdge[]): Map<string, CausalEdge[]> {
   return graph;
 }
 
+/**
+ * 深度优先搜索（DFS）找出所有环。
+ *
+ * 为什么用 DFS + 两个集合：
+ * - `stack`（当前路径）：记录"从起点走到现在"的节点序列；
+ * - `stackSet`：stack 里节点的快速查找集（Set.has 是 O(1)，避免 indexOf 线性扫描）；
+ * - `visited`：记录"这个节点已经被完整探索过"。
+ *
+ * 关键点（初学者最容易困惑的地方）：
+ * 1. 找到环的条件：`stackSet.has(edge.to)` —— 目标节点已经在当前路径上，
+ *    说明从它出发绕了一圈又回来了，形成闭环。
+ * 2. 为什么递归返回时要从 `visited` 里删除节点（`visited.delete(node)`）？
+ *    因为 `visited` 表示"以本节点为起点的所有路径都已探索完"。
+ *    若保留在 visited 里，后面从其他起点经过该节点时会误判为"已探索"而跳过，
+ *    导致漏掉跨起点的环。DFS 找环是"路径相关"的，不能用普通遍历的 visited 语义。
+ * 3. 为什么限制最多 20 个环？完整枚举所有环在最坏情况下是指数级复杂度
+ *    （完全图中环的数量为 n! 级别），加硬上限防止页面卡死，20 个对用户引导已足够。
+ */
 function findAllCycles(graph: Map<string, CausalEdge[]>, nodes: string[]): CausalEdge[][] {
   const cycles: CausalEdge[][] = [];
   const visited = new Set<string>();
@@ -40,7 +71,7 @@ function findAllCycles(graph: Map<string, CausalEdge[]>, nodes: string[]): Causa
   const stackSet = new Set<string>();
 
   function dfs(node: string, path: CausalEdge[]) {
-    if (cycles.length >= 20) return;
+    if (cycles.length >= 20) return; // 上限保护
     visited.add(node);
     stack.push(node);
     stackSet.add(node);
@@ -49,21 +80,26 @@ function findAllCycles(graph: Map<string, CausalEdge[]>, nodes: string[]): Causa
     for (const edge of neighbors) {
       if (cycles.length >= 20) return;
       if (stackSet.has(edge.to)) {
+        // 发现环：目标在路径中。path.slice(cycleStartIdx) 截取"环的起点开始"的边，
+        // 再补上当前这条回到起点的边，就得到完整一圈。
         const cycleStartIdx = stack.indexOf(edge.to);
         const cyclePath = [...path.slice(cycleStartIdx), edge];
         if (cyclePath.length >= 2) {
           cycles.push(cyclePath);
         }
       } else if (!visited.has(edge.to)) {
+        // 目标不在路径上且未探索过 → 递归深入；否则跳过（避免回头走老路）
         dfs(edge.to, [...path, edge]);
       }
     }
 
+    // 回溯：把当前节点从路径中移除，回到上一层继续尝试其他分支
     stack.pop();
     stackSet.delete(node);
-    visited.delete(node);
+    visited.delete(node); // 关键：见函数顶部注释第 2 点
   }
 
+  // 从每个节点依次作为起点搜索，保证不遗漏任何起点形成的环
   for (const node of nodes) {
     if (cycles.length >= 20) break;
     dfs(node, []);
@@ -72,6 +108,10 @@ function findAllCycles(graph: Map<string, CausalEdge[]>, nodes: string[]): Causa
   return cycles;
 }
 
+/**
+ * 奇偶法则判型：统计回路里"抑制型（balancing）"边的数量。
+ * 偶数（含 0）→ 增强回路；奇数 → 调节回路。
+ */
 function classifyLoop(edges: CausalEdge[]): 'reinforcing' | 'balancing' {
   let balancingCount = 0;
   for (const edge of edges) {
@@ -80,6 +120,12 @@ function classifyLoop(edges: CausalEdge[]): 'reinforcing' | 'balancing' {
   return balancingCount % 2 === 0 ? 'reinforcing' : 'balancing';
 }
 
+/**
+ * 去重：同一个环会被 DFS 从不同起点重复找到多次（A→B→C→A、B→C→A→B、C→A→B→C）。
+ * 去重思路：取环上所有节点名排序后拼接成 key —— 同一组节点无论从哪个起点开始、
+ * 按什么顺序遍历，排序后都得到同一个 key，天然只保留一份。
+ * 代价：会丢失环的"方向感"，但环的成员本身已足以向用户展示。
+ */
 function deduplicateLoops(cycles: CausalEdge[][]): CausalEdge[][] {
   const seen = new Set<string>();
   const unique: CausalEdge[][] = [];

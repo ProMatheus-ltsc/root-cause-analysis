@@ -386,12 +386,26 @@ export function buildDefaultKeyFactorMatrix(): Record<string, number>[] {
 }
 
 /**
- * 要因分析法核心计算（得分法）：
- * 1. 提取因素列表（repeatable 'factors'）与关系矩阵（table 'matrix'）；
- * 2. 两两比较：因素 i 对 j 有影响（强度 > 0）→ i 是"因"、j 是"果"；
- *    因 -1 / 果 +1 累计得分 score = 果次数(inCount) − 因次数(outCount)；
- * 3. 分类：得分最低 → 根因（最源头）；得分最高 → 表因（最表象）；接近 0（-2~2）→ 过因（中间传导）；
- * 4. 补充帕累托视角：按中心度（强度加权）降序累计 ≥ 80% 标为关键因素。
+ * 要因分析法核心计算（两步走）：
+ *
+ * ── 第一步：因果定位（得分法）──
+ * 把每个因素看成一个"节点"，把矩阵里每一对"i 影响 j"看成一条从 i 指向 j 的边。
+ * 统计每个节点：
+ *   - outCount：作为"因"的次数（它指向别人的边数）＝它影响了几个因素
+ *   - inCount ：作为"果"的次数（别人指向它的边数）＝它被几个因素影响
+ * 得分 score = inCount − outCount：
+ *   - 分数越【低】→ 影响别人多、被影响少 → 更接近【源头】（根因）
+ *   - 分数越【高】→ 被影响多、影响别人少 → 更接近【表象】（表因）
+ *   - 接近 0     → 既影响别人也被影响 → 中间传导（过因）
+ * 阈值 CAUSE_SCORE_ROOT（-2）与 CAUSE_SCORE_SURFACE（+2）用于划分三档，
+ * 数值本身不是绝对值，只是经验分界；阈值分不开时还有"相对视角"兜底（最源头/最表象）。
+ *
+ * ── 第二步：关键因素（强度加权 + 帕累托）──
+ * 前面的得分只看"关系数量"，这里再看"影响强度"：
+ *   - outDegree[i] = 第 i 行所有非零值之和（i 对外施加的影响总量）
+ *   - inDegree[j]  = 第 j 列所有非零值之和（j 承受的影响总量）
+ *   - centrality（中心度）= outDegree + inDegree，衡量"这个因素在因果网络里的总活跃度"。
+ * 按中心度降序累加占比，累计达到 80% 之前的所有因素标记为"关键"（帕累托法则：少数的关键因素贡献了大部分影响）。
  */
 export type FactorRole = 'root' | 'transit' | 'surface';
 
@@ -402,16 +416,16 @@ export interface KeyFactorResult {
   outCount: number;
   /** 作为"果"的关系数（被其他因素影响） */
   inCount: number;
-  /** 得分 = inCount − outCount（因 −1 / 果 +1） */
+  /** 定位得分 = inCount − outCount（因 −1 / 果 +1 累计） */
   score: number;
   /** 根因（score 最低）/ 过因（接近 0）/ 表因（score 最高） */
   role: FactorRole;
   roleLabel: string;
-  /** 影响度（强度加权行和） */
+  /** 影响度（强度加权行和：它对外施加的影响总量） */
   outDegree: number;
-  /** 被影响度（强度加权列和） */
+  /** 被影响度（强度加权列和：它承受的影响总量） */
   inDegree: number;
-  /** 中心度 = outDegree + inDegree（帕累托补充视角） */
+  /** 中心度 = outDegree + inDegree（帕累托补充视角用） */
   centrality: number;
   cumulativePercent: number;
   isKey: boolean;
@@ -423,14 +437,19 @@ export const CAUSE_SCORE_ROOT = -2;
 export const CAUSE_SCORE_SURFACE = 2;
 
 export function computeKeyFactors(values: Record<string, unknown>): KeyFactorResult[] {
+  // ---- 1. 读取并清洗输入：因素清单 + 关系矩阵 ----
+  // 表单里 factors 是条目数组（{name, description}），matrix 是行对象数组（{c0..c14}）。
+  // 这里统一转成"名称数组 factors" + "二维数字矩阵 matrix"，后续计算只认这两种干净结构。
   const rawFactors = Array.isArray(values['factors']) ? (values['factors'] as Array<Record<string, unknown>>) : [];
   const factors = rawFactors
-    .slice(0, KEY_FACTOR_MAX)
+    .slice(0, KEY_FACTOR_MAX) // 矩阵固定 15×15，超出部分截断（用户侧已限制，这里是双保险）
     .map((f, i) => ({ index: i, name: typeof f.name === 'string' ? f.name.trim() : '' }))
-    .filter((f) => f.name);
+    .filter((f) => f.name); // 过滤掉没填名称的空条目
 
   const rawMatrix = Array.isArray(values['matrix']) ? (values['matrix'] as Array<Record<string, unknown>>) : [];
   const matrix: number[][] = rawMatrix.slice(0, KEY_FACTOR_MAX).map((row) =>
+    // 行对象 {c0: 1, c1: 0, ...} → 数字数组 [1, 0, ...]；
+    // Number(v) 把字符串数字（如表单 select 传来的 "2"）也转成数字；非法值统一归 0。
     Array.from({ length: KEY_FACTOR_MAX }, (_, j) => {
       const v = row[`c${j}`];
       const n = typeof v === 'number' ? v : Number(v);
@@ -439,10 +458,17 @@ export function computeKeyFactors(values: Record<string, unknown>): KeyFactorRes
   );
 
   const n = factors.length;
-  const outDegree = Array.from({ length: n }, () => 0);
-  const inDegree = Array.from({ length: n }, () => 0);
-  const outCount = Array.from({ length: n }, () => 0);
-  const inCount = Array.from({ length: n }, () => 0);
+  // 四种统计量的累计器，下标与因素一一对应
+  const outDegree = Array.from({ length: n }, () => 0); // 行和（强度加权，影响总量）
+  const inDegree = Array.from({ length: n }, () => 0); // 列和（强度加权，被影响总量）
+  const outCount = Array.from({ length: n }, () => 0); // 非零行条目数（影响几个）
+  const inCount = Array.from({ length: n }, () => 0); // 非零列条目数（被几个影响）
+
+  // ---- 2. 遍历矩阵上三角/全矩阵，累计四个统计量 ----
+  // 对每个非零单元格 matrix[i][j]（i≠j）：
+  //   - i 是"因"：它影响 j → outDegree[i] += 值、outCount[i] += 1
+  //   - j 是"果"：它被 i 影响 → inDegree[j] += 值、inCount[j] += 1
+  // 对角线（i===j）代表"自己影响自己"，无意义，跳过。
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {
       if (i === j) continue;
@@ -456,10 +482,12 @@ export function computeKeyFactors(values: Record<string, unknown>): KeyFactorRes
     }
   }
 
+  // ---- 3. 组装每个因素的定位结果 ----
   const rows: KeyFactorResult[] = factors.map((f, i) => {
-    const score = inCount[i] - outCount[i];
+    const score = inCount[i] - outCount[i]; // 因 −1 / 果 +1 的净方向
     let role: FactorRole;
     let roleLabel: string;
+    // 注意比较方向：score 越大越"表象"（被影响多），越小越"源头"（影响别人多）
     if (score > CAUSE_SCORE_SURFACE) {
       role = 'surface';
       roleLabel = '表因';
@@ -481,12 +509,16 @@ export function computeKeyFactors(values: Record<string, unknown>): KeyFactorRes
       outDegree: outDegree[i],
       inDegree: inDegree[i],
       centrality: outDegree[i] + inDegree[i],
-      cumulativePercent: 0,
+      cumulativePercent: 0, // 下面第二步再填
       isKey: false,
     };
   });
 
-  // 帕累托补充：按中心度（强度加权）降序累计 ≥ 80% 标为关键
+  // ---- 4. 帕累托标记"关键因素" ----
+  // 思路：把中心度最高的因素逐个累加占比，当累计占比第一次超过 80% 时停止，
+  // 停止前计入的那些因素就是"关键的少数"（约 20% 的因素贡献了约 80% 的影响）。
+  // 为什么用中心度而不是得分？得分衡量"方向"（源头/表象），中心度衡量"总活跃度"，
+  // 帕累托要找的是"谁在系统里影响力最大"，所以用强度加权的中心度。
   const sorted = [...rows].sort((a, b) => b.centrality - a.centrality);
   const total = sorted.reduce((s, r) => s + r.centrality, 0);
   if (total > 0) {
@@ -494,10 +526,14 @@ export function computeKeyFactors(values: Record<string, unknown>): KeyFactorRes
     let hasKey = false;
     for (const r of sorted) {
       cum += r.centrality;
-      r.cumulativePercent = +(cum / total).toFixed(4);
+      r.cumulativePercent = +(cum / total).toFixed(4); // 累计占比（0~1），保留 4 位小数
+      // 注意：累计占比 <= 80% 才标为关键——排序后先累加的自然占比小，
+      // 一旦超过 80% 后续因素全部不标，恰好符合"只取头部少数"
       r.isKey = r.cumulativePercent <= KEY_FACTOR_THRESHOLD;
       if (r.isKey) hasKey = true;
     }
+    // 兜底：极端情况（如所有中心度都相同导致第一个就超阈值）下至少保底标出第一名，
+    // 保证"关键因素"列表永不落空，用户始终有可用的收敛对象。
     if (!hasKey && sorted.length > 0) {
       sorted[0].isKey = true;
     }
@@ -506,27 +542,27 @@ export function computeKeyFactors(values: Record<string, unknown>): KeyFactorRes
 }
 
 /**
- * 得分分类结果文本：按得分升序（根因在前）列出，并汇总根因/过因/表因。
+ * 得分分类结果文本（文本版 fallback，当前未被引用，保留作兼容）：按定位得分升序（最源头在前）列出，并汇总根因/过因/表因。
  */
 export function buildCauseScoreText(results: KeyFactorResult[]): string {
   if (results.length === 0) return '（先填写因素清单与关系矩阵后自动生成）';
   const sorted = [...results].sort((a, b) => a.score - b.score);
   const lines = sorted.map(
-    (r, i) => `${i + 1}. ${r.name}：得分 ${r.score}（作为因 ${r.outCount} 次 / 作为果 ${r.inCount} 次）→ ${r.roleLabel}`,
+    (r, i) => `${i + 1}. ${r.name}（影响其他因素 ${r.outCount} 次 / 被其他因素影响 ${r.inCount} 次）→ ${r.roleLabel}`,
   );
   const root = results.filter((r) => r.role === 'root').map((r) => r.name);
   const transit = results.filter((r) => r.role === 'transit').map((r) => r.name);
   const surface = results.filter((r) => r.role === 'surface').map((r) => r.name);
   const summary: string[] = [];
-  if (root.length) summary.push(`根因（得分最低，最源头）：${root.join('、')}`);
-  if (transit.length) summary.push(`过因（得分接近 0，中间传导）：${transit.join('、')}`);
-  if (surface.length) summary.push(`表因（得分最高，最表象）：${surface.join('、')}`);
+  if (root.length) summary.push(`根因（最源头）：${root.join('、')}`);
+  if (transit.length) summary.push(`过因（中间传导）：${transit.join('、')}`);
+  if (surface.length) summary.push(`表因（最表象）：${surface.join('、')}`);
   // 相对视角：无论固定阈值是否区分得出，都给出"最源头/最表象"的定位，保证可操作
   const minRow = sorted[0];
   const maxRow = sorted[sorted.length - 1];
-  summary.push(`相对视角：得分最低（最源头）→ ${minRow.name}；得分最高（最表象）→ ${maxRow.name}`);
+  summary.push(`相对视角：最源头 → ${minRow.name}；最表象 → ${maxRow.name}`);
   if (root.length === 0 && surface.length === 0) {
-    summary.push('注：当前各因素得分均落在过因区间（-2~2），可结合相对视角与证据人工收敛根因。');
+    summary.push('注：当前各因素均处于中间传导区间，可结合相对视角与证据人工收敛根因。');
   }
   return lines.join('\n') + `\n\n${summary.join('\n')}`;
 }
@@ -577,17 +613,17 @@ export function buildCauseScoreTableData(results: KeyFactorResult[]): CauseScore
 }
 
 /**
- * 帕累托补充视角文本：按中心度（强度加权）降序排列，标注累计贡献达 80% 的关键因素。
+ * 关键因素排序文本（文本版 fallback，当前未被引用，保留作兼容）：按影响度（强度加权）降序排列，标注优先关注的关键因素。
  */
 export function buildKeyFactorRankingText(results: KeyFactorResult[]): string {
   if (results.length === 0) return '（先填写因素清单与关系矩阵后自动生成）';
   const sorted = [...results].sort((a, b) => b.centrality - a.centrality);
   const lines = sorted.map(
-    (r, i) => `第 ${i + 1} 名：${r.name}（中心度 ${r.centrality}，累计贡献 ${(r.cumulativePercent * 100).toFixed(1)}%）${r.isKey ? '  ★ 关键' : ''}`,
+    (r, i) => `第 ${i + 1} 名：${r.name}（影响度 ${r.centrality}，累计占比 ${(r.cumulativePercent * 100).toFixed(1)}%）${r.isKey ? '  ★ 优先关注' : ''}`,
   );
   const keyNames = sorted.filter((r) => r.isKey).map((r) => r.name);
   const summary = keyNames.length
-    ? `\n\n帕累托关键因素（累计贡献达 ${(KEY_FACTOR_THRESHOLD * 100).toFixed(0)}%，80/20 视角）：\n${keyNames.map((n) => `· ${n}`).join('\n')}`
+    ? `\n\n优先关注的关键原因（累计影响占比达 ${(KEY_FACTOR_THRESHOLD * 100).toFixed(0)}%，即"关键的少数"）：\n${keyNames.map((n) => `· ${n}`).join('\n')}`
     : '';
   return lines.join('\n') + summary;
 }

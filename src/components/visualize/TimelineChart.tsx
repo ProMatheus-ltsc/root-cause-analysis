@@ -60,6 +60,8 @@ export function TimelineChart({ eventSummary, entries }: TimelineChartProps) {
   lines.push(`<line x1="${padX}" y1="${lineY}" x2="${width - padX}" y2="${lineY}" stroke="#6366f1" stroke-width="3" />`);
 
   sorted.forEach((item, i) => {
+    // 横向均匀布点：第 i 个节点放在 0~1 区间中的 i/(nodeCount-1) 处。
+    // 特判 nodeCount===1：只有一个节点时 (n-1)=0 会除零，直接居中放置。
     const x = nodeCount === 1 ? padX + usable / 2 : padX + (usable * i) / (nodeCount - 1);
     const e = item.entry;
     const isKey = !!e.isKeyMoment;
@@ -74,18 +76,20 @@ export function TimelineChart({ eventSummary, entries }: TimelineChartProps) {
       lines.push(`<circle cx="${x}" cy="${cy}" r="${r}" fill="#fff" stroke="#475569" stroke-width="2" />`);
     }
 
-    // 上下交替放卡片（i 偶数上，奇数下），避免重叠
+    // 上下交替放卡片（i 偶数上，奇数下），避免重叠。
+    // 若全部放同一侧，卡片宽 180px、节点间距 220px 时会互相压住；
+    // 交替布局把相邻卡片错到主轴两侧，水平上即使接近也不冲突。
     const above = i % 2 === 0;
     const cardY = above ? padY - 60 : lineY + 30;
     const cardH = 90;
     const cardW = 180;
-    const cardX = x - cardW / 2;
+    const cardX = x - cardW / 2; // 卡片水平居中于节点
     const cardFill = '#ffffff';
     const cardStroke = isKey ? '#fbbf24' : '#e2e8f0';
     lines.push(
       `<rect x="${cardX}" y="${cardY}" width="${cardW}" height="${cardH}" rx="8" fill="${cardFill}" stroke="${cardStroke}" stroke-width="${isKey ? 2 : 1}" />`,
     );
-    // 引导线（节点到卡片）
+    // 引导线（节点到卡片）：从节点圆边缘出发，画到卡片靠近轴的那一边
     lines.push(`<line x1="${x}" y1="${cy + (above ? -r : r)}" x2="${x}" y2="${above ? cardY + cardH : cardY}" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="2,3" />`);
 
     // 时间标签（在轴上下）

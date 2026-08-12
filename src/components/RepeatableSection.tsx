@@ -73,23 +73,39 @@ function ChevronIcon({ expanded }: { expanded: boolean }) {
   );
 }
 
-/** 相似原因检测：相似度阈值，0.5 以上视为"可能重复/相似"。 */
+/** 相似原因检测：相似度阈值，0.5 以上视为"可能重复/相似"（可调，越低越敏感、越容易误报）。 */
 export const SIMILARITY_THRESHOLD = 0.5;
 
 /**
  * 文本相似度（0-1）：去空白 + 小写后，基于字符 2-gram 的 Sørensen–Dice 系数。
- * Dice 对长度不对称的句子比 Jaccard 更宽容，适合中文短语/长句的"改写近义"检测。
+ *
+ * 背景：为什么用 2-gram + Dice 而不是直接比字符串？
+ * - "2-gram（二元字符组）"：把"产品部资料覆盖不足"切成连续的两个字一组：
+ *   #产、产品、品部、部资、资料、料覆、覆盖、盖不、不足、足#
+ *   （首尾补 # 是为了让开头的字也有完整的二元组可比较）
+ *   两句话共享的二元组越多，说明"写法越接近"。
+ * - "Dice 系数"：= 2 × 交集大小 ÷ (A 的组数 + B 的组数)。
+ *   相比 Jaccard（交集 ÷ 并集），Dice 对"长度不对称"的两句话更宽容——
+ *   比如"产品部内部资料覆盖度不足，缺少九年级物理的完整素材"（22 字）
+ *   与"产品部内部资料不全，九年级物理素材缺失"（17 字），共享部分不少，
+ *   Dice 仍能给出高分，而 Jaccard 会被"并集太大"拖低。中文长句改写场景下 Dice 更合适。
+ *
+ * 局限（已知）：只做字面匹配，不做语义理解——"资料"和"素材"这类同义词
+ * 即使意思相同也不算重叠；这是纯前端零依赖方案下的合理取舍。
  */
 export function textSimilarity(a: string, b: string): number {
+  // 归一化：小写（对英文有意义）+ 去所有空白（中英文空格/换行不影响含义）
   const norm = (s: string) => (s ?? '').toLowerCase().replace(/\s+/g, '');
   const na = norm(a);
   const nb = norm(b);
-  if (!na || !nb) return 0;
-  if (na === nb) return 1;
+  if (!na || !nb) return 0; // 任意一方为空 → 相似度 0
+  if (na === nb) return 1; // 完全相同 → 直接满分，省去下面的计算
 
+  // 生成 2-gram 集合。用 Set 自动去重：一句话里重复出现的二元组只算一次，
+  // 避免"某个词出现很多次"造成虚假的高相似。
   const bigrams = (s: string): Set<string> => {
     const set = new Set<string>();
-    const padded = `#${s}#`;
+    const padded = `#${s}#`; // 首尾补 #，让第 1 个字和第 2 个字也分别有 "#字" 和 "字#" 可比较
     for (let i = 0; i < padded.length - 1; i++) set.add(padded.slice(i, i + 2));
     return set;
   };
@@ -97,8 +113,10 @@ export function textSimilarity(a: string, b: string): number {
   const sa = bigrams(na);
   const sb = bigrams(nb);
   let inter = 0;
+  // 统计交集：遍历 A 的每个二元组，只要 B 里也有就计数（Set.has 是 O(1)）
   for (const x of sa) if (sb.has(x)) inter++;
-  if (inter === 0) return 0;
+  if (inter === 0) return 0; // 一个二元组都不重合 → 完全不同
+  // Dice 系数公式：2|A∩B| / (|A|+|B|)，结果在 0~1 之间
   return (2 * inter) / (sa.size + sb.size);
 }
 

@@ -5,6 +5,13 @@
 import { addDays, format, parseISO } from 'date-fns';
 import type { FormField, FormSection, FormTemplate, PhaseConfig } from '../types';
 
+/**
+ * 判断"空值"的统一定义（全项目共用，语义必须一致）：
+ * - undefined / null → 空
+ * - 字符串 → 去空白后为空才是空（"  " 视为空）
+ * - 数组 → 长度 0 视为空（用于 repeatable 段判断有没有条目）
+ * - 数字 → 永远不空（0 也是有效值，如矩阵里的"0 无关"，不能当空处理）
+ */
 export function isEmptyValue(value: unknown): boolean {
   if (value === undefined || value === null) return true;
   if (typeof value === 'string') return value.trim() === '';

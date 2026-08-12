@@ -230,9 +230,9 @@ function ComputedCauseScoreTable({ data }: { data: import('../templates/shared')
             <tr className="bg-slate-50 text-xs font-medium text-slate-500">
               <th className="border-b border-surface-200 px-3 py-2 text-left">#</th>
               <th className="border-b border-surface-200 px-3 py-2 text-left">因素</th>
-              <th className="border-b border-surface-200 px-3 py-2 text-center">作为因 −1</th>
-              <th className="border-b border-surface-200 px-3 py-2 text-center">作为果 +1</th>
-              <th className="border-b border-surface-200 px-3 py-2 text-center">得分</th>
+              <th className="border-b border-surface-200 px-3 py-2 text-center">影响其他因素（次数）</th>
+              <th className="border-b border-surface-200 px-3 py-2 text-center">被其他因素影响（次数）</th>
+              <th className="border-b border-surface-200 px-3 py-2 text-center">定位得分</th>
               <th className="border-b border-surface-200 px-3 py-2 text-center">判定</th>
             </tr>
           </thead>
@@ -279,7 +279,7 @@ function ComputedRankingTable({ data }: { data: import('../templates/shared').Ke
             <tr className="bg-slate-50 text-xs font-medium text-slate-500">
               <th className="border-b border-surface-200 px-3 py-2 text-left">名次</th>
               <th className="border-b border-surface-200 px-3 py-2 text-left">因素</th>
-              <th className="border-b border-surface-200 px-3 py-2 text-center">中心度</th>
+              <th className="border-b border-surface-200 px-3 py-2 text-center">影响度（汇总）</th>
               <th className="border-b border-surface-200 px-3 py-2 text-center">累计贡献</th>
               <th className="border-b border-surface-200 px-3 py-2 text-center">关键</th>
             </tr>
@@ -310,7 +310,7 @@ function ComputedRankingTable({ data }: { data: import('../templates/shared').Ke
       {data.keyNames.length > 0 && (
         <div className="rounded-md border border-amber-200 bg-amber-50/70 px-3 py-2 text-xs text-amber-900 space-y-1">
           <p>
-            <strong>★ 帕累托关键因素</strong>（累计贡献达 {(data.threshold * 100).toFixed(0)}%，80/20 视角）：
+            <strong>★ 优先关注的关键原因</strong>（累计影响占比达 {(data.threshold * 100).toFixed(0)}%，即"关键的少数"）：
           </p>
           <div className="flex flex-wrap gap-1.5">
             {data.keyNames.map((n, i) => (

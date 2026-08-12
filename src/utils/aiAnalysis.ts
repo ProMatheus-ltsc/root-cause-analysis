@@ -89,7 +89,15 @@ ${payload}`;
 }
 
 /**
- * 解析并校验 AI 返回的 JSON。
+ * 解析并校验 AI 返回的 JSON（系统思考模式）。
+ *
+ * 设计要点（初学者先看这里）：
+ * - 外部 AI 的输出不可信，必须逐字段校验类型，任何一步不合法就抛中文错误，
+ *   由 UI 层直接展示给用户，提示怎么修正。
+ * - JSON.parse 之外还要做"语义校验"：顶层必须是对象、loops/leveragePoints 必须是数组、
+ *   每条 loop 必须有 name/type/causes 且 causes 至少 2 个元素（少于 2 个成不了闭环）。
+ * - 校验通过后才把字符串 trim 后写入结构化对象，避免残留空白。
+ *
  * @throws Error 携带中文可读的错误信息
  */
 export function parseAiAnalysis(raw: string): AiAnalysisResult {
@@ -97,19 +105,24 @@ export function parseAiAnalysis(raw: string): AiAnalysisResult {
   if (!text) {
     throw new Error('粘贴内容为空');
   }
+  // 第一步：语法解析。失败通常是 AI 在 JSON 前后夹带了自然语言（如"好的，以下是…"），
+  // 提示用户只返回 JSON；允许 ```json 代码块包裹，trim 后 JSON.parse 可直接处理。
   let obj: unknown;
   try {
     obj = JSON.parse(text);
   } catch {
     throw new Error('JSON 解析失败——请确认 AI 只返回了 JSON 对象，没有多余文字（可用 ```json 包裹，解析时会自动去除）');
   }
+  // 第二步：顶层结构校验。注意 Array.isArray 也是 object，要单独排除。
   if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
     throw new Error('JSON 顶层应为对象 { loops, leveragePoints }');
   }
   const root = obj as Record<string, unknown>;
+  // 第三步：两大字段必须是数组（缺一不可，宁可严格也不让后续渲染拿到残缺数据）
   if (!Array.isArray(root.loops) || !Array.isArray(root.leveragePoints)) {
     throw new Error('缺少字段：loops 或 leveragePoints（必须都是数组）');
   }
+  // 第四步：逐条校验 loops
   const loops: AiLoop[] = [];
   for (let i = 0; i < root.loops.length; i++) {
     const l = root.loops[i] as Record<string, unknown> | null;
@@ -119,19 +132,22 @@ export function parseAiAnalysis(raw: string): AiAnalysisResult {
     if (typeof l.name !== 'string' || !l.name.trim()) {
       throw new Error(`loops[${i}].name 缺失或为空`);
     }
+    // type 是枚举，只允许两个合法值，防止 AI 编造其他类型导致图表判型出错
     if (l.type !== 'reinforcing' && l.type !== 'balancing') {
       throw new Error(`loops[${i}].type 必须为 "reinforcing" 或 "balancing"`);
     }
+    // causes 至少 2 个：1 个元素构不成"原因1→原因2→…→原因1"的闭环
     if (!Array.isArray(l.causes) || l.causes.length < 2 || !l.causes.every((c) => typeof c === 'string')) {
       throw new Error(`loops[${i}].causes 必须是不小于 2 个字符串的数组`);
     }
     loops.push({
       name: l.name.trim(),
       type: l.type,
-      causes: (l.causes as string[]).map((c) => c.trim()).filter(Boolean),
+      causes: (l.causes as string[]).map((c) => c.trim()).filter(Boolean), // 去空白 + 丢弃空串
       description: typeof l.description === 'string' && l.description.trim() ? l.description.trim() : undefined,
     });
   }
+  // 第五步：逐条校验 leveragePoints（仅 cause 必填，intervention/reason 可选）
   const leveragePoints: AiLeveragePoint[] = [];
   for (let i = 0; i < root.leveragePoints.length; i++) {
     const lp = root.leveragePoints[i] as Record<string, unknown> | null;
@@ -222,7 +238,11 @@ ${factorList || '（无）'}
 `;
 }
 
-/** 解析 AI 返回的 keyFactor JSON。 */
+/** 解析 AI 返回的 keyFactor JSON（要因分析法模式）。与 parseAiAnalysis 结构类似，但业务规则不同：
+ *  - 校验每个 pair 的 cause/effect 必须能在"因素清单"里找到（AI 经常多打空格或改写，需容错匹配）
+ *  - strength 只允许 1/2/4 三个档位
+ *  - 校验通过后统一替换成"因素清单里的原始名称"（而不是 AI 写的变体），保证写入矩阵时能精确对上索引
+ */
 export function parseKeyFactorAnalysis(raw: string, factors: string[]): KeyFactorAiResult {
   const text = raw.trim();
   if (!text) throw new Error('粘贴内容为空');
@@ -239,17 +259,21 @@ export function parseKeyFactorAnalysis(raw: string, factors: string[]): KeyFacto
   if (!Array.isArray(root.causalPairs)) {
     throw new Error('缺少字段：causalPairs（必须是数组）');
   }
-  // 建立因素名到索引的映射（容错：去除空白对比）
+  // 建立"因素名 → 索引"映射表，把 O(n) 的查找降为 O(1)。
+  // 注意 key 用 trim 后的名称，兼容 AI 输出中的首尾空格。
   const factorIndex = new Map<string, number>();
   factors.forEach((f, i) => factorIndex.set(f.trim(), i));
+  // 容错查找：先精确匹配；失败再尝试"子串包含"双向匹配。
+  // 为什么用子串？AI 有时会缩写（如把"产品部内部资料覆盖度不足，九年级物理的知识点/题型没有完整对应的内部素材"
+  // 简写成"资料覆盖度不足"），子串包含能兜住这类近似。代价是有歧义时可能误匹配，
+  // 但"提示词已要求一字不差 + 子串兜底"的组合在实测中够用。
   const lookup = (name: string): number => {
     const trimmed = name.trim();
     if (factorIndex.has(trimmed)) return factorIndex.get(trimmed)!;
-    // 模糊匹配：忽略空白后子串包含
     for (const [key, idx] of factorIndex) {
       if (key.includes(trimmed) || trimmed.includes(key)) return idx;
     }
-    return -1;
+    return -1; // -1 表示找不到，调用方据此报错
   };
   const pairs: KeyFactorAiPair[] = [];
   for (let i = 0; i < root.causalPairs.length; i++) {
@@ -259,6 +283,7 @@ export function parseKeyFactorAnalysis(raw: string, factors: string[]): KeyFacto
     const effect = typeof raw.effect === 'string' ? raw.effect.trim() : '';
     if (!cause) throw new Error(`causalPairs[${i}].cause 缺失或为空`);
     if (!effect) throw new Error(`causalPairs[${i}].effect 缺失或为空`);
+    // Number() 兼容 AI 把数字写成字符串的情况（如 "strength": "2"）
     const strengthNum = Number(raw.strength);
     if (strengthNum !== 1 && strengthNum !== 2 && strengthNum !== 4) {
       throw new Error(`causalPairs[${i}].strength 必须为 1/2/4 之一（实际 ${raw.strength}）`);
@@ -269,6 +294,8 @@ export function parseKeyFactorAnalysis(raw: string, factors: string[]): KeyFacto
     if (effectIdx < 0) throw new Error(`causalPairs[${i}].effect "${effect}" 不在因素清单中（必须用因素清单里的完整原文）`);
     if (causeIdx === effectIdx) throw new Error(`causalPairs[${i}].cause 和 effect 不能是同一因素`);
     pairs.push({
+      // 关键：这里存的是 factors[causeIdx]（清单里的原始全名），而非 AI 传入的 cause 变体，
+      // 保证后续写入矩阵时索引一致、展示名称统一。
       cause: factors[causeIdx],
       effect: factors[effectIdx],
       strength: strengthNum as 1 | 2 | 4,
