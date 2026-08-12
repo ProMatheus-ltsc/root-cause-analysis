@@ -1,10 +1,14 @@
 import { lazy, Suspense, useMemo } from 'react';
 import type { TemplateId } from '../../types';
+import { parseAiAnalysis } from '../../utils/aiAnalysis';
 
 const MatrixHeatmap = lazy(() => import('./MatrixHeatmap').then((m) => ({ default: m.MatrixHeatmap })));
 const FishboneDiagram = lazy(() => import('./FishboneDiagram').then((m) => ({ default: m.FishboneDiagram })));
 const CausalGraph = lazy(() => import('./CausalGraph').then((m) => ({ default: m.CausalGraph })));
 const TimelineChart = lazy(() => import('./TimelineChart').then((m) => ({ default: m.TimelineChart })));
+const LoopDiagram = lazy(() => import('./LoopDiagram').then((m) => ({ default: m.LoopDiagram })));
+const WhyLadderChart = lazy(() => import('./WhyLadderChart').then((m) => ({ default: m.WhyLadderChart })));
+const ComparisonDiffChart = lazy(() => import('./ComparisonDiffChart').then((m) => ({ default: m.ComparisonDiffChart })));
 
 interface VisualizationPanelProps {
   templateId: TemplateId;
@@ -12,13 +16,36 @@ interface VisualizationPanelProps {
   problemTitle?: string;
 }
 
+type CausalEntry = { factorA: string; factorB: string; relationType: string; delayEffect?: string; evidence?: string };
+type TimelineEntry = {
+  time: string;
+  eventDesc: string;
+  sourceType: string;
+  isKeyMoment: boolean;
+  actionTaken: string;
+  actionCorrectness: string;
+};
+type WhyEntry = { why: string; evidenceType?: string; evidence?: string; isRootCause?: string };
+type ComparisonRow = { dimension?: string; normal?: string; abnormal?: string; diff?: string };
+
+type VisContent =
+  | { type: 'heatmap'; factorNames: string[]; matrix: number[][] }
+  | { type: 'fishbone'; categories: Array<{ name: string; causes: string[] }>; problemTitle: string }
+  | { type: 'causal'; causalChain: CausalEntry[] }
+  | { type: 'timeline'; eventSummary: string; entries: TimelineEntry[] }
+  | { type: 'loop'; raw: string }
+  | { type: 'whyLadder'; problemTitle: string; entries: WhyEntry[] }
+  | { type: 'comparison'; normalCase: string; abnormalCase: string; rows: ComparisonRow[] };
+
 export function VisualizationPanel({ templateId, values, problemTitle }: VisualizationPanelProps) {
-  const content = useMemo(() => {
+  const contents = useMemo(() => {
+    const list: VisContent[] = [];
+
     switch (templateId) {
       case 'keyFactor': {
         const factors = values['factors'] as Array<Record<string, unknown>> | undefined;
         const matrixRaw = values['matrix'] as Array<Record<string, unknown>> | undefined;
-        if (!factors || factors.length === 0) return null;
+        if (!factors || factors.length === 0) break;
 
         const factorNames = factors
           .map((f) => (typeof f?.name === 'string' ? f.name.trim() : ''))
@@ -44,7 +71,8 @@ export function VisualizationPanel({ templateId, values, problemTitle }: Visuali
           }
         }
 
-        return { type: 'heatmap' as const, factorNames, matrix };
+        list.push({ type: 'heatmap', factorNames, matrix });
+        break;
       }
 
       case 'timeline':
@@ -60,12 +88,14 @@ export function VisualizationPanel({ templateId, values, problemTitle }: Visuali
             actionCorrectness: typeof e?.actionCorrectness === 'string' ? e.actionCorrectness : '',
           }))
           .filter((e) => e.time || e.eventDesc);
-        if (cleaned.length === 0) return null;
-        return {
-          type: 'timeline' as const,
-          eventSummary: typeof values.summary === 'string' ? values.summary : '',
-          entries: cleaned,
-        };
+        if (cleaned.length > 0) {
+          list.push({
+            type: 'timeline',
+            eventSummary: typeof values.summary === 'string' ? values.summary : '',
+            entries: cleaned,
+          });
+        }
+        break;
       }
 
       case 'fishbone': {
@@ -87,35 +117,83 @@ export function VisualizationPanel({ templateId, values, problemTitle }: Visuali
             }
           }
         }
-        if (categories.length === 0) return null;
-        return { type: 'fishbone' as const, categories, problemTitle: problemTitle || '问题' };
+        if (categories.length > 0) {
+          list.push({ type: 'fishbone', categories, problemTitle: problemTitle || '问题' });
+        }
+        break;
       }
 
       case 'systemThinking': {
+        // AI 模式：优先解析 aiAnalysisRaw（回路 + 杠杆点）→ 回路图
+        const raw = typeof values['aiAnalysisRaw'] === 'string' ? values['aiAnalysisRaw'] : '';
+        if (raw.trim()) {
+          try {
+            const parsed = parseAiAnalysis(raw);
+            if (parsed.loops.length > 0) {
+              list.push({ type: 'loop', raw });
+            }
+          } catch {
+            // AI 返回解析失败（面板中已提示），这里静默跳过回路图
+          }
+        }
+        // 手动因果链（可选保留）：有数据则额外展示因果链图
         const causalChain = values['causalChain'] as Array<Record<string, unknown>> | undefined;
-        if (!Array.isArray(causalChain) || causalChain.length === 0) return null;
-        const entries = causalChain
-          .filter((e) => e?.factorA && e?.factorB && e?.relationType)
+        if (Array.isArray(causalChain) && causalChain.length > 0) {
+          const entries = causalChain
+            .filter((e) => e?.factorA && e?.factorB && e?.relationType)
+            .map((e) => ({
+              factorA: String(e.factorA),
+              factorB: String(e.factorB),
+              relationType: String(e.relationType),
+              delayEffect: typeof e.delayEffect === 'string' ? e.delayEffect : undefined,
+              evidence: typeof e.evidence === 'string' ? e.evidence : undefined,
+            }));
+          if (entries.length > 0) list.push({ type: 'causal', causalChain: entries });
+        }
+        break;
+      }
+
+      case 'fiveWhy': {
+        const entries = Array.isArray(values.whyChain) ? (values.whyChain as Array<Record<string, unknown>>) : [];
+        const cleaned: WhyEntry[] = entries
+          .filter((e) => typeof e?.why === 'string' && e.why.trim())
           .map((e) => ({
-            factorA: String(e.factorA),
-            factorB: String(e.factorB),
-            relationType: String(e.relationType),
-            delayEffect: typeof e.delayEffect === 'string' ? e.delayEffect : undefined,
+            why: String(e.why),
+            evidenceType: typeof e.evidenceType === 'string' ? e.evidenceType : undefined,
             evidence: typeof e.evidence === 'string' ? e.evidence : undefined,
+            isRootCause: typeof e.isRootCause === 'string' ? e.isRootCause : undefined,
           }));
-        if (entries.length === 0) return null;
-        return { type: 'causal' as const, causalChain: entries };
+        if (cleaned.length > 0) {
+          list.push({ type: 'whyLadder', problemTitle: problemTitle || '问题', entries: cleaned });
+        }
+        break;
+      }
+
+      case 'comparison': {
+        const rows = Array.isArray(values.comparisonTable) ? (values.comparisonTable as Array<Record<string, unknown>>) : [];
+        const cleaned = rows.filter((r) => (typeof r?.normal === 'string' && r.normal.trim()) || (typeof r?.abnormal === 'string' && r.abnormal.trim()));
+        if (cleaned.length > 0) {
+          list.push({
+            type: 'comparison',
+            normalCase: typeof values.normalCase === 'string' ? values.normalCase : '',
+            abnormalCase: typeof values.abnormalCase === 'string' ? values.abnormalCase : '',
+            rows: cleaned,
+          });
+        }
+        break;
       }
 
       default:
-        return null;
+        break;
     }
+
+    return list;
   }, [templateId, values, problemTitle]);
 
-  if (!content) return null;
+  if (contents.length === 0) return null;
 
   return (
-    <div className="mt-6 space-y-4">
+    <div className="mt-6 space-y-6">
       <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -123,18 +201,31 @@ export function VisualizationPanel({ templateId, values, problemTitle }: Visuali
         可视化分析
       </h3>
       <Suspense fallback={<div className="rounded-xl border border-surface-200 bg-surface-50 p-8 text-center text-sm text-text-tertiary animate-pulse">加载可视化组件…</div>}>
-        {content.type === 'heatmap' && (
-          <MatrixHeatmap factorNames={content.factorNames} matrix={content.matrix} />
-        )}
-        {content.type === 'fishbone' && (
-          <FishboneDiagram problemTitle={content.problemTitle} categories={content.categories} />
-        )}
-        {content.type === 'causal' && (
-          <CausalGraph causalChain={content.causalChain} />
-        )}
-        {content.type === 'timeline' && (
-          <TimelineChart eventSummary={content.eventSummary} entries={content.entries} />
-        )}
+        {contents.map((content, idx) => (
+          <div key={idx}>
+            {content.type === 'heatmap' && (
+              <MatrixHeatmap factorNames={content.factorNames} matrix={content.matrix} />
+            )}
+            {content.type === 'fishbone' && (
+              <FishboneDiagram problemTitle={content.problemTitle} categories={content.categories} />
+            )}
+            {content.type === 'causal' && (
+              <CausalGraph causalChain={content.causalChain} />
+            )}
+            {content.type === 'timeline' && (
+              <TimelineChart eventSummary={content.eventSummary} entries={content.entries} />
+            )}
+            {content.type === 'loop' && (
+              <LoopDiagram result={parseAiAnalysis(content.raw)} />
+            )}
+            {content.type === 'whyLadder' && (
+              <WhyLadderChart problemTitle={content.problemTitle} entries={content.entries} />
+            )}
+            {content.type === 'comparison' && (
+              <ComparisonDiffChart normalCase={content.normalCase} abnormalCase={content.abnormalCase} rows={content.rows} />
+            )}
+          </div>
+        ))}
       </Suspense>
     </div>
   );
