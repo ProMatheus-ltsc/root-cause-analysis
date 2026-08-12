@@ -1,46 +1,28 @@
 /**
- * 记录 CRUD hooks：封装 services/db.ts 的 IndexedDB 操作，用轻量事件总线让多个页面
- * 在记录新增/更新/删除后能互相感知并刷新列表。
- * 注意：reload 只在"首次加载"时把 loading 置为 true；被 notifyRecordsChanged 广播触发的
- * 后台静默刷新不会再翻转 loading——否则正在编辑表单的 FormPage 会在每次自动保存/切换阶段
- * 触发的保存广播后短暂把 loading 判定为 true，导致 FormRenderer 被整体卸载重新挂载，
- * 使用户当时正在输入的内容丢失、页面出现闪烁。
+ * 记录 CRUD hooks：基于 Zustand store 实现，通过 selector 细粒度订阅，
+ * 让组件只在关心的数据变化时重渲染。
+ *
+ * 向后兼容：所有使用 useDB hooks 的组件无需修改，接口签名保持不变。
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { useShallow } from 'zustand/react/shallow';
 import type { FormRecord, Problem, TemplateId } from '../types';
-import * as db from '../services/db';
+import { useProblemStore } from '../stores/problemStore';
+import { useRecordStore } from '../stores/recordStore';
 
-type Listener = () => void;
-const listeners = new Set<Listener>();
-function notifyRecordsChanged(): void {
-  listeners.forEach((listener) => listener());
-}
-
-/** 问题实体 hooks：与记录共用同一事件总线，问题/记录变更互相感知刷新。 */
+// ─── Problem hooks ─────────────────────────────────────────────────────
 
 export function useProblems(): { problems: Problem[]; loading: boolean; reload: () => Promise<void> } {
-  const [problems, setProblems] = useState<Problem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const hasLoadedOnceRef = useRef(false);
-
-  const reload = useCallback(async () => {
-    if (!hasLoadedOnceRef.current) setLoading(true);
-    const fresh = await db.getAllProblems();
-    setProblems(fresh);
-    setLoading(false);
-    hasLoadedOnceRef.current = true;
-  }, []);
+  const { problems, loading, fetch } = useProblemStore(
+    useShallow((s) => ({ problems: s.problems, loading: s.loading, fetch: s.fetch }))
+  );
 
   useEffect(() => {
-    reload();
-    listeners.add(reload);
-    return () => {
-      listeners.delete(reload);
-    };
-  }, [reload]);
+    fetch();
+  }, [fetch]);
 
-  return { problems, loading, reload };
+  return { problems, loading, reload: fetch };
 }
 
 export function useProblem(id: string | undefined): {
@@ -48,33 +30,20 @@ export function useProblem(id: string | undefined): {
   loading: boolean;
   reload: () => Promise<void>;
 } {
-  const [problem, setProblem] = useState<Problem | undefined>(undefined);
-  const [loading, setLoading] = useState(true);
-  const loadedForIdRef = useRef<string | undefined>(undefined);
-
-  const reload = useCallback(async () => {
-    if (!id) {
-      setProblem(undefined);
-      setLoading(false);
-      loadedForIdRef.current = undefined;
-      return;
-    }
-    if (loadedForIdRef.current !== id) setLoading(true);
-    const fresh = await db.getProblem(id);
-    setProblem(fresh);
-    setLoading(false);
-    loadedForIdRef.current = id;
-  }, [id]);
+  const { problems, loading, fetch } = useProblemStore(
+    useShallow((s) => ({ problems: s.problems, loading: s.loading, fetch: s.fetch }))
+  );
 
   useEffect(() => {
-    reload();
-    listeners.add(reload);
-    return () => {
-      listeners.delete(reload);
-    };
-  }, [reload]);
+    fetch();
+  }, [fetch]);
 
-  return { problem, loading, reload };
+  const problem = useMemo(() => {
+    if (!id) return undefined;
+    return problems.find((p) => p.id === id);
+  }, [problems, id]);
+
+  return { problem, loading, reload: fetch };
 }
 
 export interface SaveProblemParams {
@@ -86,51 +55,55 @@ export interface SaveProblemParams {
 }
 
 export function useSaveProblem(): (params: SaveProblemParams) => Promise<Problem> {
-  return useCallback(async (params: SaveProblemParams) => {
-    const now = new Date().toISOString();
-    const problem: Problem = {
-      id: params.id ?? uuidv4(),
-      title: params.title,
-      problemStatement: params.problemStatement,
-      data: params.data,
-      createdAt: params.createdAt ?? now,
-      updatedAt: now,
-    };
-    await db.putProblem(problem);
-    notifyRecordsChanged();
-    return problem;
-  }, []);
+  const add = useProblemStore((s) => s.add);
+  // 同时触发 record store 刷新（保持原有跨 store 联动行为）
+  const fetchRecords = useRecordStore((s) => s.fetch);
+
+  return useCallback(
+    async (params: SaveProblemParams) => {
+      const now = new Date().toISOString();
+      const problem: Problem = {
+        id: params.id ?? uuidv4(),
+        title: params.title,
+        problemStatement: params.problemStatement,
+        data: params.data,
+        createdAt: params.createdAt ?? now,
+        updatedAt: now,
+      };
+      await add(problem);
+      // 通知 record store 刷新（原有事件总线行为：问题/记录变更互相感知）
+      fetchRecords();
+      return problem;
+    },
+    [add, fetchRecords]
+  );
 }
 
 export function useDeleteProblem(): (id: string) => Promise<void> {
-  return useCallback(async (id: string) => {
-    await db.deleteProblem(id);
-    notifyRecordsChanged();
-  }, []);
+  const remove = useProblemStore((s) => s.remove);
+  const fetchRecords = useRecordStore((s) => s.fetch);
+
+  return useCallback(
+    async (id: string) => {
+      await remove(id);
+      fetchRecords();
+    },
+    [remove, fetchRecords]
+  );
 }
 
-export function useRecords(): { records: FormRecord[]; loading: boolean; reload: () => Promise<void> } {
-  const [records, setRecords] = useState<FormRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const hasLoadedOnceRef = useRef(false);
+// ─── Record hooks ──────────────────────────────────────────────────────
 
-  const reload = useCallback(async () => {
-    if (!hasLoadedOnceRef.current) setLoading(true);
-    const fresh = await db.getAllRecords();
-    setRecords(fresh);
-    setLoading(false);
-    hasLoadedOnceRef.current = true;
-  }, []);
+export function useRecords(): { records: FormRecord[]; loading: boolean; reload: () => Promise<void> } {
+  const { records, loading, fetch } = useRecordStore(
+    useShallow((s) => ({ records: s.records, loading: s.loading, fetch: s.fetch }))
+  );
 
   useEffect(() => {
-    reload();
-    listeners.add(reload);
-    return () => {
-      listeners.delete(reload);
-    };
-  }, [reload]);
+    fetch();
+  }, [fetch]);
 
-  return { records, loading, reload };
+  return { records, loading, reload: fetch };
 }
 
 export function useRecordsByProblem(problemId: string | undefined): {
@@ -138,66 +111,41 @@ export function useRecordsByProblem(problemId: string | undefined): {
   loading: boolean;
   reload: () => Promise<void>;
 } {
-  const [records, setRecords] = useState<FormRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const loadedForIdRef = useRef<string | undefined>(undefined);
-
-  const reload = useCallback(async () => {
-    if (!problemId) {
-      setRecords([]);
-      setLoading(false);
-      loadedForIdRef.current = undefined;
-      return;
-    }
-    if (loadedForIdRef.current !== problemId) setLoading(true);
-    const fresh = await db.getRecordsByProblem(problemId);
-    setRecords(fresh);
-    setLoading(false);
-    loadedForIdRef.current = problemId;
-  }, [problemId]);
+  const { records: allRecords, loading, fetch } = useRecordStore(
+    useShallow((s) => ({ records: s.records, loading: s.loading, fetch: s.fetch }))
+  );
 
   useEffect(() => {
-    reload();
-    listeners.add(reload);
-    return () => {
-      listeners.delete(reload);
-    };
-  }, [reload]);
+    fetch();
+  }, [fetch]);
 
-  return { records, loading, reload };
+  const records = useMemo(() => {
+    if (!problemId) return [];
+    return allRecords.filter((r) => r.problemId === problemId);
+  }, [allRecords, problemId]);
+
+  return { records, loading, reload: fetch };
 }
 
 export function useRecord(id: string | undefined): {
   record: FormRecord | undefined;
   loading: boolean;
   reload: () => Promise<void>;
-} {  const [record, setRecord] = useState<FormRecord | undefined>(undefined);
-  const [loading, setLoading] = useState(true);
-  const loadedForIdRef = useRef<string | undefined>(undefined);
-
-  const reload = useCallback(async () => {
-    if (!id) {
-      setRecord(undefined);
-      setLoading(false);
-      loadedForIdRef.current = undefined;
-      return;
-    }
-    if (loadedForIdRef.current !== id) setLoading(true);
-    const fresh = await db.getRecord(id);
-    setRecord(fresh);
-    setLoading(false);
-    loadedForIdRef.current = id;
-  }, [id]);
+} {
+  const { records, loading, fetch } = useRecordStore(
+    useShallow((s) => ({ records: s.records, loading: s.loading, fetch: s.fetch }))
+  );
 
   useEffect(() => {
-    reload();
-    listeners.add(reload);
-    return () => {
-      listeners.delete(reload);
-    };
-  }, [reload]);
+    fetch();
+  }, [fetch]);
 
-  return { record, loading, reload };
+  const record = useMemo(() => {
+    if (!id) return undefined;
+    return records.find((r) => r.id === id);
+  }, [records, id]);
+
+  return { record, loading, reload: fetch };
 }
 
 export interface SaveRecordParams {
@@ -211,29 +159,42 @@ export interface SaveRecordParams {
 }
 
 export function useSaveRecord(): (params: SaveRecordParams) => Promise<FormRecord> {
-  return useCallback(async (params: SaveRecordParams) => {
-    const now = new Date().toISOString();
-    const record: FormRecord = {
-      id: params.id ?? uuidv4(),
-      templateId: params.templateId,
-      problemId: params.problemId,
-      title: params.title,
-      data: params.data,
-      status: params.status,
-      createdAt: params.createdAt ?? now,
-      updatedAt: now,
-    };
-    await db.putRecord(record);
-    notifyRecordsChanged();
-    return record;
-  }, []);
+  const add = useRecordStore((s) => s.add);
+  const fetchProblems = useProblemStore((s) => s.fetch);
+
+  return useCallback(
+    async (params: SaveRecordParams) => {
+      const now = new Date().toISOString();
+      const record: FormRecord = {
+        id: params.id ?? uuidv4(),
+        templateId: params.templateId,
+        problemId: params.problemId,
+        title: params.title,
+        data: params.data,
+        status: params.status,
+        createdAt: params.createdAt ?? now,
+        updatedAt: now,
+      };
+      await add(record);
+      // 通知 problem store 刷新（保持原有事件总线行为）
+      fetchProblems();
+      return record;
+    },
+    [add, fetchProblems]
+  );
 }
 
 export function useDeleteRecord(): (id: string) => Promise<void> {
-  return useCallback(async (id: string) => {
-    await db.deleteRecord(id);
-    notifyRecordsChanged();
-  }, []);
+  const remove = useRecordStore((s) => s.remove);
+  const fetchProblems = useProblemStore((s) => s.fetch);
+
+  return useCallback(
+    async (id: string) => {
+      await remove(id);
+      fetchProblems();
+    },
+    [remove, fetchProblems]
+  );
 }
 
 export function useSearchRecords(records: FormRecord[], query: string): FormRecord[] {
