@@ -24,14 +24,21 @@ export function VisualizationPanel({ templateId, values, problemTitle }: Visuali
           .filter((n) => n.length > 0);
         const n = factorNames.length;
 
+        // MatrixGuidedInput 存储格式：`rows[i][c${j}] = value`（行对象数组），
+        // 兼容两种历史格式：行对象 `{c0, c1, ...}` 与扁平 `{row, col, value}`。
         const matrix: number[][] = Array.from({ length: n }, () => Array(n).fill(0));
         if (Array.isArray(matrixRaw)) {
-          for (const entry of matrixRaw) {
-            const i = Number(entry?.row);
-            const j = Number(entry?.col);
-            const v = Number(entry?.value);
-            if (!isNaN(i) && !isNaN(j) && !isNaN(v) && i < n && j < n) {
-              matrix[i][j] = v;
+          for (let i = 0; i < matrixRaw.length && i < n; i++) {
+            const entry = matrixRaw[i];
+            if (!entry || typeof entry !== 'object') continue;
+            if (typeof entry.row === 'number' && typeof entry.col === 'number') {
+              const v = Number(entry.value);
+              if (!isNaN(v) && entry.row < n && entry.col < n) matrix[entry.row][entry.col] = v;
+            } else {
+              for (let j = 0; j < n; j++) {
+                const v = Number(entry[`c${j}`]);
+                if (!isNaN(v)) matrix[i][j] = v;
+              }
             }
           }
         }

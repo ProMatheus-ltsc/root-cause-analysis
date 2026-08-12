@@ -125,9 +125,14 @@ export function validateRequiredFields(template: FormTemplate, values: Record<st
       section.fields.forEach((f) => {
         if (f.type === 'table' && f.validation?.min !== undefined) {
           const rows = Array.isArray(values[f.id]) ? (values[f.id] as unknown[]) : [];
+          // 兼容字符串与数字两种数据：字符串非空、数字非 0 都算"有效单元格"
           const filledRows = rows.filter((row) => {
             if (typeof row !== 'object' || row === null) return false;
-            return Object.values(row as Record<string, unknown>).some((v) => typeof v === 'string' && v.trim() !== '');
+            return Object.values(row as Record<string, unknown>).some((v) => {
+              if (typeof v === 'string') return v.trim() !== '';
+              if (typeof v === 'number') return v !== 0 && !Number.isNaN(v);
+              return v !== undefined && v !== null;
+            });
           });
           if (filledRows.length < f.validation.min) {
             missing.push({ sectionId: section.id, fieldId: f.id, label: `${f.label}（至少需要 ${f.validation.min} 行有效数据）` });
