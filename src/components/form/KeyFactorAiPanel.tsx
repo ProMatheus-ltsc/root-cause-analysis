@@ -4,6 +4,10 @@
  * 2. 用户复制给外部 AI，AI 返回 JSON（含所有 cause→effect 对 + strength）
  * 3. 用户粘贴 JSON → 解析校验 → 批量 setValue 到 matrix（同时填入方向+强度）
  * 跳过 105 对逐一手动判断的繁琐流程，作为"快速知道结果"的快捷通道。
+ * 核心机制：
+ * - phase 状态机（idle/output/error/success）驱动四种界面；
+ * - 解析结果不放进组件 state 落盘，而是通过 setValue 直接写入表单的
+ *   matrix / keyFactorAiSummary / keyFactorAiRaw 字段，保证跨阶段、跨刷新可恢复。
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
@@ -18,26 +22,38 @@ import {
   type KeyFactorAiResult,
 } from '../../utils/aiAnalysis';
 
+/** 组件 props：problem 提供问题详情供生成提示词；disabled 禁用全部交互。 */
 interface KeyFactorAiPanelProps {
   problem?: Problem;
   disabled?: boolean;
 }
 
+/** 面板所处的流程阶段：idle 初始 / output 已生成提示词等待粘贴 / error 解析失败 / success 写入成功。 */
 type Phase = 'idle' | 'output' | 'error' | 'success';
 
+/** 粘贴框的示例 JSON，帮助用户理解 AI 应返回的结构（cause/effect/strength/reason）。 */
 const EXAMPLE_JSON = '{"causalPairs":[{"cause":"产品部和一线教学团队之间缺乏需求沟通渠道","effect":"产品部内部资料使用率低","strength":4,"reason":"需求断层导致产品部收不到反馈"},{"cause":"内部资料的质量不如广分现成的PPT和讲义","effect":"老师认为广分内容经过市场验证更靠谱","strength":2}]}';
 
+/**
+ * 要因分析的手动 AI 桥接面板。
+ * 核心流程与"受控于表单"的设计：
+ * - watch('factors') 实时读取因素清单，把它作为生成提示词和解析结果的输入来源；
+ * - setValue 写入 matrix 时带 { shouldDirty: true }，让表单 dirty 状态更新，
+ *   确保依赖 dirty 的提交/推进按钮能正常工作。
+ */
 export function KeyFactorAiPanel({ problem, disabled }: KeyFactorAiPanelProps) {
   const { setValue, watch, getValues } = useFormContext();
   const [phase, setPhase] = useState<Phase>('idle');
-  const [prompt, setPrompt] = useState('');
-  const [aiRaw, setAiRaw] = useState('');
+  const [prompt, setPrompt] = useState(''); // 生成的提示词文本
+  const [aiRaw, setAiRaw] = useState(''); // 用户粘贴的 AI 返回 JSON
   const [error, setError] = useState('');
   const [result, setResult] = useState<KeyFactorAiResult | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState(false); // 复制提示词后的短暂"已复制"提示
 
   // 监听 factors 列表（实时从 form state 读取，确保看到最新）
   const factorsRaw = watch('factors') as Array<Record<string, unknown>> | undefined;
+  // 提取因素名：最多取 KEY_FACTOR_MAX 个；没有名字的条目用"因素 N"兜底，
+  // 保证后续无论是生成提示词还是解析 AI 结果，拿到的都是纯字符串数组。
   const factorNames = useMemo(() => {
     if (!Array.isArray(factorsRaw)) return [];
     return factorsRaw
@@ -47,7 +63,8 @@ export function KeyFactorAiPanel({ problem, disabled }: KeyFactorAiPanelProps) {
 
   const hasFactors = factorNames.length > 0;
 
-  // 页面加载时如果还没有 prompt 且有 factors，自动生成
+  // 页面加载时如果还没有 prompt 且有 factors，自动生成。
+  // 只依赖 hasFactors：从 false→true 时（因素清单被填上）自动补生成一次。
   useEffect(() => {
     if (phase === 'idle' && !prompt && hasFactors) {
       setPrompt(buildKeyFactorPrompt(problem, factorNames));
@@ -55,7 +72,8 @@ export function KeyFactorAiPanel({ problem, disabled }: KeyFactorAiPanelProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasFactors]);
 
-  // 已有结果回显（用户刷新过页面）
+  // 已有结果回显（用户刷新过页面）：从表单字段里读回之前保存的 AI 原始 JSON，
+  // 只要有内容就让界面停留在可继续操作的状态，而不是直接丢失。
   useEffect(() => {
     if (phase !== 'idle') return;
     const savedRaw = getValues('keyFactorAiRaw') as string | undefined;
@@ -67,6 +85,7 @@ export function KeyFactorAiPanel({ problem, disabled }: KeyFactorAiPanelProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 生成提示词：校验因素已存在，然后重建 prompt 并切换到 output 阶段
   async function handleGenerate() {
     if (!hasFactors) {
       setError('请先在"① 因素清单"阶段添加至少 1 个因素');
@@ -77,6 +96,7 @@ export function KeyFactorAiPanel({ problem, disabled }: KeyFactorAiPanelProps) {
     setError('');
   }
 
+  // 复制提示词到剪贴板；复制成功后短暂显示"已复制"，失败则提示手动复制
   async function handleCopy() {
     if (!prompt) return;
     try {
@@ -88,6 +108,7 @@ export function KeyFactorAiPanel({ problem, disabled }: KeyFactorAiPanelProps) {
     }
   }
 
+  // 解析用户粘贴的 AI JSON 并批量写入矩阵，这是本面板的核心动作
   function handleParse() {
     if (!aiRaw.trim()) {
       setError('粘贴内容为空');
@@ -152,6 +173,7 @@ export function KeyFactorAiPanel({ problem, disabled }: KeyFactorAiPanelProps) {
       </div>
 
       {phase === 'idle' && (
+        /* 初始阶段：只有一个"生成提示词"按钮 */
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -165,6 +187,7 @@ export function KeyFactorAiPanel({ problem, disabled }: KeyFactorAiPanelProps) {
       )}
 
       {phase === 'output' && (
+        /* 输出阶段：提示词只读展示 + 粘贴 AI 返回的 JSON + 解析按钮 */
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-xs font-medium text-slate-700">① 提示词（复制给外部 AI）：</p>
@@ -228,6 +251,7 @@ export function KeyFactorAiPanel({ problem, disabled }: KeyFactorAiPanelProps) {
       )}
 
       {phase === 'error' && (
+        /* 错误阶段：展示失败原因，提供返回重试入口 */
         <div className="space-y-2">
           <div className="rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-700">
             <strong>解析失败：</strong> {error}
@@ -245,6 +269,7 @@ export function KeyFactorAiPanel({ problem, disabled }: KeyFactorAiPanelProps) {
       )}
 
       {phase === 'success' && result && (
+        /* 成功阶段：列出写入的因果对，可返回继续微调 */
         <div className="space-y-2">
           <div className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
             <strong>✓ 成功写入 {result.causalPairs.length} 对因果关系（方向 + 强度）</strong>

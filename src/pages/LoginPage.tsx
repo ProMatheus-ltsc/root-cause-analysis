@@ -1,12 +1,19 @@
 /**
- * 登录/注册/忘记密码页：本地账户体系入口，成功后跳转到仪表盘。
+ * 登录/注册/忘记密码页（/login）：本地账户体系入口，成功后跳转到仪表盘。
  * "忘记密码"是本地纯前端架构下的折中方案：不校验旧密码（没有可信身份验证手段），
  * 只要输入正确的用户名即可设置新密码并直接登入，该账户下的历史记录不受影响。
+ * 交互流程：三种模式（登录/注册/重置密码）共用同一个表单 → 提交时按当前模式调用对应的认证函数
+ *   （异步读写 IndexedDB）→ 成功后跳回首页；已登录用户访问本页会被 <Navigate> 直接重定向回首页。
+ * 核心概念：账户与数据都只存在浏览器本地（IndexedDB + localStorage），没有后端服务器参与认证。
  */
 import { useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
+/**
+ * 密码可见性切换按钮（密码框右侧的"小眼睛"）。
+ * props：visible 当前是否明文显示；onToggle 点击后切换显示/隐藏状态。
+ */
 function PasswordToggle({ visible, onToggle }: { visible: boolean; onToggle: () => void }) {
   return (
     <button
@@ -22,15 +29,23 @@ function PasswordToggle({ visible, onToggle }: { visible: boolean; onToggle: () 
 
 type Mode = 'login' | 'register' | 'reset';
 
+/** 三种模式对应的表单标题文案 */
 const MODE_TITLE: Record<Mode, string> = {
   login: '登录本地账户',
   register: '创建本地账户',
   reset: '重置密码',
 };
 
+/**
+ * 登录页组件：提供登录 / 注册 / 重置密码三种模式，共用同一套表单。
+ * props：无（路由页面，由 Router 直接渲染）。
+ */
 export default function LoginPage() {
+  // useAuth 提供本地账户的登录/注册/重置密码函数，以及当前登录账户信息
   const { login, register, resetPassword, account } = useAuth();
   const navigate = useNavigate();
+  // mode：当前模式；username/password/confirmPassword：表单输入；
+  // error：提交失败时的错误提示文案；showPassword/showConfirmPassword：两个密码框的明文显示开关
   const [mode, setMode] = useState<Mode>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -39,10 +54,12 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // 已经登录（account 存在）时直接用 <Navigate> 重定向到首页，避免已登录用户还看到登录页
   if (account) {
     return <Navigate to="/" replace />;
   }
 
+  /** 切换模式时清空密码与错误提示，避免残留上一种模式填的内容造成混淆。 */
   function switchMode(next: Mode) {
     setMode(next);
     setPassword('');
@@ -50,6 +67,12 @@ export default function LoginPage() {
     setError('');
   }
 
+  /**
+   * 表单提交处理：preventDefault 阻止表单默认的整页刷新行为，再按当前模式调用对应认证函数。
+   * 认证是异步操作（读写 IndexedDB），必须用 try/catch 捕获失败；
+   * err instanceof Error 判断是为了安全取出 message，非 Error 对象则兜底显示"操作失败"。
+   * 重置密码模式额外要求"新密码与确认密码一致"。
+   */
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');

@@ -12,6 +12,28 @@
 import type { FormTemplate } from '../types';
 import { createRemedySection, IMPACT_SCOPE_OPTIONS, SEVERITY_OPTIONS } from './shared';
 
+/**
+ * 技术专题分析模板（二合一流程：时间线 + 技术排查 + 5Why 追根因）。
+ *
+ * sections 结构设计意图（按排查顺序组织）：
+ *   ① incidentOverview：影响面概述 —— occurredAt 默认 auto_now（打开即填当前时刻，
+ *      用户仍可用选择器调整），summary 限制 200 字以内；
+ *   ② timelineEntries：时间线还原（repeatable）—— 逐节点记录事件、来源、
+ *      关键节点标记与行动正确性，还原全貌；
+ *   ③ technicalInvestigation：问题定位 —— 记录受影响系统、错误堆栈、变更关联
+ *      （changeDetail 仅在"有相关变更"时联动显示）、监控证据与可复现性；
+ *   ④ diagnosisSteps：排查记录（repeatable）—— 逐条记录排查动作与结论，
+ *      time 字段 autoTimestamp 自动填当前时间；
+ *   ⑤ problemLocate：问题定位结论 —— 把前序证据收敛成一句话问题；
+ *   ⑥ whyChain：5 Why 根因追问（repeatable）—— 针对定位到的问题逐层追问，
+ *      stopAppendWhen 在确认根因后停止追加；
+ *   ⑦ rootCauseConfirm：根因判定 —— 明确根因是哪个代码/配置层面的问题；
+ *   ⑧ createRemedySection()：根因结论 —— 自动汇总"问题 + 根因"。
+ *
+ * phases 结构设计意图：四阶段依次对应影响面发现 → 问题定位 → 根因追溯 → 根因结论，
+ * 每阶段 completionFields 收集该阶段"必须填好"的字段 id；根因结论阶段
+ * completesRecord=true，rootCauseSummary 填好即整份记录完成。
+ */
 export const techIncidentTemplate: FormTemplate = {
   id: 'techIncident',
   name: '技术专题分析',
@@ -32,6 +54,8 @@ export const techIncidentTemplate: FormTemplate = {
       id: 'incidentOverview',
       title: '影响面概述',
       fields: [
+        // defaultValue: 'auto_now' —— datetime 类型的魔法默认值：
+        // 打开表单即自动填入当前日期时间，用户仍可用选择器调整。
         { id: 'occurredAt', label: '发生时间（自动填入当前时间，可用选择器调整）', type: 'datetime', defaultValue: 'auto_now' },
         { id: 'impactScope', label: '影响范围', type: 'radio', options: IMPACT_SCOPE_OPTIONS },
         { id: 'severity', label: '严重程度', type: 'radio', options: SEVERITY_OPTIONS },
@@ -41,6 +65,7 @@ export const techIncidentTemplate: FormTemplate = {
           type: 'textarea',
           required: true,
           hint: '200 字以内概括',
+          // validation.maxLength=200：摘要长度上限校验，超长无法提交，强制用户概括重点。
           validation: { maxLength: 200 },
         },
       ],
@@ -48,6 +73,8 @@ export const techIncidentTemplate: FormTemplate = {
     {
       id: 'timelineEntries',
       title: '时间线还原（影响面发现）',
+      // repeatable + minEntries: 1：时间线是"可追加条目"列表，至少记录 1 个事件节点
+      // 才算完成本分区。
       repeatable: true,
       repeatLabel: '事件节点 {n}',
       minEntries: 1,
@@ -114,6 +141,8 @@ export const techIncidentTemplate: FormTemplate = {
           label: '变更详情',
           type: 'textarea',
           hint: '发布/配置/扩缩容等',
+          // condition 联动：仅当 hasRecentChange 选择 'yes'（有相关变更）时才显示，
+          // 避免没变更时也要求填无关的变更详情。
           condition: { dependsOn: 'hasRecentChange', showWhen: 'yes' },
         },
         { id: 'monitoringEvidence', label: '监控/日志证据', type: 'textarea', placeholder: '监控截图链接、日志片段或指标异常描述…' },
@@ -136,6 +165,7 @@ export const techIncidentTemplate: FormTemplate = {
       repeatLabel: '排查记录 {n}',
       minEntries: 1,
       fields: [
+        // autoTimestamp: true —— 新加一条排查记录时，time 自动填入当前时间（HH:mm 格式）。
         { id: 'time', label: '时间', type: 'text', placeholder: '自动填入当前时间', autoTimestamp: true },
         { id: 'action', label: '排查动作', type: 'textarea', required: true, hint: '做了什么排查', placeholder: '具体执行了什么操作？查看了哪些日志/监控？' },
         { id: 'finding', label: '排查发现', type: 'textarea', placeholder: '这次排查得到了什么结论或线索？' },
@@ -165,6 +195,8 @@ export const techIncidentTemplate: FormTemplate = {
       repeatable: true,
       repeatLabel: '第 {n} 层 Why',
       minEntries: 1,
+      // stopAppendWhen：监听每条目的 isRootCause 字段，一旦某层选择
+      // value 为 'yes'（是根因），立即停止允许添加新一层 Why —— 根因已确认就不必再追问。
       stopAppendWhen: { fieldId: 'isRootCause', value: 'yes' },
       fields: [
         { id: 'why', label: '为什么会发生？', type: 'textarea', required: true, placeholder: '针对问题/上一层答案继续追问：为什么会这样？' },
@@ -203,6 +235,9 @@ export const techIncidentTemplate: FormTemplate = {
         { id: 'rootCauseJudgement', label: '根因判定', type: 'textarea', required: true, placeholder: '综合 5Why 追问结论，明确根因是哪个代码/配置层面的问题' },
       ],
     },
+    // 根因结论分区：confirmedCauseFormula 把"定位到的问题（problemSummary）"与
+    // "根因判定（rootCauseJudgement）"拼成两行作为根因结论初值；
+    // rootCauseSummaryFormula 生成一句话总结（问题 → 根因 的因果链描述）。
     createRemedySection({
       confirmedCauseDeps: ['problemLocate', 'rootCauseConfirm'],
       confirmedCauseFormula: (values) => {
@@ -229,6 +264,8 @@ export const techIncidentTemplate: FormTemplate = {
       id: 'impactDiscovery',
       label: '影响面发现',
       icon: '🕒',
+      // sectionIndices [0,1]：影响面概述 + 时间线还原；
+      // completionFields 只需 summary（摘要）与 eventDesc（事件描述，repeatable 条目字段）。
       sectionIndices: [0, 1],
       completionFields: ['summary', 'eventDesc'],
     },
@@ -236,6 +273,8 @@ export const techIncidentTemplate: FormTemplate = {
       id: 'problemLocating',
       label: '问题定位',
       icon: '🔍',
+      // 覆盖：问题定位（技术排查）+ 排查记录 + 问题定位结论；
+      // 完成需填好系统/服务、错误信息/堆栈、排查动作、定位到的问题。
       sectionIndices: [2, 3, 4],
       completionFields: ['affectedSystem', 'errorSignature', 'action', 'problemSummary'],
     },
@@ -243,6 +282,8 @@ export const techIncidentTemplate: FormTemplate = {
       id: 'rootCauseTracing',
       label: '根因追溯',
       icon: '❓',
+      // 覆盖：5 Why 根因追问 + 根因判定；
+      // 完成需至少一层 why 填好 + 根因判定给出结论。
       sectionIndices: [5, 6],
       completionFields: ['why', 'rootCauseJudgement'],
     },
@@ -251,6 +292,7 @@ export const techIncidentTemplate: FormTemplate = {
       label: '根因结论',
       icon: '🛠️',
       sectionIndices: [7],
+      // completesRecord: true —— rootCauseSummary（根因总结）填好即整份记录完成。
       completionFields: ['rootCauseSummary'],
       completesRecord: true,
     },

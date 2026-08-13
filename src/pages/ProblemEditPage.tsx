@@ -1,5 +1,10 @@
 /**
  * 编辑问题页（/problem/:problemId/edit）：加载已有问题数据进行编辑。
+ * 交互流程：从问题详情页点"编辑问题定义"进入 → useParams 拿到 problemId →
+ *   useProblem 读取已有问题 → 数据到达后把"模板默认值 + 已有 data"合并回填进表单 →
+ *   修改后保存（先校验必填项、再校验头脑风暴至少 15 条）→ 保存成功跳回问题详情页。
+ * 核心概念：与 ProblemWizardPage 共用同一套表单模板（PROBLEM_TEMPLATE），
+ *   区别只是编辑页的初始值是已有问题数据，而向导页是空值 + 今天日期。
  */
 import { useNavigate, useParams } from 'react-router-dom';
 import { FormProvider, useForm } from 'react-hook-form';
@@ -12,22 +17,36 @@ import { FormTabs } from '../components/form/FormTabs';
 import { FloatExpandToggleButton, RepeatableExpandProvider } from '../components/RepeatableSection';
 import { useEffect, useState } from 'react';
 
+/** 头脑风暴最少原因数（发散阶段的覆盖度要求，与向导页保持一致） */
 const BRAINSTORM_MIN_COUNT = 15;
 
+/**
+ * 编辑问题页组件：把已有问题数据回填到问题向导表单中，供用户修改后保存。
+ * props：无；问题 id 来自路由参数 problemId。
+ */
 export default function ProblemEditPage() {
+  // useParams 读取路由参数（本页只关心 problemId）
   const { problemId } = useParams<{ problemId: string }>();
   const navigate = useNavigate();
   const saveProblem = useSaveProblem();
   const { showToast } = useToast();
+  // historyRecords：已有分析记录，传给 FormTabs 供"参考历史"等区块使用
   const { records: historyRecords } = useRecords();
+  // useProblem 按 id 异步读取要编辑的问题
   const { problem, loading } = useProblem(problemId);
+  // ready：标记表单是否已完成"数据回填"，防止 useEffect 里对表单重复 reset
   const [ready, setReady] = useState(false);
 
+  // react-hook-form 表单容器：先用模板默认值（空值）初始化，
+  // 真实数据到达后再用 reset 覆盖（见下方 useEffect）
   const methods = useForm<Record<string, unknown>>({
     defaultValues: buildDefaultValues(PROBLEM_TEMPLATE, undefined, '', ''),
   });
   const { getValues, reset } = methods;
 
+  // 数据加载完成后，把"模板默认值 + 问题已有 data"合并后回填进表单。
+  // 合并的原因是表单模板可能新增过字段，旧数据没有这些字段，用默认值兜底；
+  // ready 标记保证这个问题数据只回填一次
   useEffect(() => {
     if (problem && !ready) {
       const merged = { ...buildDefaultValues(PROBLEM_TEMPLATE, undefined, '', ''), ...problem.data };
@@ -36,6 +55,11 @@ export default function ProblemEditPage() {
     }
   }, [problem, ready, reset]);
 
+  /**
+   * 保存修改：两步校验（必填项 → 头脑风暴数量下限）都通过后，
+   * 用 saveProblem 更新问题（保留原 id 与 createdAt）并跳回问题详情页。
+   * getValues() 是 react-hook-form 提供的"读取当前全部表单值"的方法。
+   */
   async function handleSave() {
     try {
       const missing = validateRequiredFields(PROBLEM_TEMPLATE, getValues());

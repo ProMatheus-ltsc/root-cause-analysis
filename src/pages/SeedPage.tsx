@@ -4,6 +4,8 @@
  * 2. 把 public/seed-test-data.json（覆盖全部 7 种根因分析方法）导入 admin 业务库
  * 3. 自动登录 admin，跳转到仪表盘
  * 仅用于开发/验收测试，不在导航中暴露入口。
+ * 核心概念：账户与数据分离——先保证 admin 账户存在，再把种子数据导入"该账户专属"的业务库；
+ *   登录态存于 localStorage，所以直接写 localStorage 即等同于已登录。
  */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -11,13 +13,26 @@ import { listAccounts, setCurrentAccountId, importAllData, type ExportedData } f
 import { registerAccount } from '../services/auth';
 import { AUTH_STORAGE_KEY } from '../hooks/useAuth';
 
+/** 导入流程的阶段状态机：idle 初始 / working 进行中 / done 完成 / error 失败 */
 type Phase = 'idle' | 'working' | 'done' | 'error';
 
+/**
+ * 测试数据导入页组件：一键创建 admin 账户并导入覆盖全部分析方法的种子数据。
+ * props：无（仅供开发/验收测试使用）。
+ */
 export default function SeedPage() {
   const navigate = useNavigate();
+  // phase：当前流程阶段；message：进度/结果提示文案
   const [phase, setPhase] = useState<Phase>('idle');
   const [message, setMessage] = useState('');
 
+  /**
+   * 一键导入主流程（步骤见文件头）：保证 admin 账户存在 → 切换业务库并导入种子数据 → 本地登录。
+   * 两个细节：
+   * 1. fetch 的路径用 import.meta.env.BASE_URL 拼接，保证应用部署在子路径下也能找到 JSON 文件；
+   * 2. localStorage.setItem(AUTH_STORAGE_KEY, ...) 写入的正是 useAuth 中"当前登录账户"的持久化来源，
+   *    写完后整个应用即认为已登录 admin。
+   */
   async function runSeed() {
     setPhase('working');
     setMessage('正在准备测试数据…');
@@ -49,6 +64,7 @@ export default function SeedPage() {
     }
   }
 
+  // 导入完成后延迟 1.2 秒自动跳转首页：让用户来得及看到"导入完成"的提示再离开
   useEffect(() => {
     if (phase === 'done') {
       const t = setTimeout(() => navigate('/', { replace: true }), 1200);

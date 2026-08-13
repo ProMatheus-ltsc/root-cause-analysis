@@ -27,6 +27,7 @@ interface RepeatableSectionProps {
   onAutoFilled?: () => void;
 }
 
+/** 前序条目摘要：在"前序内容回顾"中展示第 idx 条已填写的主要字段内容，帮助用户回忆上文。 */
 function EntrySummary({ section, idx, values }: { section: FormSection; idx: number; values: Record<string, unknown> }) {
   const entries = (values[section.id] as Record<string, unknown>[] | undefined) ?? [];
   const entry = entries[idx];
@@ -344,6 +345,13 @@ interface BrainstormPickerProps {
   maxSelect?: number;
 }
 
+/**
+ * 候选原因选择器（要因分析法 factors 段专用）：候选原因 > 15 个时弹出，
+ * 让用户在头脑风暴结果中勾选引入到因素清单，避免超出关系矩阵上限。
+ * - 已引入的原因置灰禁用，防止重复引入；
+ * - 打开时默认全选，用户只需取消勾选多余项；提供全选/反选/取消全选；
+ * - 勾选数受 maxSelect 上限约束，超限时按钮文案提示需取消多少项。
+ */
 function BrainstormPicker({ brainstormCauses, existingNames, onPick, maxSelect }: BrainstormPickerProps) {
   const [showPicker, setShowPicker] = useState(false);
 
@@ -755,6 +763,10 @@ function BrainstormCardStrip({
   );
 }
 
+/**
+ * 可重复段入口：根据 section.id 分发渲染。
+ * causalChain（因果链）使用专门的卡片式逐对引导组件，其余段落走通用 DefaultRepeatableSection。
+ */
 export function RepeatableSection({ section, disabled, templateId, historyRecords, problem, onAutoFilled }: RepeatableSectionProps) {
   if (section.id === 'causalChain') {
     return <CausalChainGuidedInput disabled={disabled} problem={problem} />;
@@ -772,6 +784,13 @@ export function RepeatableSection({ section, disabled, templateId, historyRecord
   );
 }
 
+/**
+ * 通用可重复段实现：管理 section 下的一组条目（entry）。
+ * - useFieldArray 负责条目的增删改（append/remove/insert），name 为 section.id；
+ * - 支持条目折叠/展开、前序回顾、上一条/下一条专注导航、撤销删除；
+ * - brainstorm/factors 段额外拥有：卡片条导航、相似原因检测、自动引入候选、IntersectionObserver 高亮；
+ * - whyChain（5Why）段额外拥有：第 1 层候选选择器、上层答案衔接提示条。
+ */
 function DefaultRepeatableSection({ section, disabled, templateId, historyRecords, problem, onAutoFilled }: RepeatableSectionProps) {
   const { control, watch, setValue } = useFormContext();
   const { fields: entries, append, remove, insert } = useFieldArray({ control, name: section.id });
@@ -841,6 +860,7 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
     previousLenRef.current = entries.length;
   }, [entries.length]);
 
+  /** 切换单条 entry 的展开/折叠状态（用 Set 记录当前展开的下标集合）。 */
   function toggleExpanded(idx: number) {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -871,6 +891,7 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
     });
   }
 
+  /** 把 entry 编辑器的 DOM 元素登记到 ref 表（删除时清理），供滚动定位与 IntersectionObserver 使用。 */
   function setEntryRef(idx: number, el: HTMLElement | null) {
     if (el) {
       entryRefsMap.current.set(idx, el);
@@ -914,6 +935,7 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
     return () => observer.disconnect();
   }, [entries.length, isBrainstormLike]);
 
+  /** 添加新条目：按 section 字段生成空值；若字段配置了 autoTimestamp，则自动填当前时间。 */
   function handleAppend() {
     const newEntry = Object.fromEntries(
       section.fields.map((f) => [
@@ -924,6 +946,7 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
     append(newEntry);
   }
 
+  /** 删除条目：先备份被删数据，5 秒内可通过 handleUndo 恢复（防止误删）。 */
   function handleDelete(idx: number) {
     const sectionEntries = (values[section.id] as Record<string, unknown>[] | undefined) ?? [];
     const deletedData = sectionEntries[idx] ? { ...sectionEntries[idx] } : null;
@@ -937,6 +960,7 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
     }
   }
 
+  /** 撤销删除：把备份的条目插回原位（insert 会保持数组顺序）。 */
   function handleUndo() {
     if (!undoInfo) return;
     insert(undoInfo.index, undoInfo.data);
@@ -944,6 +968,7 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
   }
 
+  /** 模板可在 section.stopAppendWhen 配置"命中即停止追加"的条件（如 5Why 已确认根因后不再追问）。 */
   const shouldStopAppend = (() => {
     if (!section.stopAppendWhen) return false;
     const { fieldId, value } = section.stopAppendWhen;
@@ -951,6 +976,7 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
     return sectionEntries.some((entry) => entry[fieldId] === value);
   })();
 
+  /** 从关联问题实体的头脑风暴结果中提取候选原因文本列表（factors/causalChain/whyChain 段共用）。 */
   const brainstormCauses = useMemo(() => {
     if (section.id !== 'factors' && section.id !== 'causalChain' && section.id !== 'whyChain') return [];
     if (!problem) return [];
@@ -1041,6 +1067,7 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
       .filter((n) => n.trim().length > 0);
   })();
 
+  /** 用户从 BrainstormPicker 确认勾选后：清掉空占位条目，再把选中的候选按各自结构 append 为条目。 */
   function handleBrainstormPick(causes: string[]) {
     const sectionEntries = (values[section.id] as Record<string, unknown>[] | undefined) ?? [];
     const blankIndices: number[] = [];

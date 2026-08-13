@@ -1,3 +1,9 @@
+/**
+ * 问题摘要卡片：在分析记录列表中展示关联问题的核心信息。
+ * 交互流程：默认折叠只显示问题标题，点击标题展开显示 4W2H 判定/类型/目标、自动生成的问题陈述、
+ * 以及原因头脑风暴候选清单。可选 showLink 展示"查看问题详情"跳转链接。
+ * 核心概念：直接从问题的结构化 data 中提取展示字段，与模板字段配置解耦。
+ */
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Problem } from '../types';
@@ -9,6 +15,7 @@ interface ProblemSummaryCardProps {
   showLink?: boolean;
 }
 
+/** 把存储在问题 data 里的选项值（可能是单个字符串或数组）翻译成对应的中文 label；查不到则返回 undefined。 */
 function getOptionLabel(options: { value: string; label: string }[], value: unknown): string | undefined {
   if (Array.isArray(value)) {
     const labels = value
@@ -20,10 +27,18 @@ function getOptionLabel(options: { value: string; label: string }[], value: unkn
   return v ? options.find((o) => o.value === v)?.label : undefined;
 }
 
+/**
+ * 问题摘要卡片组件。
+ * @param problem 问题实体，展示数据取自 problem.data 中的 4W2H 表、头脑风暴、判定/类型等字段
+ * @param showLink 为 true 时显示"查看问题详情"跳转链接
+ */
 export function ProblemSummaryCard({ problem, showLink = false }: ProblemSummaryCardProps) {
+  // 默认折叠，点击标题切换展开/收起
   const [collapsed, setCollapsed] = useState(true);
   const data = problem.data ?? {};
+  // 4W2H 表格行（二维表：维度 + 描述）
   const rows = Array.isArray(data['w2hTable']) ? (data['w2hTable'] as Array<{ dimension: string; description: string }>) : [];
+  // 头脑风暴候选原因：过滤掉"原因为空"的无效行
   const brainstorm = Array.isArray(data['brainstorm'])
     ? (data['brainstorm'] as Array<{ cause?: string; evidence?: string }>).filter((c) => typeof c.cause === 'string' && c.cause.trim())
     : [];
@@ -79,6 +94,7 @@ export function ProblemSummaryCard({ problem, showLink = false }: ProblemSummary
               {target}
             </p>
           )}
+          {/* 只有用户真正填过内容（不是模板默认提示文案）时才展示自动生成的问题陈述 */}
           {statement && statement !== '（填写 4W2H 表格后自动生成）' && (
             <p className="mt-2 rounded bg-white/70 px-2 py-1 text-xs text-slate-700">{statement}</p>
           )}

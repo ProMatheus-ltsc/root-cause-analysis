@@ -8,23 +8,34 @@
 import { useMemo } from 'react';
 import type { AiAnalysisResult } from '../../utils/aiAnalysis';
 
+/** 回路图 props：result 为 AI 解析结果，内含 loops（反馈回路列表）与 leveragePoints（杠杆点列表） */
 interface LoopDiagramProps {
   result: AiAnalysisResult;
 }
 
+// 环的类型 → 配色与类型标签：reinforcing（恶性循环）用玫红系，balancing（平衡环）用绿色系。
+// 后续所有线条、圆点、文字、徽章颜色都从这里取，保证整体色调统一。
 const RING_COLORS = {
   reinforcing: { stroke: '#e11d48', fill: '#ffe4e6', text: '#9f1239', label: '恶性循环 · 正反馈' },
   balancing: { stroke: '#059669', fill: '#d1fae5', text: '#065f46', label: '平衡环 · 负反馈' },
 };
 
+// 统一字体族，保证 SVG 内文字在各浏览器渲染一致
 const FONT = 'ui-sans-serif, system-ui, sans-serif';
 
+/** 超长文本截断：保留前 n 个字符，超出部分用省略号替代 */
 function truncate(s: string, n: number): string {
   return s.length > n ? s.slice(0, n) + '…' : s;
 }
 
+/**
+ * 回路图组件：把每个反馈回路渲染成一个闭环环图，并在图下方集中展示杠杆点明细。
+ * 环形布局的数学原理已在环内逐段注释（见 loop 内的布点 / 贝塞尔曲线注释）。
+ */
 export function LoopDiagram({ result }: LoopDiagramProps) {
   const { loops, leveragePoints } = result;
+  // 杠杆点集合：把 leveragePoints 里的 cause 去重成 Set，供节点渲染时 O(1) 判断"该节点是否命中杠杆点"。
+  // 先 trim 再去空，防止数据里有首尾空格或空值导致匹配失败。
   const leverageSet = useMemo(
     () => new Set((leveragePoints ?? []).map((p) => p.cause?.trim()).filter(Boolean)),
     [leveragePoints],
@@ -32,6 +43,9 @@ export function LoopDiagram({ result }: LoopDiagramProps) {
 
   if (!loops || loops.length === 0) return null;
 
+  // PER_RING：每个回路占用的纵向高度（360px），多个 loop 垂直堆叠、互不重叠。
+  // LEVERAGE_HEADER："杠杆点"区块标题的高度；leverageItems 把每个杠杆点的 cause / 干预 / 依据
+  // 拍平成一行行文字（每项以 ★ 前缀开头），便于在杠杆点区逐行渲染。
   const PER_RING = 360;
   const LEVERAGE_HEADER = 26;
   const leverageItems = (leveragePoints ?? [])
@@ -42,6 +56,7 @@ export function LoopDiagram({ result }: LoopDiagramProps) {
       return lines;
     })
     .flat();
+  // 杠杆区总高度 = 标题 26px + 每行 18px + 底部留白 8px；整个 SVG 高度 = 所有环 + 杠杆区
   const leverageHeight = leverageItems.length > 0 ? LEVERAGE_HEADER + leverageItems.length * 18 + 8 : 0;
   const totalHeight = loops.length * PER_RING + 24 + leverageHeight;
 
@@ -51,6 +66,7 @@ export function LoopDiagram({ result }: LoopDiagramProps) {
         <title>系统思考反馈回路图</title>
         <desc>AI 识别出的反馈回路闭环与杠杆点</desc>
         <defs>
+          {/* 箭头 marker：供每条贝塞尔曲线末端的 markerEnd 使用（context-stroke 让箭头继承线条颜色） */}
           <marker
             id="arrowLoop"
             viewBox="0 0 10 10"
@@ -81,6 +97,8 @@ export function LoopDiagram({ result }: LoopDiagramProps) {
             return { x: cx + R * Math.cos(angle), y: cy + R * Math.sin(angle) };
           });
 
+          // 回路名过长时拆成两行（每行最多 14 字）；badgeY（类型徽章的 Y）随行数下移，
+          // 保证徽章与回路由名文字不重叠
           const titleLines = loop.name.length > 14 ? [loop.name.slice(0, 14), loop.name.slice(14)] : [loop.name];
           const badgeY = cy + (titleLines.length > 1 ? 20 : 10);
 
@@ -184,7 +202,8 @@ export function LoopDiagram({ result }: LoopDiagramProps) {
                 {color.label}
               </text>
 
-              {/* 链路 + 说明 */}
+              {/* 链路 + 说明：环正下方的"1 原因 → 2 原因 → …"链路概览与 description 说明，
+                  都水平居中对齐环心，让读者快速了解回路走向与 AI 的解释 */}
               <text x={cx} y={cy + R + 34} fontSize={11.5} fill="#475569" textAnchor="middle" fontFamily={FONT}>
                 {truncate(loop.causes.map((c, i) => `${i + 1} ${c}`).join(' → '), 60)}
               </text>
@@ -198,7 +217,8 @@ export function LoopDiagram({ result }: LoopDiagramProps) {
           );
         })}
 
-        {/* 杠杆点区 */}
+        {/* 杠杆点区：显示在全部环的下方（Y 从 loops.length * PER_RING + 24 起），
+            标题 + 逐行文字（★ 原因 / 干预 / 依据），每行 18px 依次排开 */}
         {leverageItems.length > 0 && (
           <g>
             <text x={40} y={loops.length * PER_RING + 24} fontSize={12.5} fontWeight={500} fill="#b45309" fontFamily={FONT}>

@@ -2,6 +2,9 @@
  * 新建问题向导页（/new）：以问题为导向的第一环。
  * 填写问题定义/鉴别/整理（4W2H 表格 → 判定 → 分类 → 目标 → 标准陈述 → 标题/一句话陈述），
  * 保存为独立的问题实体（Problem）；后续在问题详情页选择分析方法，同一问题可挂多个分析。
+ * 交互流程：进入时用"今天日期"预填默认值 → 按 Tab 分区块填写（含可展开的可重复区块）→
+ *   保存时先校验必填项、再校验头脑风暴至少 15 条 → saveProblem 写入 IndexedDB →
+ *   跳转到该问题详情页（/problem/:id），在那里继续选择分析方法。
  */
 import { useNavigate } from 'react-router-dom';
 import { FormProvider, useForm } from 'react-hook-form';
@@ -17,17 +20,28 @@ import { problemWizardTemplate as PROBLEM_TEMPLATE } from '../templates/problemW
 /** 头脑风暴最少原因数（发散阶段的覆盖度要求） */
 const BRAINSTORM_MIN_COUNT = 15;
 
+/**
+ * 新建问题向导页组件：引导用户按模板分步填写问题定义并保存为一条问题。
+ * props：无（路由页面，由 Router 直接渲染）。
+ */
 export default function ProblemWizardPage() {
   const navigate = useNavigate();
   const saveProblem = useSaveProblem();
   const { showToast } = useToast();
+  // historyRecords：已有分析记录，传给 FormTabs 供"参考历史"等区块使用
   const { records: historyRecords } = useRecords();
 
+  // react-hook-form 表单容器：默认值 = 模板默认值 + 今天的日期（日期字段预填当天，减少输入）
   const methods = useForm<Record<string, unknown>>({
     defaultValues: buildDefaultValues(PROBLEM_TEMPLATE, undefined, format(new Date(), 'yyyy-MM-dd'), format(new Date(), "yyyy-MM-dd'T'HH:mm")),
   });
   const { getValues } = methods;
 
+  /**
+   * 保存新问题：先校验必填项，再校验头脑风暴数量下限（发散覆盖度不够则不让保存），
+   * 通过后 saveProblem 写入 IndexedDB，然后跳转到问题详情页。
+   * 与编辑页共用同一套校验逻辑（validateRequiredFields / BRAINSTORM_MIN_COUNT）。
+   */
   async function handleSave() {
     try {
       const missing = validateRequiredFields(PROBLEM_TEMPLATE, getValues());

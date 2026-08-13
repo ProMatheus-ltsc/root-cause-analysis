@@ -7,6 +7,10 @@ import { useMemo, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import type { Problem } from '../../types';
 
+/**
+ * 组件 props：problem 提供问题头脑风暴数据；sectionId 是当前鱼骨图维度
+ * （决定使用 DIM_CHECK_ITEMS 里哪一组 check item）；disabled 禁用一键勾选。
+ */
 interface FishboneAutoCheckPanelProps {
   problem?: Problem;
   /** 当前 section id（如 'man' / 'machine' / ...） */
@@ -14,6 +18,7 @@ interface FishboneAutoCheckPanelProps {
   disabled?: boolean;
 }
 
+/** 一个可自动勾选的检查项：id 是 checkbox 字段名，detailId 是详情字段名，keywords 用于关键词匹配。 */
 interface CheckItem {
   id: string;
   detailId: string;
@@ -21,6 +26,11 @@ interface CheckItem {
   keywords: string[];
 }
 
+/**
+ * 各鱼骨图维度预置的检查项清单（静态配置）。
+ * 每个维度一组，每组若干 CheckItem：id/detailId 直接对应表单字段名，
+ * keywords 是"候选原因命中就建议归属到这个检查项"的关键词集合。
+ */
 const DIM_CHECK_ITEMS: Record<string, CheckItem[]> = {
   man: [
     { id: 'manSkillGapChecked', detailId: 'manSkillGapDetail', label: '人员技能不足？', keywords: ['技能', '熟练', '经验', '能力', '新人', '讲师'] },
@@ -49,6 +59,7 @@ const DIM_CHECK_ITEMS: Record<string, CheckItem[]> = {
   ],
 };
 
+/** 匹配结果中的一条：候选原因 + 建议归属的 check item（无匹配时为 null）。 */
 interface Candidate {
   idx: number;
   cause: string;
@@ -56,10 +67,21 @@ interface Candidate {
   topCheckItem: CheckItem | null;
 }
 
+/**
+ * 鱼骨图自动勾选助手面板。
+ * 交互流程：
+ * 1. 从问题头脑风暴数据中提取候选原因（cause + evidence）；
+ * 2. 用关键词打分给每个候选原因匹配"最像"的 check item，作为建议展示出来；
+ * 3. 用户点"→ 建议项"按钮 → handlePick 一次性写入三个表单字段。
+ * 设计要点：所有写入都通过 setValue(..., { shouldDirty: true }) 落进 RHF 表单值树，
+ * 与鱼骨图可视化、根因结论汇总共用同一份数据源。
+ */
 export function FishboneAutoCheckPanel({ problem, sectionId, disabled }: FishboneAutoCheckPanelProps) {
   const { setValue, watch } = useFormContext();
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(true); // 面板是否展开（默认展开）
 
+  // 提取候选原因：从 problem.data.brainstorm 里读出 cause/evidence，
+  // 有 evidence 时拼成"原因（佐证）"形式，无则只有原因；过滤掉空原因
   const candidates = useMemo<string[]>(() => {
     const data = (problem?.data ?? {}) as Record<string, unknown>;
     const brainstorm = data['brainstorm'];
@@ -75,6 +97,7 @@ export function FishboneAutoCheckPanel({ problem, sectionId, disabled }: Fishbon
       .map((b) => (b.evidence ? `${b.cause}（${b.evidence}）` : b.cause));
   }, [problem]);
 
+  // 按 sectionId 取当前维度的检查项；未配置的维度返回空数组（整个面板也不会有建议）
   const checkItems: CheckItem[] = DIM_CHECK_ITEMS[sectionId] ?? [];
 
   /**
@@ -105,6 +128,7 @@ export function FishboneAutoCheckPanel({ problem, sectionId, disabled }: Fishbon
     });
   }, [candidates, checkItems]);
 
+  // 没有任何候选原因就什么都不展示（本组件是纯增强功能，不抢主体表单）
   if (candidates.length === 0) return null;
 
   /**
@@ -135,6 +159,7 @@ export function FishboneAutoCheckPanel({ problem, sectionId, disabled }: Fishbon
       </div>
       {open && (
         <ul className="space-y-1.5">
+          {/* 每个候选原因一行：左侧原文，右侧"建议归属"按钮或"无匹配" */}
           {matched.map((m, i) => (
             <li key={i} className="rounded border border-emerald-100 bg-white/70 px-2.5 py-1.5">
               <div className="flex items-start justify-between gap-2">

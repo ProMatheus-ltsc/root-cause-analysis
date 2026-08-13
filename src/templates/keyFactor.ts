@@ -18,6 +18,24 @@ import {
   keyFactorMatrixColumns,
 } from './shared';
 
+/**
+ * 要因分析法模板（DEMATEL + 帕累托，recommended 主推方法）。
+ *
+ * sections 结构设计意图（四步走）：
+ *   ① factors（因素清单）：repeatable 分区，从头脑风暴候选中筛出核心因素
+ *      （最多 KEY_FACTOR_MAX=15 个），顺序决定后面矩阵的行列号；
+ *   ② matrix（关系矩阵）：keyFactorAiAnalysis 是 custom 字段（快捷通道，可让 AI
+ *      一次性填好所有因果方向与强度）；matrix 表格是 15×15 固定大小，
+ *      validation.min=KEY_FACTOR_MAX*2 表示"至少 30 个有效非零单元格"才算填够；
+ *   ③ analysis（自动分析结果）：causeScore（因果定位）与 keyFactorRanking
+ *      （关键因素排序）都是 computed 字段，依赖 factors + matrix，
+ *      自动调用 computeKeyFactors 计算并渲染成带颜色的结构化表格；
+ *   ④ createRemedySection()：根因结论，自动汇总"最源头因素 + 优先关注的关键原因"。
+ *
+ * phases 结构设计意图：因素清单 → 关系矩阵 → 结果分析 → 根因结论 四个阶段，
+ * 每阶段 completionFields 列出"必须填好"的字段；最后一个阶段 completesRecord=true，
+ * 根因总结填好即整份记录完成。
+ */
 export const keyFactorTemplate: FormTemplate = {
   id: 'keyFactor',
   name: '要因分析法',
@@ -44,6 +62,8 @@ export const keyFactorTemplate: FormTemplate = {
       id: 'factors',
       title: '① 因素清单',
       description: `从头脑风暴清单中筛选核心因素（最多 ${KEY_FACTOR_MAX} 个，顺序对应矩阵行列）。`,
+      // repeatable 分区：每个因素一条，顺序即矩阵的行列号（因素 1 对应第 1 行/第 1 列）。
+      // minEntries: 2 —— 至少 2 个因素才能构成"两两关系"，否则矩阵无意义。
       repeatable: true,
       repeatLabel: '因素 {n}',
       minEntries: 2,
@@ -70,6 +90,8 @@ export const keyFactorTemplate: FormTemplate = {
         '逐对判断因素间"谁影响谁、影响多强"。填完矩阵后，系统会自动告诉你：哪些因素是源头、哪些只是表象。如想跳过逐对判断的繁琐流程，可使用下方快捷通道让 AI 一次性给出所有因果方向与影响强度。',
       fields: [
         {
+          // custom 类型字段：渲染"手动调 AI"快捷通道，让 AI 一次性给出
+          // 所有因果方向与影响强度并回填矩阵，省去逐对手填的繁琐。
           id: 'keyFactorAiAnalysis',
           label: '快捷通道：手动调 AI 一次性填入所有因果关系与影响强度',
           type: 'custom',
@@ -92,6 +114,8 @@ export const keyFactorTemplate: FormTemplate = {
       title: '③ 自动分析结果',
       fields: [
         {
+          // computed 字段（不可编辑）：依赖 factors + matrix，
+          // 每次任一依赖字段变化都重新调用 computeKeyFactors 计算并渲染结果表格。
           id: 'causeScore',
           label: '因果定位（自动）：区分最源头 / 中间传导 / 最表面',
           type: 'text',
@@ -119,6 +143,9 @@ export const keyFactorTemplate: FormTemplate = {
         },
       ],
     },
+    // 根因结论分区：confirmedCauseFormula 把"最源头（root 角色）的因素"编号列出，
+    // 再附上"优先关注的关键原因"（帕累托 isKey 项）与相对视角；
+    // rootCauseSummaryFormula 生成一句话总结（根因 + 关键原因 → 最终判定）。
     createRemedySection({
       confirmedCauseDeps: ['factors', 'matrix'],
       confirmedCauseFormula: (values) => {
@@ -161,6 +188,7 @@ export const keyFactorTemplate: FormTemplate = {
       label: '因素清单',
       icon: '📋',
       sectionIndices: [0],
+      // 完成条件看 repeatable 条目字段 name（因素名称需填且 ≥ minEntries 条）。
       completionFields: ['name'],
     },
     {
@@ -168,6 +196,7 @@ export const keyFactorTemplate: FormTemplate = {
       label: '关系矩阵',
       icon: '🔢',
       sectionIndices: [1],
+      // 完成需 matrix 有效非零单元格达到 validation.min 要求。
       completionFields: ['matrix'],
     },
     {
@@ -175,6 +204,8 @@ export const keyFactorTemplate: FormTemplate = {
       label: '结果分析',
       icon: '📊',
       sectionIndices: [2],
+      // 完成以用户手填的 keyFactorsConfirmed（最终确认的根因）为准，
+      // 自动分析结果（computed）不算完成条件。
       completionFields: ['keyFactorsConfirmed'],
     },
     {
@@ -182,6 +213,7 @@ export const keyFactorTemplate: FormTemplate = {
       label: '根因结论',
       icon: '🛠️',
       sectionIndices: [3],
+      // completesRecord: true —— rootCauseSummary（根因总结）填好即整份记录完成。
       completionFields: ['rootCauseSummary'],
       completesRecord: true,
     },

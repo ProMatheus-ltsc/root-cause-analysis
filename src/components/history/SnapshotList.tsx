@@ -1,11 +1,22 @@
+/**
+ * 版本历史列表：展示当前分析记录的快照（Snapshot）。
+ * 交互流程：加载中显示提示 → 空列表引导创建 → 有快照时逐条列出，
+ * 每条提供"恢复"（把表单回滚到快照状态）与"删除"；右上角按钮创建新快照。
+ * 核心概念：快照是用户在分析过程中的"手动存档点"，区别于自动保存的草稿。
+ */
 import { format } from 'date-fns';
 import type { Snapshot } from '../../services/db';
 
 interface SnapshotListProps {
+  /** 快照列表（按时间倒序），最多保留 20 个 */
   snapshots: Snapshot[];
+  /** 是否正在从 IndexedDB 加载快照 */
   loading: boolean;
+  /** 点击"恢复"时回调（参数为完整快照，父组件负责 reset 表单） */
   onRestore: (snapshot: Snapshot) => void;
+  /** 点击删除时回调（参数为快照 id） */
   onDelete: (id: string) => void;
+  /** 点击"创建快照"时回调（父组件负责把当前表单值写入存储） */
   onCreateSnapshot: () => void;
 }
 

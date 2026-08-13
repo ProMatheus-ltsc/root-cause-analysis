@@ -7,6 +7,13 @@
  */
 import { useMemo } from 'react';
 
+/**
+ * 一行对比数据：
+ * - dimension：维度名称（如"网络延迟""CPU 使用率"），显示在每行最左侧
+ * - normal：正常情况下的表现描述
+ * - abnormal：异常情况下的表现描述
+ * - diff：关键差异说明（显示在中部的橙色箭头旁）
+ */
 interface ComparisonRow {
   dimension?: string;
   normal?: string;
@@ -14,23 +21,40 @@ interface ComparisonRow {
   diff?: string;
 }
 
+/**
+ * 对比差异图 props：
+ * - normalCase / abnormalCase：整件事的"正常情况 / 异常情况"摘要，显示在图顶部（可省略）
+ * - rows：各维度的对照数据列表
+ */
 interface ComparisonDiffChartProps {
   normalCase?: string;
   abnormalCase?: string;
   rows: ComparisonRow[];
 }
 
+// 统一字体族，避免不同浏览器默认字体不一致导致文字宽度和位置漂移
 const FONT = 'ui-sans-serif, system-ui, sans-serif';
 
+/** 超长文本截断：超过 n 个字符时保留前 n 个并补省略号，防止文字溢出卡片/画布 */
 function truncate(s: string, n: number): string {
   return s.length > n ? s.slice(0, n) + '…' : s;
 }
 
+/**
+ * 对比差异图组件：按维度逐行绘制"正常条 + 异常条 + 差异箭头"。
+ * 条宽与文字长度成正比（见 barLen），一眼即可比较出哪一维度差异最大。
+ */
 export function ComparisonDiffChart({ normalCase, abnormalCase, rows }: ComparisonDiffChartProps) {
+  // 先过滤出有效行：至少 normal 或 abnormal 有一项非空，空行直接丢弃
   const validRows = useMemo(() => rows.filter((r) => r && (r.normal?.trim() || r.abnormal?.trim())), [rows]);
 
   if (validRows.length === 0) return null;
 
+  // ---- 纵向布局坐标系（初学者注意这些常量的作用）----
+  // rowH：每个维度行的高度（96px，容纳上下两条横条 + 两条之间的间隔）
+  // headerH：顶部摘要区高度（有摘要才占位，否则为 0）
+  // legendH：图例高度；labelW：左侧维度名栏宽；barW：横条的最大宽度
+  // 总高度 = 摘要 + 图例 + 行数×行高 + 底部留白 20px
   const rowH = 96;
   const headerH = normalCase || abnormalCase ? 96 : 0;
   const legendH = 26;
@@ -47,12 +71,16 @@ export function ComparisonDiffChart({ normalCase, abnormalCase, rows }: Comparis
         <title>对比分析差异图</title>
         <desc>正常情况与异常情况在各维度的对照差异</desc>
         <defs>
+          {/* 箭头 marker：被 <line> 的 markerEnd 属性引用，画在线的末端表示"指向"；
+              context-stroke 让箭头颜色自动继承线条的 stroke 颜色 */}
           <marker id="arrowDiff" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </marker>
         </defs>
 
         {headerH > 0 && (
+          // 顶部摘要区：先显示"正常情况"摘要，分隔线后显示"异常情况"摘要，
+          // 让读者先看到正常基线，再看到异常表现，形成前后对照。
           <g>
             <text x={40} y={26} fontSize={12} fontWeight={500} fill="#065f46" fontFamily={FONT}>
               正常情况
@@ -81,6 +109,8 @@ export function ComparisonDiffChart({ normalCase, abnormalCase, rows }: Comparis
         </g>
 
         {validRows.map((row, idx) => {
+          // 每行基准 Y：headerH（摘要高度）+ legendH（图例高度）+ 行号×行高 + 12px 顶部留白。
+          // 之后本行的正常条、异常条、差异箭头都以这个 y 为起点往下排（见下面的 y+12 / y+46 / y+24 等）。
           const y = headerH + legendH + idx * rowH + 12;
           const normalText = row.normal ?? '';
           const abnormalText = row.abnormal ?? '';
@@ -108,7 +138,10 @@ export function ComparisonDiffChart({ normalCase, abnormalCase, rows }: Comparis
                 {truncate(abnormalText, 14)}
               </text>
 
-              {/* 差异箭头 + 文本 */}
+              {/* 差异箭头 + 文本：一条从"正常条下方"指向"异常条右侧"的橙色斜线，
+                  视觉上连接前后状态、标出差异所在。坐标讲解：
+                  起点 (labelW+barW+14, y+24) 在正常条尾端下方，终点 (labelW+barW+34, y+38)
+                  向右下方偏移 20px，形成 45° 斜向箭头；文本再往右 8px 起排，避免压线。 */}
               {diffText && (
                 <g>
                   <line x1={labelW + barW + 14} y1={y + 24} x2={labelW + barW + 34} y2={y + 38} stroke="#f59e0b" strokeWidth={2} markerEnd="url(#arrowDiff)" />

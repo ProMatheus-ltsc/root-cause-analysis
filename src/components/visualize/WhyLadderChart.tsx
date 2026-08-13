@@ -6,6 +6,7 @@
  */
 import { useMemo, type ReactNode } from 'react';
 
+/** 一层 5Why 追问数据：why 为追问内容，evidenceType 证据类型，evidence 证据说明，isRootCause 是否根因（'yes' 表示是） */
 interface WhyEntry {
   why?: string;
   evidenceType?: string;
@@ -13,13 +14,20 @@ interface WhyEntry {
   isRootCause?: string;
 }
 
+/**
+ * 5Why 阶梯图 props：
+ * - problemTitle：最顶层要分析的问题
+ * - entries：逐层追问的数据列表
+ */
 interface WhyLadderChartProps {
   problemTitle?: string;
   entries: WhyEntry[];
 }
 
+// 统一字体族，保证 SVG 内文字渲染一致
 const FONT = 'ui-sans-serif, system-ui, sans-serif';
 
+// 证据类型 → 中文标签（显示在每层盒子右上角的徽章里）
 const EVIDENCE_LABELS: Record<string, string> = {
   fact: '客观事实',
   data: '数据',
@@ -30,6 +38,7 @@ const EVIDENCE_LABELS: Record<string, string> = {
   uncertain: '来源不确定',
 };
 
+// 证据类型 → 徽章配色（bg 背景 / fg 文字 / border 边框），与 EVIDENCE_LABELS 一一对应
 const EVIDENCE_COLORS: Record<string, { bg: string; fg: string; border: string }> = {
   fact: { bg: '#d1fae5', fg: '#065f46', border: '#10b981' },
   data: { bg: '#dbeafe', fg: '#1e40af', border: '#3b82f6' },
@@ -37,15 +46,25 @@ const EVIDENCE_COLORS: Record<string, { bg: string; fg: string; border: string }
   emotion: { bg: '#fce7f3', fg: '#9d174d', border: '#ec4899' },
 };
 
+/** 超长文本截断：超过 n 个字符保留前 n 个并补省略号 */
 function truncate(s: string, n: number): string {
   return s.length > n ? s.slice(0, n) + '…' : s;
 }
 
+/**
+ * 5Why 阶梯图组件：把"问题 → 每层 Why → 根因"渲染成向右下逐层偏移的阶梯盒子，
+ * 层与层之间用折线箭头连接表示"继续追问"的方向；根因层用红色高亮并画红色标注线。
+ */
 export function WhyLadderChart({ problemTitle, entries }: WhyLadderChartProps) {
+  // 过滤出有效的 why 层（why 非空才算一层）；rootIdx 是根因层的下标（isRootCause === 'yes' 的那层，找不到为 -1）
   const chain = useMemo(() => entries.filter((e) => e && typeof e.why === 'string' && e.why.trim()), [entries]);
 
+  // 没有任何有效 why 层时不渲染
   if (chain.length === 0) return null;
 
+  // ---- 布局参数（初学者注意这些常量如何决定阶梯形状）----
+  // levels = 问题 + 各层 Why 的总行数；stepX 是每层向右的偏移量（形成阶梯）；
+  // boxW/boxH 是盒子尺寸；gapY 是相邻两层的垂直间距；startY 是第一行（问题）的起始 Y。
   const rootIdx = chain.findIndex((e) => e.isRootCause === 'yes');
   const levels = chain.length + 1; // 问题 + N 层 why
   const stepX = 42; // 每层向右偏移（阶梯感）
@@ -54,9 +73,11 @@ export function WhyLadderChart({ problemTitle, entries }: WhyLadderChartProps) {
   const gapY = 92;
   const width = 640;
   const startY = 64;
+  // 总高度 = 起始 Y + (行数-1)×行间距 + 一个盒子高 + 底部留白 12px
   const height = startY + (levels - 1) * gapY + boxH + 12;
 
-  // 每行：0 = 问题层，1..N = why 层
+  // 组装展示行：第 0 行固定为"问题"，后续每行对应一个 why 层。
+  // isRoot 标记根因层（用于红色高亮）；evidenceType/evidence 留给徽章与底部说明使用。
   const rows = [
     {
       label: '问题',
@@ -77,11 +98,18 @@ export function WhyLadderChart({ problemTitle, entries }: WhyLadderChartProps) {
   const parts: ReactNode[] = [];
 
   rows.forEach((row, i) => {
+    // 行定位（阶梯的核心公式）：
+    //   x = 40 + Math.min(i*stepX, width-boxW-40) —— 每层向右移 stepX，但用 Math.min 封顶，
+    //       最多右移到"盒子右端不超出画布"为止，防止最后几层被截断；
+    //   y = startY + i*gapY —— 每层向下移 gapY，形成向右下延伸的阶梯。
     const x = 40 + Math.min(i * stepX, (width - boxW - 40));
     const y = startY + i * gapY;
     const isRoot = row.isRoot;
 
-    // 阶梯连接线（从上一行右端到本行左端）
+    // 阶梯连接线（上一行 → 本行的折线箭头），坐标讲解：
+    // 起点是上一行盒子右端中点 (prevX+boxW, prevY+boxH/2)，
+    // 先水平走到本行左侧 (x+14)，再垂直下降到本行中点高度，最后水平 14px 指向本行盒子左端 (x, y+boxH/2)。
+    // 三段式折线让"追问"方向更明确；根因行用红色实线，普通行用灰色虚线。
     if (i > 0) {
       const prevX = 40 + Math.min((i - 1) * stepX, width - boxW - 40);
       const prevY = startY + (i - 1) * gapY;
@@ -98,7 +126,8 @@ export function WhyLadderChart({ problemTitle, entries }: WhyLadderChartProps) {
       );
     }
 
-    // 盒子
+    // 盒子配色：根因层 = 红底红边；问题层（i===0）= 蓝底蓝边；中间层 = 浅灰。
+    // 视觉优先级：根因 > 问题 > 中间层，读者一眼看到重点。
     const boxColor = isRoot
       ? { bg: '#fef2f2', border: '#e11d48', title: '#991b1b' }
       : i === 0
@@ -116,6 +145,8 @@ export function WhyLadderChart({ problemTitle, entries }: WhyLadderChartProps) {
           {truncate(row.text, 58)}
         </text>
         {row.evidenceType && EVIDENCE_LABELS[row.evidenceType] && (
+          // 证据类型徽章：固定在盒子右上角的圆角小胶囊（X 取 x+boxW-108，即盒子右缘往左 108px 处），
+          // 配色从 EVIDENCE_COLORS 取，没有对应类型时回退为默认灰。
           <g>
             <rect x={x + boxW - 108} y={y + 8} width={96} height={20} rx={10} fill={EVIDENCE_COLORS[row.evidenceType]?.bg ?? '#f1f5f9'} stroke={EVIDENCE_COLORS[row.evidenceType]?.border ?? '#94a3b8'} strokeWidth={1} />
             <text x={x + boxW - 60} y={y + 18} fontSize={10.5} fontWeight={500} fill={EVIDENCE_COLORS[row.evidenceType]?.fg ?? '#334155'} textAnchor="middle" dominantBaseline="central" fontFamily={FONT}>
@@ -127,7 +158,9 @@ export function WhyLadderChart({ problemTitle, entries }: WhyLadderChartProps) {
     );
   });
 
-  // 根因标注线
+  // ---- 根因标注线：在根因层盒子正下方画一条红色横线，右端带一个小三角形箭头 ----
+  // 位置推导：Y 取根因层盒子底部往下 4px（startY + rootIdx*gapY + boxH + 4）；
+  // 线从盒子左端（rootLineX2）画到右端（rootLineX），箭头朝右，起到"圈住根因"的强调作用。
   const rootLineY = startY + rootIdx * gapY + boxH + 4;
   const rootLineX = 40 + Math.min(rootIdx * stepX, width - boxW - 40) + boxW - 12;
   const rootLineX2 = 40 + Math.min(rootIdx * stepX, width - boxW - 40) + 12;
@@ -140,7 +173,8 @@ export function WhyLadderChart({ problemTitle, entries }: WhyLadderChartProps) {
     );
   }
 
-  // 底部说明
+  // 底部说明文字：有根因时提示"共追问 N 层、第 M 层确认为根因"并附上证据（截断 40 字），
+  // 没有根因则提示"尚未标记根因"。颜色跟随是否有根因（红 / 灰）。
   const noteY = height + 18;
   const note =
     rootIdx >= 0

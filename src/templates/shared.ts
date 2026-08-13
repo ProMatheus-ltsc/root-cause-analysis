@@ -4,6 +4,7 @@
  */
 import type { FormField, FormSection } from '../types';
 
+/** 问题发现方式选项：问题是怎么被发现的（主动发现/被动反馈/监控告警/用户投诉等），用于问题定义区。 */
 export const DISCOVERY_METHOD_OPTIONS = [
   { value: 'active', label: '主动发现' },
   { value: 'passive', label: '被动反馈' },
@@ -12,6 +13,7 @@ export const DISCOVERY_METHOD_OPTIONS = [
   { value: 'other', label: '其他' },
 ];
 
+/** 影响范围选项：问题波及的范围（个人/团队/部门/公司/客户），用于评估影响面大小。 */
 export const IMPACT_SCOPE_OPTIONS = [
   { value: 'personal', label: '个人' },
   { value: 'team', label: '团队' },
@@ -20,6 +22,7 @@ export const IMPACT_SCOPE_OPTIONS = [
   { value: 'customer', label: '客户' },
 ];
 
+/** 严重程度选项：P0-P3 分级（P0 最致命），用于问题定级与处置优先级。 */
 export const SEVERITY_OPTIONS = [
   { value: 'P0', label: 'P0 致命' },
   { value: 'P1', label: 'P1 严重' },
@@ -27,6 +30,7 @@ export const SEVERITY_OPTIONS = [
   { value: 'P3', label: 'P3 轻微' },
 ];
 
+/** 根因类型分类选项：根因结论区让用户把根因归入流程/技术/人为/设计等类别，便于归类统计。 */
 export const ROOT_CAUSE_TYPE_OPTIONS = [
   { value: 'process', label: '流程缺陷' },
   { value: 'technical', label: '技术问题' },
@@ -189,10 +193,6 @@ export function createProblemCriteriaFields(): FormField[] {
 }
 
 /**
- * 4W2H 分析相关字段组：表格 + 目标 + 自动拼接标准问题陈述 + 数据质量自检。
- * 供 createProblemDefinitionSection 与自定义问题定义区的模板复用。
- */
-/**
  * 标准问题陈述拼接（纯函数）：供 computed 字段与问题摘要卡片复用。
  * 4W2H 各维度为短语，自动拼成自然语句；空维度跳过。
  */
@@ -230,6 +230,17 @@ export function buildGeneratedProblemStatement(values: Record<string, unknown>):
   return sentence;
 }
 
+/**
+ * 4W2H 分析相关字段组（表格 + 目标 + 自动拼接标准问题陈述 + 数据质量自检）。
+ * 供 createProblemDefinitionSection 与自定义问题定义区的模板复用。
+ *
+ * 字段说明：
+ * - w2hTable：4W2H 表格，validation.min=6 强制至少 6 行（六个维度各一行）才算有效；
+ * - gapTarget：目标/期望状态 ——"问题 = 目标 − 现实"中的"目标"；
+ * - generatedProblemStatement：computed 字段，依赖 w2hTable + gapTarget，
+ *   自动把 4W2H 短语拼成标准问题陈述，用户无需手填；
+ * - factCheck：数据质量自检勾选，提示描述要有数据、来源可靠、可量化。
+ */
 export function createW2hAnalysisFields(): FormField[] {
   return [
     {
@@ -274,6 +285,19 @@ export function createW2hAnalysisFields(): FormField[] {
   ];
 }
 
+/**
+ * 问题定义与鉴别分区（问题实体表单的第一个分区）：
+ * 先 4W2H 全面分析"现实是什么"，再做问题判定/分类，最后明确目标，
+ * 系统自动拼接标准问题陈述。默认字段之外还可通过 extraFields 追加模板专属字段。
+ *
+ * 各默认字段说明：
+ * - occurredAt：发生时间，defaultValue 'auto_today' 自动填当天日期；
+ * - discoveryMethod / impactScope / severity：发现方式、影响范围、严重程度（radio）；
+ * - symptom：问题现象描述（必填），补充问题陈述的细节。
+ *
+ * @param extraFields 需要追加到分区末尾的额外字段（如具体分析模板补充的问题字段）
+ * @returns 组装好的 FormSection，可直接放进模板的 sections
+ */
 export function createProblemDefinitionSection(extraFields: FormField[] = []): FormSection {
   return {
     id: 'problemDefinition',

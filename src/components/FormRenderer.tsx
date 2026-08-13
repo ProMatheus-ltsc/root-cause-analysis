@@ -46,6 +46,7 @@ export function buildDefaultValues(template: FormTemplate, record: FormRecord | 
   return values;
 }
 
+/** 生成分析记录在列表里显示的标题：优先用用户填写的 title 字段，其次用问题标题，最后兜底为"模板名 + 日期"。 */
 function getRecordTitle(template: FormTemplate, values: Record<string, unknown>, problemTitle?: string): string {
   const title = values['title'];
   if (typeof title === 'string' && title.trim()) return title.trim();
@@ -65,6 +66,12 @@ interface FormRendererProps {
   onFirstSave?: (recordId: string) => void;
 }
 
+/**
+ * 表单渲染器主组件：承载整个分析表单的生命周期。
+ * - 编辑态与新建态共用：有 record 时加载历史数据，否则按模板生成空表单。
+ * - 提供自动保存（10 秒轮询 + 离开页面/路由时补存）、阶段切换、版本快照、JSON 复制、PDF 导出。
+ * - 阶段（phases）模式下：前面阶段锁定/只读，只有当前及已完成阶段可填写。
+ */
 export function FormRenderer({ template, record, problemId, problemTitle, problem, onFirstSave }: FormRendererProps) {
   const todayISO = format(new Date(), 'yyyy-MM-dd');
   const nowISO = format(new Date(), "yyyy-MM-dd'T'HH:mm");
@@ -96,6 +103,9 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
 
   const { snapshots, loading: snapshotsLoading, createSnapshot, removeSnapshot } = useSnapshots(recordIdRef.current);
 
+  /** 统一保存入口：把当前表单值写入 IndexedDB。
+   * commitPhase 为 true 时还会把当前值提交为"已确认值"（阶段切换/手动保存时使用），
+   * 因为阶段锁定判断依赖 committedValues，而不是实时输入值。 */
   async function persist(status: 'draft' | 'completed', { commitPhase = false } = {}): Promise<FormRecord> {
     const currentValues = getValues();
     const title = getRecordTitle(template, currentValues, problemTitle);
@@ -121,9 +131,11 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
     return saved;
   }
 
+  /** 用 ref 保存最新的 persist，供只挂载一次的定时器读取，避免定时器闭包拿到过期函数。 */
   const persistRef = useRef(persist);
   persistRef.current = persist;
 
+  /** 自动保存：每 10 秒检查一次 dirty 标记，有未保存改动就写库（静默保存，不打断用户）。 */
   useEffect(() => {
     const timer = setInterval(() => {
       if (dirtyRef.current) {
@@ -194,6 +206,7 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** 只校验当前阶段及其之前阶段涉及的 section 的必填项（分阶段逐步校验，不要求后面阶段的字段现在就填）。 */
   function getScopedMissingFields(activeIdx: number) {
     const currentValues = getValues();
     const allMissing = validateRequiredFields(template, currentValues);
@@ -203,15 +216,21 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
     return allMissing.filter((m) => accessibleSectionIds.has(m.sectionId.split('[')[0]));
   }
 
+  /** 切换阶段：先把当前阶段内容保存并 commit（这样新阶段的锁定判断基于最新数据），再切换 Tab。 */
   async function handleSelectPhase(idx: number) {
     await persist(statusRef.current, { commitPhase: true });
     setActivePhaseIndex(idx);
   }
 
+  /** 点击被锁定的阶段：不切换，仅弹 toast 告知用户原因。 */
   function handleLockedClick(_idx: number) {
     showToast('请先完成前面的阶段', 'error');
   }
 
+  /** 主按钮（完成/保存）逻辑：
+   * 1. 先校验当前阶段必填项，缺失则列出错误并中断；
+   * 2. 若阶段标记 completesRecord（最后一个阶段），校验阶段完成条件；
+   * 3. 保存；若是最后阶段则标记为 completed，否则保持当前状态并进入下一阶段。 */
   async function handlePrimaryAction() {
     const missing = getScopedMissingFields(activePhaseIndex);
     if (missing.length > 0) {
@@ -313,6 +332,8 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
             }
           }}
         />
+        {/* 可视化面板：实时反映用户填写的字段值（watchedValues 实时更新）。
+            "因素清单（factors）"阶段本身是分析对象，不做可视化展示，故跳过。 */}
         {activePhase?.id !== 'factors' && (
           <VisualizationPanel templateId={template.id} values={watchedValues} problemTitle={problemTitle} />
         )}
@@ -392,6 +413,7 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
               loading={snapshotsLoading}
               onRestore={(snapshot) => {
                 if (confirm('确定恢复到此快照？当前未保存的内容将被覆盖。')) {
+                  // 恢复快照：reset 把表单控件值替换为快照数据，setCommittedValues 同步更新阶段判断用的已确认值
                   reset(snapshot.data);
                   setCommittedValues(snapshot.data);
                   showToast(`已恢复到快照：${snapshot.label}`, 'success');

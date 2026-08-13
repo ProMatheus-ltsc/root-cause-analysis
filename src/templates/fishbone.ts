@@ -1,9 +1,18 @@
 /**
  * 鱼骨图分析法（石川图）：从人机料法环测六大维度全面排查多因素系统性问题。
+ *
+ * 整体流程（分区 → 阶段）：
+ *   ① 六大因素排查：人/机/料/法/环/测 六个可折叠分区，每区含若干
+ *      "勾选检查项 + 详情"字段（createCheckItem 生成）和"自动勾选 + 备注"字段，
+ *      再在"综合分析"分区评估各维度权重、判定根因；
+ *   ② 根因结论：createFishboneRemedySection 自动汇总六大维度发现到根因结论，
+ *      完成即整份记录完成。
  */
 import type { FormField, FormTemplate } from '../types';
 import { buildFishboneSummary, createRemedySection } from './shared';
 
+// 鱼骨图六大维度选项（人/机/料/法/环/测），供"主要原因维度"多选
+// 与"各维度权重表"的维度下拉列共用。
 const DIMENSION_OPTIONS = [
   { value: 'man', label: '人 (Man)' },
   { value: 'machine', label: '机 (Machine)' },
@@ -13,6 +22,7 @@ const DIMENSION_OPTIONS = [
   { value: 'measurement', label: '测 (Measurement)' },
 ];
 
+// 影响评分选项：1-10 的量化档位（含文字描述），用于权重表的影响评分列。
 const LEVEL_OPTIONS = [
   { value: '1', label: '1（极低）' },
   { value: '2', label: '2' },
@@ -26,6 +36,20 @@ const LEVEL_OPTIONS = [
   { value: '10', label: '10（极高）' },
 ];
 
+/**
+ * 生成一对"检查项"字段（勾选框 + 详情框）：
+ * - 勾选框 id = `${prefix}Checked`，如 manSkillGapChecked；
+ * - 详情框 id = `${prefix}Detail`，仅当勾选框被勾选时显示。
+ *
+ * 这是典型的 condition 联动：详情框的 condition.dependsOn 指向勾选框，
+ * showWhen:'true' 表示"勾选框值为 true（勾选）时才展示"，未勾选的检查项
+ * 不占填写空间，表单更清爽。
+ *
+ * @param prefix            字段 id 前缀，用于派生 checkboxId 与 detailId，保证同模板内唯一
+ * @param label             检查项文案（如"人员技能不足？"）
+ * @param detailPlaceholder 详情框占位提示，引导用户具体描述观察到的现象
+ * @returns 两个 FormField 组成的数组，可直接用展开符并入 section.fields
+ */
 function createCheckItem(prefix: string, label: string, detailPlaceholder: string): FormField[] {
   const checkboxId = `${prefix}Checked`;
   return [
@@ -40,6 +64,24 @@ function createCheckItem(prefix: string, label: string, detailPlaceholder: strin
   ];
 }
 
+/**
+ * 鱼骨图分析法模板。
+ *
+ * sections 结构设计意图：
+ * - 六个维度分区（man/machine/material/method/environment/measurement）结构完全一致：
+ *   每个分区由 createCheckItem 生成 2 个"勾选+详情"检查项、1 个 custom 类型的
+ *   AutoCheck 字段（"从问题头脑风暴自动勾选"，由外部逻辑把头脑风暴候选中该维度的
+ *   原因自动勾选出来）以及 1 个 Notes 备注框。collapsedByDefault:true 让分区默认折叠，
+ *   避免六个长分区同时展开造成页面过长。
+ * - comprehensiveAnalysis（综合分析）：primaryDimensions 多选主要原因维度，
+ *   weightTable 用表格按 1-10 评分各维度影响权重，rootCauseJudgement 汇总判定根因。
+ * - createFishboneRemedySection()：鱼骨图专属的根因结论分区（见函数注释）。
+ *
+ * phases 结构设计意图：sixFactors 阶段覆盖前 7 个分区（索引 0-6），
+ * 完成条件只看 rootCauseJudgement（根因判定），因为检查项/权重是过程数据；
+ * remedy 阶段覆盖根因结论分区，completionFields 只要求 rootCauseSummary，
+ * 且 completesRecord=true —— 根因总结填好即整份记录完成。
+ */
 export const fishboneTemplate: FormTemplate = {
   id: 'fishbone',
   name: '鱼骨图分析法',
@@ -133,6 +175,8 @@ export const fishboneTemplate: FormTemplate = {
           label: '各维度权重与影响度评估',
           type: 'table',
           hint: 'MECE：各维度相互独立、不重叠；评分为 1-10 的量化分（数值越高影响越大）；关键发现要可验证',
+          // 权重表三列：dimension 选维度、impactLevel 选 1-10 影响评分、
+          // keyFinding 填该维度下可验证的关键发现，作为自动汇总的素材之一。
           tableColumns: [
             { id: 'dimension', label: '维度', type: 'select', options: DIMENSION_OPTIONS },
             { id: 'impactLevel', label: '影响评分（1-10）', type: 'select', options: LEVEL_OPTIONS },
@@ -149,6 +193,9 @@ export const fishboneTemplate: FormTemplate = {
       id: 'sixFactors',
       label: '六大因素排查',
       icon: '🔍',
+      // sectionIndices=[0..6]：六个维度分区 + 综合分析分区。
+      // completionFields 只需 rootCauseJudgement —— 检查项/权重表是过程性数据，
+      // 是否完成以"根因判定"这一收敛性输出为准。
       sectionIndices: [0, 1, 2, 3, 4, 5, 6],
       completionFields: ['rootCauseJudgement'],
     },
@@ -157,6 +204,7 @@ export const fishboneTemplate: FormTemplate = {
       label: '根因结论',
       icon: '🛠️',
       sectionIndices: [7],
+      // completesRecord: true —— rootCauseSummary（根因总结）填好后整份记录即完成
       completionFields: ['rootCauseSummary'],
       completesRecord: true,
     },
@@ -168,16 +216,23 @@ export const fishboneTemplate: FormTemplate = {
  * 避免让用户手动复制。
  */
 function createFishboneRemedySection() {
+  // 维度 value → 中文标签 的映射表，供自动汇总时把 primaryDimensions/weightTable
+  // 里的维度 id 转成可读的中文名展示。
   const labelMap: Record<string, string> = {
     man: '人 (Man)', machine: '机 (Machine)', material: '料 (Material)',
     method: '法 (Method)', environment: '环 (Environment)', measurement: '测 (Measurement)',
   };
+  // 先复用公共的 createRemedySection 生成基础根因结论分区，并传入：
+  // - rootCauseSummaryDeps / rootCauseSummaryFormula：根因总结由
+  //   primaryDimensions（主要维度）、weightTable（权重表）、rootCauseJudgement（根因判定）
+  //   三个字段自动拼装，前两名权重最高的维度优先展示。
   const section = createRemedySection({
     rootCauseSummaryDeps: ['primaryDimensions', 'weightTable', 'rootCauseJudgement'],
     rootCauseSummaryFormula: (values) => {
       const judgement = typeof values.rootCauseJudgement === 'string' ? values.rootCauseJudgement.trim() : '';
       const dims = Array.isArray(values.primaryDimensions) ? (values.primaryDimensions as string[]) : [];
       const wts = Array.isArray(values.weightTable) ? (values.weightTable as Array<Record<string, unknown>>) : [];
+      // 从权重表里取"填了维度名 + 关键发现"的行，按出现顺序截取前 3 条
       const topWeights = wts
         .map((w) => ({ dimension: typeof w?.dimension === 'string' ? w.dimension : '', key: typeof w?.keyFinding === 'string' ? w.keyFinding : '' }))
         .filter((w) => w.dimension && w.key)
@@ -192,11 +247,17 @@ function createFishboneRemedySection() {
       if (judgement) {
         lines.push(`根因判定：${judgement}`);
       } else if (dims.length === 0 && topWeights.length === 0) {
+        // 三个素材都没有时返回空串，避免展示无意义占位
         return '';
       }
       return lines.join('\n');
     },
   });
+  // 把公共分区里的 confirmedCause（从候选原因中确认的根因）替换成鱼骨图专用版本：
+  // - 类型改为 textarea 且 rows:8，作为可读性更好的多行展示
+  // - computed.dependsOn 监听六大维度，formula 调用 buildFishboneSummary 把
+  //   六个维度勾选/填写/头脑风暴引用的发现自动汇总成 markdown 文本
+  // - editable: true 表示用户仍可手动编辑修改，编辑后不再被自动覆盖
   const fields = section.fields.map((f) => {
     if (f.id === 'confirmedCause') {
       return {

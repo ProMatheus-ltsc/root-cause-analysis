@@ -56,6 +56,11 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+/**
+ * 按点分路径从 React Hook Form 的嵌套 errors 对象中取错误信息。
+ * 为什么手写而不是用 RHF 自带的 get()？因为数组路径（如 "whyChain.0.why"）里的数字下标
+ * 在 errors 对象中同样以字符串 key 存在，逐段遍历即可，无需引入额外工具函数。
+ */
 function getErrorAtPath(errors: Record<string, unknown>, path: string): { message?: string } | undefined {
   const segments = path.split('.');
   let current: unknown = errors;
@@ -129,6 +134,7 @@ function FieldRendererImpl({ field, name, disabled, suggestions, problem }: Fiel
   );
 }
 
+/** 字段标题：label + 必填星号（*）+ 推荐完成徽标，emphasis 字段放大加粗。 */
 function FieldLabel({ field }: { field: FormField }) {
   return (
     <label className={clsx('block text-sm font-medium text-slate-700', field.emphasis && 'text-base text-slate-900')}>
@@ -176,6 +182,7 @@ function ComputedEditableTextarea({ field, name, disabled }: { field: FormField;
   );
 }
 
+/** 可写的自动汇总单行输入：逻辑与 ComputedEditableTextarea 相同，只是渲染 <input> 而非 <textarea>。 */
 function ComputedEditableInput({ field, name, disabled }: { field: FormField; name: string; disabled?: boolean }) {
   const { watch, setValue, formState } = useFormContext();
   const depValues = watch(field.computed?.dependsOn ?? []);
@@ -325,6 +332,13 @@ function ComputedRankingTable({ data }: { data: import('../templates/shared').Ke
   );
 }
 
+/**
+ * 输入控件分发器：按 field.type 把字段路由到对应的基础输入组件。
+ * 特殊分支（按 field.id 匹配）：
+ * - table 类型的 matrix 字段用矩阵引导输入（MatrixGuidedInput）；
+ * - custom 类型分发到 AI 辅助面板：aiLoopAnalysis（系统思考）、keyFactorAiAnalysis（关键因素）、
+ *   *AutoCheck（鱼骨图各维度自动勾选，去掉后缀即 sectionId）。
+ */
 function FieldInput({ field, name, disabled, suggestions, problem }: FieldRendererProps) {
   switch (field.type) {
     case 'textarea':

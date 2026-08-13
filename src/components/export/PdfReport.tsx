@@ -1,11 +1,21 @@
+/**
+ * PDF 报告组件：把一次根因分析的内容排版为 A4 PDF 文档。
+ * 结构：头部（模板名、问题信息、创建/更新时间、完成状态徽章）→ 按模板 section 顺序
+ * 逐节输出字段值（可重复段逐条编号输出）→ 页脚为报告生成时间。
+ * 核心概念：这是一个"虚拟组件"，不会在页面渲染，而是被 @react-pdf/renderer 编译成 PDF；
+ * 样式使用 StyleSheet.create 声明的 PDF 专用样式（flex 布局、单位为 pt）。
+ */
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 import type { FormRecord, FormTemplate, Problem } from '../../types';
 
+// 注册中文字体：@react-pdf/renderer 自带的字体不含中文字形，
+// 不注册会导致中文在 PDF 中显示为方框（乱码），这里从 Google Fonts 加载 Noto Sans SC
 Font.register({
   family: 'Noto Sans SC',
   src: 'https://fonts.gstatic.com/s/notosanssc/v36/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaG9_EnYxNbPzS5HE.ttf',
 });
 
+/** PDF 专用样式表：类似 CSS，但由 react-pdf 解析（flexDirection、marginTop 等命名与 Web 略有差异） */
 const styles = StyleSheet.create({
   page: { padding: 40, fontFamily: 'Noto Sans SC', fontSize: 10, color: '#1e293b' },
   header: { marginBottom: 20 },
@@ -29,6 +39,13 @@ interface PdfReportProps {
   values: Record<string, unknown>;
 }
 
+/**
+ * PDF 报告文档组件。
+ * @param problem 关联问题（可选），有则展示问题标题与陈述
+ * @param record 分析记录（标题、状态、时间戳来自这里）
+ * @param template 模板（决定章节结构与字段标签）
+ * @param values 当前表单值（导出内容的数据源）
+ */
 export function PdfReport({ problem, record, template, values }: PdfReportProps) {
   return (
     <Document>
@@ -47,17 +64,20 @@ export function PdfReport({ problem, record, template, values }: PdfReportProps)
         </View>
 
         {template.sections.map((section) => {
+          // 可重复段的值是"条目数组"，普通段的值直接挂在表单根节点上
           const sectionData = section.repeatable ? values[section.id] : null;
 
           return (
             <View key={section.id} style={styles.section}>
               <Text style={styles.sectionTitle}>{section.title}</Text>
               {section.repeatable && Array.isArray(sectionData) ? (
+                // 可重复段：逐条输出，每条前加 #序号
                 sectionData.map((entry, entryIdx) => (
                   <View key={entryIdx} style={{ marginBottom: 8, paddingLeft: 8 }}>
                     <Text style={{ fontSize: 9, color: '#6366f1', marginBottom: 4 }}>#{entryIdx + 1}</Text>
                     {section.fields.map((field) => {
                       const val = (entry as Record<string, unknown>)?.[field.id];
+                      // 跳过空值（但要保留数字 0，避免漏掉"得分为 0"这类有意义的数据）
                       if (!val && val !== 0) return null;
                       return (
                         <View key={field.id} style={styles.field}>
@@ -69,6 +89,7 @@ export function PdfReport({ problem, record, template, values }: PdfReportProps)
                   </View>
                 ))
               ) : (
+                // 普通段：直接按字段输出；数组值（如多选、表格）转成逗号分隔的文本
                 section.fields.map((field) => {
                   const val = values[field.id];
                   if (!val && val !== 0) return null;

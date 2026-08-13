@@ -1,35 +1,51 @@
+/**
+ * 关系矩阵引导输入组件：把"两两因素关系判断"拆成三步向导式流程。
+ * 三步走：
+ * ① 因果判定：逐对确认"A 是否影响 B / B 是否影响 A / 无关"；
+ * ② 定位结果：按"影响别人 vs 被别人影响"的次数差自动区分 根因/过因/表因；
+ * ③ 影响强度（可选）：给已确认的因果对填强度 1 弱 / 2 中 / 4 强。
+ * 数据落点：全部结果写入表单值树的 matrix（二维数组，matrix[i]['c'+j] = i 对 j 的强度）。
+ * 注意：本组件刻意不用 React.memo（见下方组件注释的解释），因为要靠 watch 驱动 UI 刷新。
+ */
 import { useCallback, useMemo, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import clsx from 'clsx';
 import type { FormField } from '../../types';
 import { CAUSE_SCORE_ROOT, CAUSE_SCORE_SURFACE, KEY_FACTOR_MAX } from '../../templates/shared';
 
+/** 强度档位：value 是存进矩阵的值（也是"影响有多大"的等级），desc 是给用户的中文解释。 */
 const STRENGTH_OPTIONS = [
   { value: 1, label: '1 弱', desc: '单向弱关联' },
   { value: 2, label: '2 中', desc: '双向关联或单向强关联' },
   { value: 4, label: '4 强', desc: '互为强因果' },
 ];
 
+/** 组件 props：field 是模板字段定义（用其 hint 提示文案），name 是矩阵在表单值树中的点路径。 */
 interface MatrixGuidedInputProps {
   field: FormField;
   name: string;
   disabled?: boolean;
 }
 
+/** 一对因素的下标组合：{i, j} 且 i < j，用于遍历所有两两配对。 */
 interface CellPair {
   i: number;
   j: number;
 }
 
+/** 向导当前所在步骤：direction 因果判定 / scores 定位结果 / strength 影响强度。 */
 type Step = 'direction' | 'scores' | 'strength';
 
 // 不使用 React.memo：组件通过 watch(name) 监听表单 state 变化，setValue 后必须能正常 re-render，
 // 否则 matrixValue 永远是 mount 时的初始值，按钮点击 setValue 后 UI 不会同步更新（用户需要刷新才能看到）。
 export function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputProps) {
   const { watch, setValue } = useFormContext();
+  // watch 两个数据源：factors（因素名列表）和本组件的矩阵值；
+  // matrixValue 一变，下面的派生计算（getCellValue 依赖它）会自动重算并重渲染 UI
   const factors = watch('factors') as Array<Record<string, unknown>> | undefined;
   const matrixValue = watch(name) as Array<Record<string, unknown>> | undefined;
 
+  // 提取因素名：最多 KEY_FACTOR_MAX 个，无名条目用"因素 N"兜底，保证后续都是纯字符串
   const factorNames = useMemo(() => {
     if (!Array.isArray(factors)) return [];
     return factors
@@ -39,6 +55,7 @@ export function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputPr
 
   const n = factorNames.length;
 
+  // 所有两两配对的下标组合（i < j）；因素数固定时结果稳定，无需每次重算
   const allPairs = useMemo(() => {
     const pairs: CellPair[] = [];
     for (let i = 0; i < n; i++) {
@@ -49,6 +66,7 @@ export function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputPr
     return pairs;
   }, [n]);
 
+  // 向导状态：当前步骤 + 第一步/第三步各自的配对游标（第二步是纯展示，无游标）
   const [step, setStep] = useState<Step>('direction');
   const [dirPairIndex, setDirPairIndex] = useState(0);
   const [strPairIndex, setStrPairIndex] = useState(0);
@@ -133,6 +151,7 @@ export function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputPr
   );
 
   const dirFilledCount = useMemo(() => {
+    // 第一步进度：方向不是 'none'（无关）的对数
     let count = 0;
     for (const pair of allPairs) {
       if (getDirectionValue(pair.i, pair.j) !== 'none') count++;
@@ -140,6 +159,8 @@ export function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputPr
     return count;
   }, [allPairs, getDirectionValue]);
 
+  // 因果对列表：把第一步判定的方向翻译成 { cause: 因的下标, effect: 果的下标 }，
+  // 供第三步"填强度"使用；方向反转时 cause/effect 也随之互换。
   const causalPairs = useMemo(() => {
     const result: Array<{ cause: number; effect: number }> = [];
     for (const pair of allPairs) {
@@ -160,6 +181,7 @@ export function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputPr
     return count;
   }, [causalPairs, getCellValue]);
 
+  // 因素不足 2 个时矩阵无从谈起，直接给提示而不是渲染空矩阵
   if (n < 2) {
     return (
       <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
@@ -199,6 +221,7 @@ export function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputPr
 
   return (
     <div className="space-y-4">
+      {/* 顶部步骤切换条：①②必做，③可选（无因果对时禁用并置灰） */}
       <div className="flex flex-wrap items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-2">
         <StepTab
           label={`① 因果判定 (${dirFilledCount}/${totalPairs})`}
@@ -265,6 +288,11 @@ export function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputPr
   );
 }
 
+/**
+ * 步骤切换按钮（MatrixGuidedInput 的内部子组件）。
+ * - active：当前步骤高亮；dimmed：不可用但可点击（用于无因果对时置灰③）；
+ * - optional：非当前步骤时显示"(可选)"小字。
+ */
 function StepTab({ label, active, onClick, disabled, dimmed, optional }: {
   label: string;
   active: boolean;
@@ -293,6 +321,7 @@ function StepTab({ label, active, onClick, disabled, dimmed, optional }: {
   );
 }
 
+/** DirectionStep 的 props：当前步的配对、方向读写函数、游标与进度，全部由父组件传入。 */
 interface DirectionStepProps {
   factorNames: string[];
   allPairs: CellPair[];
@@ -307,6 +336,10 @@ interface DirectionStepProps {
   dirFilledCount: number;
 }
 
+/**
+ * 第一步"因果判定"界面（内部子组件）：逐组选择 A→B / B→A / 无关。
+ * 每次选择后自动前进到下一组；底部圆点可跳转，进度由 dirFilledCount 显示在父级页签上。
+ */
 function DirectionStep({
   factorNames,
   allPairs,
@@ -327,6 +360,7 @@ function DirectionStep({
   const shortJ = nameJ;
 
   function handleSelect(dir: 'i2j' | 'j2i' | 'none') {
+    // 写入当前对的方向，然后自动前进到下一组（最后一组则停留）
     setDirectionPair(currentPair.i, currentPair.j, dir);
     if (currentPairIndex < totalPairs - 1) {
       setCurrentPairIndex(currentPairIndex + 1);
@@ -459,15 +493,21 @@ function DirectionStep({
   );
 }
 
+/** ScoresStep 的 props：得分结果列表、是否已有因果对、跳转到第三步的回调。 */
 interface ScoresStepProps {
   causeScores: CauseScoreItem[];
   hasCausalPairs: boolean;
   onGoStrength: () => void;
 }
 
+/**
+ * 第二步"定位结果"界面（内部子组件）：把每个因素的 影响/被影响 次数与得分展示成表格。
+ * 已按 score 升序排序：最"根因"（得分最负）排最前，最"表因"排最后。
+ */
 function ScoresStep({ causeScores, hasCausalPairs, onGoStrength }: ScoresStepProps) {
   const sorted = [...causeScores].sort((a, b) => a.score - b.score);
 
+  // 没有任何关系数据（所有次数都是 0）时说明还没做第一步，给提示而不是空表
   if (sorted.length === 0 || sorted.every((s) => s.outCount === 0 && s.inCount === 0)) {
     return (
       <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
@@ -531,6 +571,7 @@ function ScoresStep({ causeScores, hasCausalPairs, onGoStrength }: ScoresStepPro
   );
 }
 
+/** StrengthStep 的 props：因果对列表、强度读写函数、当前游标，全部由父组件传入。 */
 interface StrengthStepProps {
   factorNames: string[];
   causalPairs: Array<{ cause: number; effect: number }>;
@@ -541,6 +582,10 @@ interface StrengthStepProps {
   disabled?: boolean;
 }
 
+/**
+ * 第三步"影响强度"界面（内部子组件）：给第一步确认的因果对逐个填强度。
+ * 只处理 causalPairs（有因果关系的对），"无关"对不进入本步。
+ */
 function StrengthStep({
   factorNames,
   causalPairs,
@@ -550,6 +595,7 @@ function StrengthStep({
   setCellValue,
   disabled,
 }: StrengthStepProps) {
+  // 没有因果对就回不去强度步（理论上不会发生，防御处理）
   if (causalPairs.length === 0) {
     return (
       <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
@@ -558,6 +604,7 @@ function StrengthStep({
     );
   }
 
+  // safeIndex 把越界游标收敛到最后一组；随后从下标还原出当前因果对及其名称
   const safeIndex = Math.min(currentPairIndex, causalPairs.length - 1);
   const currentCP = causalPairs[safeIndex];
   const currentValue = getCellValue(currentCP.cause, currentCP.effect);
@@ -706,6 +753,7 @@ function StrengthStep({
   );
 }
 
+/** 定位结果里每个因素一行的数据：影响/被影响次数、得分与角色判定。 */
 interface CauseScoreItem {
   name: string;
   outCount: number;
@@ -714,6 +762,7 @@ interface CauseScoreItem {
   role: string;
 }
 
+/** 角色对应的标签配色（Tailwind 类）：根因红、表因黄、过因灰。 */
 function roleColor(role: string) {
   if (role === '根因') return 'bg-rose-100 text-rose-700 border-rose-200';
   if (role === '表因') return 'bg-amber-100 text-amber-700 border-amber-200';

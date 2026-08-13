@@ -1,6 +1,10 @@
 /**
- * 历史记录页：按模板/严重程度/根因类型/对策状态/时间范围筛选 + 全文搜索，支持单条/批量导出
+ * 历史记录页（/history）：按模板/严重程度/根因类型/对策状态/时间范围筛选 + 全文搜索，支持单条/批量导出
  * Markdown 与删除，客户端分页避免记录多了列表过长。打印/导出 PDF 在记录详情页（FormPage）内进行。
+ * 交互流程：全文搜索（300ms 防抖）→ 多条件筛选（useMemo 缓存结果）→ 按更新时间倒序 →
+ *   分页展示 → 单条导出 / 批量导出 Markdown / 删除（二次确认）。
+ * 核心概念：防抖（debounce）避免每敲一个字符都立刻搜索；派生数据用 useMemo 缓存，
+ *   避免筛选条件没变时每次渲染都重复计算。
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -13,8 +17,10 @@ import { exportRecordToMarkdown, exportRecordsToMarkdown } from '../services/exp
 import { useToast } from '../hooks/useToast';
 import type { FormRecord, TemplateId } from '../types';
 
+/** 每页展示的记录条数（客户端分页） */
 const PAGE_SIZE = 20;
 
+/** 时间范围筛选项：value 为"最近 N 天"的天数，空字符串表示全部时间 */
 const DATE_RANGE_OPTIONS = [
   { value: '', label: '全部时间' },
   { value: '7', label: '最近 7 天' },
@@ -22,10 +28,12 @@ const DATE_RANGE_OPTIONS = [
   { value: '90', label: '最近 90 天' },
 ];
 
+/** 判断 createdAt 是否落在最近 days 天内：先把日期字符串解析成 Date，再比较"日历天数差"（只看日期不看时分秒）。 */
 function isWithinRecentDays(createdAt: string, todayISO: string, days: number): boolean {
   return differenceInCalendarDays(parseISO(todayISO), parseISO(createdAt.slice(0, 10))) <= days;
 }
 
+/** 把 Markdown 文本下载为本地文件：Blob + 临时 URL + 模拟点击 <a download> 的标准做法。 */
 function downloadMarkdown(filename: string, content: string) {
   const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -36,24 +44,34 @@ function downloadMarkdown(filename: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * 历史记录页组件：全文搜索 + 多条件筛选 + 分页展示全部分析记录，支持导出 Markdown 与删除。
+ * props：无（路由页面，由 Router 直接渲染）。
+ */
 export default function HistoryPage() {
   const { records, loading } = useRecords();
   const deleteRecord = useDeleteRecord();
   const { showToast } = useToast();
+  // query：输入框的实时内容；debouncedQuery：防抖后的搜索词（真正用于搜索，300ms 无输入才更新）
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  // 以下四种筛选条件：模板 / 严重程度 / 根因类型 / 时间范围
   const [templateFilter, setTemplateFilter] = useState<TemplateId | ''>('');
   const [severityFilter, setSeverityFilter] = useState('');
   const [rootCauseFilter, setRootCauseFilter] = useState('');
   const [dateRangeFilter, setDateRangeFilter] = useState('');
+  // page：当前页码；searchInputRef：搜索框引用，供快捷键 ⌘K 聚焦
   const [page, setPage] = useState(1);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // 防抖搜索：用户停止输入 300ms 后才更新 debouncedQuery，
+  // 否则每次按键都会触发一遍全文搜索/过滤，输入快时会造成大量无意义计算
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), 300);
     return () => clearTimeout(timer);
   }, [query]);
 
+  // 全局快捷键：按 ⌘K 或 Ctrl+K 时聚焦搜索框（阻止浏览器默认的"打开地址栏"行为）
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -65,7 +83,10 @@ export default function HistoryPage() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // searched：第一步，先按防抖后的关键词做全文搜索
   const searched = useSearchRecords(records, debouncedQuery);
+  // filtered：第二步，在搜索结果上叠加模板/严重程度/根因类型/时间范围筛选。
+  // useMemo 缓存计算结果：只有依赖项变化才重算，依赖没变时直接复用上一次结果，避免重复计算
   const filtered = useMemo(() => {
     const todayISO = new Date().toISOString().slice(0, 10);
     return searched.filter((r) => {
@@ -77,28 +98,34 @@ export default function HistoryPage() {
     });
   }, [searched, templateFilter, severityFilter, rootCauseFilter, dateRangeFilter]);
 
+  // sorted：按更新时间倒序排列（复制数组再排序，避免修改原数组；ISO 时间字符串直接 localeCompare 就是字典序）
   const sorted = useMemo(() => [...filtered].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), [filtered]);
 
+  // 任一筛选条件或搜索词变化时，把页码重置回第 1 页（否则可能停留在超出新结果范围的页）
   useEffect(() => {
     setPage(1);
   }, [query, templateFilter, severityFilter, rootCauseFilter, dateRangeFilter]);
 
+  // 客户端分页：totalPages 至少为 1；currentPage 防止页码越界；pageItems 截取当前页要展示的数据
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const pageItems = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
+  /** 删除单条记录：confirm 二次确认后调用 deleteRecord（异步写入 IndexedDB）。 */
   async function handleDelete(id: string) {
     if (!confirm('确定删除这条记录吗？此操作不可撤销。')) return;
     await deleteRecord(id);
     showToast('已删除', 'success');
   }
 
+  /** 导出单条记录为 Markdown 文件：根据记录所属模板渲染成 Markdown 文本后下载。 */
   function handleExportMarkdown(record: FormRecord) {
     const template = getTemplate(record.templateId);
     const markdown = exportRecordToMarkdown(template, record);
     downloadMarkdown(`${record.title || template.name}.md`, markdown);
   }
 
+  /** 批量导出：把当前筛选/排序后的全部记录合并导出一个 Markdown 文件。 */
   function handleExportAll() {
     if (sorted.length === 0) {
       showToast('当前没有可导出的记录', 'error');

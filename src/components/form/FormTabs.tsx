@@ -1,11 +1,15 @@
 /**
- * 渲染一组分区（当前阶段包含的所有 section）：重复段委托 RepeatableSection，
- * 非重复段直接铺开字段；collapsedByDefault 的分区用 <details> 折叠展示。
+ * 渲染一组分区（当前阶段包含的所有 section）。
+ * 分区（section）的三种形态：
+ * - repeatable 段：委托 RepeatableSection 渲染"可增删条目的重复表单"；
+ * - 非重复段：用两列网格直接铺开字段（通过 FieldList）；
+ * - collapsedByDefault 段：默认折叠，用原生 <details>/<summary> 实现开合。
  */
 import type { FormRecord, FormSection, Problem, TemplateId } from '../../types';
 import { RepeatableSection } from '../RepeatableSection';
 import { FieldList } from './FieldList';
 
+/** FormTabs 的 props：sections 为模板中的分区数组；其余为逐层透传给输入组件的表单上下文。 */
 interface FormTabsProps {
   sections: FormSection[];
   disabled: boolean;
@@ -16,6 +20,9 @@ interface FormTabsProps {
   onAutoFilled?: () => void;
 }
 
+/**
+ * 分区列表：按顺序渲染当前阶段的所有分区，每个分区交给内部子组件 SectionBlock 处理。
+ */
 export function FormTabs({ sections, disabled, templateId, historyRecords, problem, onAutoFilled }: FormTabsProps) {
   return (
     <div className="space-y-8">
@@ -34,6 +41,16 @@ export function FormTabs({ sections, disabled, templateId, historyRecords, probl
   );
 }
 
+/**
+ * 单个分区的渲染容器（FormTabs 的内部子组件，不对外导出）。
+ * 分两步组装：
+ * 1. 先根据 section.repeatable 决定表单主体 body：
+ *    - 重复段 → RepeatableSection（可增删条目）；
+ *    - 非重复段 → 两列网格 + FieldList 直接铺开字段。
+ * 2. 再根据 section.collapsedByDefault 决定外层壳：
+ *    - 默认折叠 → <details>/<summary> 折叠卡片（点击标题展开）；
+ *    - 否则 → 普通 <section> 配标题与描述。
+ */
 function SectionBlock({
   section,
   disabled,

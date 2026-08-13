@@ -1,9 +1,32 @@
 /**
  * 时间线分析法：还原事件经过的事后分析（类似 SRE Postmortem）。
+ *
+ * 整体流程（分区 → 阶段）：
+ *   ① 事件概述：发生时间、时长、影响范围、严重程度、摘要；
+ *   ② 时间线还原：按时间顺序逐节点记录事件、来源、关键节点标记与行动正确性；
+ *   ③ 归因与改进：归纳直接原因/根本原因，从检测、响应、预防三个维度提改进。
+ *
+ * 注意：本模板已与 technicalFault 一起二合一为 techIncident（技术专题），
+ * 此处保留注册仅用于兼容历史数据打开/导出，不再作为新入口。
  */
 import type { FormTemplate } from '../types';
 import { IMPACT_SCOPE_OPTIONS, SEVERITY_OPTIONS } from './shared';
 
+/**
+ * 时间线分析法模板。
+ *
+ * sections 结构设计意图：
+ * - eventOverview（事件概述）：occurredAt 用 date 类型，defaultValue 'auto_today'
+ *   表示打开即自动填当天日期（date 用 today、datetime 用 now，这是魔法字符串约定）；
+ *   duration 记录持续时长（分钟）；summary 摘要限制 200 字以内（validation.maxLength）。
+ * - timelineEntries（时间线还原）：repeatable 列表，至少 1 个节点（minEntries）；
+ *   每条记录时间点、事件描述、信息来源、是否关键节点、当时行动及其事后正确性。
+ * - attribution（归因与改进）：从直接原因 → 根本原因 → 检测/响应/预防三路改进，
+ *   lessonsLearned 经验教训带 autocomplete（联想历史写法）。
+ *
+ * phases 结构设计意图：三个阶段与三个分区一一对应，每阶段 completionFields 列出
+ * "必须填好"的核心字段；归因与改进阶段 completesRecord=true，完成即整份记录完成。
+ */
 export const timelineTemplate: FormTemplate = {
   id: 'timeline',
   name: '时间线分析法',
@@ -24,6 +47,8 @@ export const timelineTemplate: FormTemplate = {
       id: 'eventOverview',
       title: '事件概述',
       fields: [
+        // defaultValue: 'auto_today' —— date 类型魔法默认值：打开即自动填入当天日期
+        //（约定：date 用 'auto_today'，datetime 用 'auto_now'，由 resolveDefaultValue 解析）。
         { id: 'occurredAt', label: '发生时间', type: 'date', defaultValue: 'auto_today' },
         { id: 'duration', label: '持续时长（分钟）', type: 'number' },
         { id: 'impactScope', label: '影响范围', type: 'radio', options: IMPACT_SCOPE_OPTIONS },
@@ -34,6 +59,7 @@ export const timelineTemplate: FormTemplate = {
           type: 'textarea',
           required: true,
           hint: '200 字以内概括',
+          // validation.maxLength=200：摘要长度上限校验，超长无法提交，强制用户概括重点。
           validation: { maxLength: 200 },
         },
       ],
@@ -41,6 +67,7 @@ export const timelineTemplate: FormTemplate = {
     {
       id: 'timelineEntries',
       title: '时间线还原',
+      // repeatable + minEntries: 1：时间线是"可追加条目"列表，至少记录 1 个事件节点。
       repeatable: true,
       repeatLabel: '事件节点 {n}',
       minEntries: 1,
@@ -85,6 +112,7 @@ export const timelineTemplate: FormTemplate = {
         { id: 'improveDetection', label: '改进措施——检测能力', type: 'textarea', hint: '如何更早发现', placeholder: '增加哪些监控/告警可以更早发现类似问题？' },
         { id: 'improveResponse', label: '改进措施——响应能力', type: 'textarea', hint: '如何更快恢复', placeholder: '如何缩短从发现到恢复的时间？' },
         { id: 'improvePrevention', label: '改进措施——预防能力', type: 'textarea', hint: '如何避免再次发生', placeholder: '从根本上防止类似问题再次发生的措施…' },
+        // autocomplete: true —— 输入时联想同模板历史记录中该字段出现过的写法（同 comparison 的 lessonsLearned）
         { id: 'lessonsLearned', label: '经验教训', type: 'textarea', required: true, autocomplete: true, placeholder: '这次经历有哪些可复用的发现？下次遇到类似情况应该怎么做？' },
       ],
     },
@@ -95,6 +123,7 @@ export const timelineTemplate: FormTemplate = {
       label: '事件概述',
       icon: '📋',
       sectionIndices: [0],
+      // completionFields 只需 summary（事件摘要必填）。
       completionFields: ['summary'],
     },
     {
@@ -102,6 +131,7 @@ export const timelineTemplate: FormTemplate = {
       label: '时间线还原',
       icon: '🕒',
       sectionIndices: [1],
+      // 完成条件看 repeatable 条目字段 eventDesc（事件描述，需填且 ≥ minEntries 条）。
       completionFields: ['eventDesc'],
     },
     {
@@ -109,6 +139,8 @@ export const timelineTemplate: FormTemplate = {
       label: '归因与改进',
       icon: '🛠️',
       sectionIndices: [2],
+      // 完成需 directCause/rootCause（直接原因/根本原因）+ lessonsLearned（经验教训）；
+      // completesRecord: true —— 本阶段完成即整份记录视为"已完成"。
       completionFields: ['directCause', 'rootCause', 'lessonsLearned'],
       completesRecord: true,
     },

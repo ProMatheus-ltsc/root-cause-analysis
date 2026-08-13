@@ -4,9 +4,29 @@
  * 已切换为"手动调 AI"模式：因果链段（causalChain）由外部 AI 完成，
  * 这里只保留 AI 回路/杠杆点面板 + 杠杆点总结（AI 自动填）+ 干预策略。
  * 旧因果链段不再让用户手动填写；历史 record 中已有的 causalChain 数据不影响新模板。
+ *
+ * 整体流程（分区 → 阶段）：
+ *   ① 相关因素：确认问题是否反复出现（反复性问题才适合系统思考）；
+ *   ② 回路与杠杆点：通过"手动调 AI"把问题与候选原因发给 AI，回填回路/杠杆点 JSON；
+ *   ③ 干预策略：基于杠杆点制定干预方案，并评估副作用与监测方式。
  */
 import type { FormTemplate } from '../types';
 
+/**
+ * 系统思考分析模板。
+ *
+ * sections 结构设计意图：
+ * - relatedFactors：recurrence 单选确认"是否反复出现"——系统思考只处理反复性、
+ *   循环性因果的问题，首次发生的问题不适用（phase 判定阶段完成不看它）。
+ * - loopAnalysis：aiLoopAnalysis 是 custom 类型字段，渲染"手动调 AI"面板
+ *   （导出上下文 → AI 返回回路/杠杆点 JSON → 解析回填），不直接存用户手填内容。
+ * - intervention：干预策略分区，leveragePointSummary / interventionPlan 由 AI
+ *   自动填充（label 中注明），sideEffects / monitorPlan / lessonsLearned 由用户补充。
+ *
+ * phases 结构设计意图：causalAnalysis 阶段覆盖相关因素 + 回路与杠杆点，
+ * 但 completionFields 为空数组 —— 因为 AI 模式下没有"手动填必填字段"这一说，
+ * 阶段完成改为由 AI 分析结果是否存在来判定；intervention 阶段 completesRecord=true。
+ */
 export const systemThinkingTemplate: FormTemplate = {
   id: 'systemThinking',
   name: '系统思考分析',
@@ -75,6 +95,8 @@ export const systemThinkingTemplate: FormTemplate = {
       label: '干预策略',
       icon: '🛠️',
       sectionIndices: [2],
+      // AI 模式下干预策略同样不设必填完成字段，由用户自行判断是否收尾；
+      // completesRecord: true —— 该阶段完成即整份记录视为"已完成"。
       completionFields: [],
       completesRecord: true,
     },

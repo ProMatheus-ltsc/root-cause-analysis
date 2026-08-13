@@ -4,19 +4,31 @@
  * 2. 用户粘贴 AI 返回的 JSON → 解析校验 → 展示回路与杠杆点
  * 3. 解析结果写入表单字段（aiLoopsText / aiLeverageText / aiAnalysisRaw）
  * 未接入 AI 时，这是"手动调 AI"的分析模式。
+ * 注意与 KeyFactorAiPanel 的区别：这里解析成功后会"顺手"把 AI 给的杠杆点
+ * 自动填入 leveragePoint / leveragePointSummary / interventionPlan 字段，
+ * 帮用户省掉手动搬运结果到后续表单的手续。
  */
 import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import type { Problem } from '../../types';
 import { buildSystemThinkPrompt, formatAiAnalysis, parseAiAnalysis, type AiAnalysisResult } from '../../utils/aiAnalysis';
 
+/** 组件 props：problem 提供问题详情供生成提示词；disabled 禁用全部交互。 */
 interface SystemThinkAiPanelProps {
   problem?: Problem;
   disabled?: boolean;
 }
 
+/** 面板所处的流程阶段：idle 初始 / output 已生成内容 / error 解析失败 / success 解析成功。 */
 type Phase = 'idle' | 'output' | 'error' | 'success';
 
+/**
+ * 系统思考的手动 AI 桥接面板。
+ * 设计要点：
+ * - 用本地 state 管理界面流程（phase/prompt/aiRaw/error/result），
+ *   解析成功后立刻 setValue 写入表单字段，实现"结果落库 + 界面展示"分离；
+ * - setValue 统一带 { shouldDirty: true }，让依赖 dirty 的提交按钮能感知改动。
+ */
 export function SystemThinkAiPanel({ problem, disabled }: SystemThinkAiPanelProps) {
   const { setValue, getValues } = useFormContext();
   const [phase, setPhase] = useState<Phase>('idle');
@@ -28,12 +40,14 @@ export function SystemThinkAiPanel({ problem, disabled }: SystemThinkAiPanelProp
 
   const hasProblem = !!problem;
 
+  // 生成提示词与问题 JSON，进入 output 阶段
   function handleGenerate() {
     setPrompt(buildSystemThinkPrompt(problem));
     setPhase('output');
     setError('');
   }
 
+  // 复制提示词；非安全上下文（如 http 环境）下 navigator.clipboard 可能不可用，捕获后提示手动复制
   async function handleCopyPrompt() {
     try {
       await navigator.clipboard.writeText(prompt);
@@ -45,6 +59,7 @@ export function SystemThinkAiPanel({ problem, disabled }: SystemThinkAiPanelProp
     }
   }
 
+  // 解析用户粘贴的 AI JSON，并把结果写入表单字段
   function handleParse() {
     try {
       const parsed = parseAiAnalysis(aiRaw);
@@ -65,16 +80,19 @@ export function SystemThinkAiPanel({ problem, disabled }: SystemThinkAiPanelProp
       // 把 AI 给出的杠杆点/干预自动填到后续字段，避免用户手动复制粘贴
       if (parsed.leveragePoints.length > 0) {
         const lp = parsed.leveragePoints;
+        // 第一个杠杆点作为核心杠杆点，填入单值字段 leveragePoint
         const coreLeverage = lp[0];
         setValue(
           'leveragePoint',
           `${coreLeverage.cause}${coreLeverage.reason ? '（依据：' + coreLeverage.reason + '）' : ''}`,
           { shouldDirty: true },
         );
+        // 全部杠杆点汇总成多行文本，填入 leveragePointSummary
         const summaryText = lp
           .map((p, i) => `${i + 1}. ${p.cause}\n   干预：${p.intervention || '—'}\n   依据：${p.reason || '—'}`)
           .join('\n\n');
         setValue('leveragePointSummary', summaryText, { shouldDirty: true });
+        // 只有提供了具体干预措施的杠杆点才进 interventionPlan
         const interventionText = lp
           .filter((p) => p.intervention)
           .map((p, i) => `${i + 1}. [${p.cause}] ${p.intervention}`)
@@ -90,7 +108,8 @@ export function SystemThinkAiPanel({ problem, disabled }: SystemThinkAiPanelProp
     }
   }
 
-  // 已保存过的结果回显（如果用户刷新过页面）
+  // 已保存过的结果回显（如果用户刷新过页面）：从表单字段读回 aiAnalysisRaw，
+  // 只要非空就提示用户"之前已保存过"，避免重复操作。
   const savedRaw = getValues('aiAnalysisRaw');
   const showSaved = phase === 'idle' && typeof savedRaw === 'string' && savedRaw.trim();
 
@@ -107,11 +126,13 @@ export function SystemThinkAiPanel({ problem, disabled }: SystemThinkAiPanelProp
       </ol>
 
       {!hasProblem && (
+        /* 未关联问题时的提示：导出内容会缺少问题上下文 */
         <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
           当前未关联问题（可能是新建记录）。建议关联问题后再做系统思考分析，导出的内容会更完整。
         </p>
       )}
 
+      {/* 操作区：生成导出内容 / 复制提示词 */}
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -133,6 +154,7 @@ export function SystemThinkAiPanel({ problem, disabled }: SystemThinkAiPanelProp
       </div>
 
       {phase === 'output' && (
+        /* 生成出的提示词只读展示；聚焦时全选方便一键复制 */
         <textarea
           readOnly
           value={prompt}
@@ -142,6 +164,7 @@ export function SystemThinkAiPanel({ problem, disabled }: SystemThinkAiPanelProp
         />
       )}
 
+      {/* 粘贴区：AI 返回的 JSON 输入框 + 解析并应用按钮 */}
       <div className="space-y-2">
         <p className="text-xs font-medium text-slate-600">粘贴 AI 返回的 JSON：</p>
         <textarea
@@ -170,6 +193,7 @@ export function SystemThinkAiPanel({ problem, disabled }: SystemThinkAiPanelProp
       )}
 
       {result && result.loops.length > 0 && (
+        /* 解析结果展示：回路卡片 + 杠杆点列表（同时已写入表单） */
         <div className="space-y-3">
           <p className="text-xs font-semibold text-sky-900">解析结果（已写入表单）：</p>
           {result.loops.map((l, i) => (

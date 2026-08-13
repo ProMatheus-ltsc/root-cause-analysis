@@ -1,6 +1,11 @@
 /**
  * 仪表盘首页（以问题为导向）：问题列表入口 + 数据备份提醒 + 统计看板。
- * 新建问题 → /new；问题详情（含挂分析方法）→ /problem/:id。
+ * 路由：/（应用默认首页）。
+ * 交互流程：进入页面即加载当前账户的问题列表与分析记录 → 若长时间未导出数据则弹出备份提醒 →
+ *   搜索框实时过滤问题卡片 → 点卡片进入问题详情（/problem/:id）→ 点"新建问题"进入向导（/new）→
+ *   点"技术专题分析"直接创建一条轻量问题并进入二合一分析流程（/analysis/:id/techIncident）。
+ * 核心概念：问题（Problem）是分析的主体，一个问题下可挂多条根因分析记录（Record）；
+ *   所有数据都存在浏览器 IndexedDB，导出 JSON 是防丢失的唯一备份途径。
  */
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -12,20 +17,42 @@ import { daysSinceLastExport } from '../utils/dashboard';
 import { TEMPLATES } from '../templates';
 import { DashboardLayout } from '../components/dashboard/DashboardLayout';
 
+/** 距上次导出超过该天数即显示"数据备份提醒"（30 天） */
 const BACKUP_REMINDER_THRESHOLD_DAYS = 30;
 
+/**
+ * 仪表盘主页组件：展示问题库（支持实时搜索）、技术专题快捷入口、备份提醒与统计看板。
+ * props：无（路由页面，由 Router 直接渲染）。
+ */
 export default function DashboardPage() {
+  // —— 数据源 hooks ——
+  // useProblems() 从 IndexedDB 异步读取当前账户的全部问题；problems 为数据、loading 表示是否读取中
   const { problems, loading } = useProblems();
+  // useRecords() 读取当前账户的全部分析记录（用于统计看板、以及每张问题卡片上的"分析数量"）
   const { records } = useRecords();
+  // useNavigate 是 React Router 提供的跳转函数，用于"创建成功后程序化跳转到对应页面"
   const navigate = useNavigate();
+  // useSaveProblem 返回异步保存函数：向 IndexedDB 新增或更新一条问题
   const saveProblem = useSaveProblem();
+
+  // —— 页面状态 ——
+  // lastExportedAt：上次导出备份的时间（ISO 字符串），从未导出过则为 undefined
   const [lastExportedAt, setLastExportedAt] = useState<string | undefined>(undefined);
+  // searchQuery：搜索框输入内容，实时驱动问题列表过滤
   const [searchQuery, setSearchQuery] = useState('');
+  // techFormOpen：是否展开"技术专题分析"的快捷输入表单
   const [techFormOpen, setTechFormOpen] = useState(false);
+  // techTitle / techSummary：技术专题的事件标题与可选摘要
   const [techTitle, setTechTitle] = useState('');
   const [techSummary, setTechSummary] = useState('');
+  // savingTech：防止重复快速点击导致创建出多条相同问题
   const [savingTech, setSavingTech] = useState(false);
 
+  /**
+   * "技术专题分析"提交处理：用事件标题直接创建一条轻量问题（不走复杂的新建向导），
+   * 然后跳转到对应的二合一分析页。用 try/finally 而非 try/catch：
+   * 即使保存过程抛错也要先复位 savingTech，保证按钮状态不被卡住。
+   */
   async function handleStartTechIncident() {
     const title = techTitle.trim();
     if (!title || savingTech) return;
@@ -43,13 +70,17 @@ export default function DashboardPage() {
     }
   }
 
+  // 页面挂载后读取一次"上次导出时间"设置（异步的 getSetting 返回 Promise，用 .then 更新状态）
   useEffect(() => {
     getSetting<string | undefined>('lastExportedAt', undefined).then(setLastExportedAt);
   }, []);
 
+  // 依据搜索关键词过滤问题列表（useSearchProblems 内部对标题/描述做模糊匹配）
   const filteredProblems = useSearchProblems(problems, searchQuery);
 
+  // daysSince：距上次导出的天数；从未导出过则 daysSinceLastExport 返回 undefined
   const daysSince = daysSinceLastExport(lastExportedAt, format(new Date(), 'yyyy-MM-dd'));
+  // 备份提醒条件：已有分析记录 且（从未导出过 或 超过 30 天没导出）
   const showBackupReminder = records.length > 0 && (daysSince === undefined || daysSince > BACKUP_REMINDER_THRESHOLD_DAYS);
 
   return (
@@ -161,6 +192,7 @@ export default function DashboardPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filteredProblems.map((problem) => {
+              // 统计该问题下挂了多少条分析记录（records 全量遍历后按 problemId 过滤）
               const count = records.filter((r) => r.problemId === problem.id).length;
               return (
                 <Link

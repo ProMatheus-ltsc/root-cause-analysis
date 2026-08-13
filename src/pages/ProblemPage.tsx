@@ -1,6 +1,9 @@
 /**
  * 问题详情页（/problem/:problemId）：以问题为导向。
  * 展示问题摘要 + 该问题下的所有根因分析记录，可添加新的分析方法（同一问题挂多个分析）。
+ * 交互流程：进入后展示问题摘要卡片 → 点"+ 添加分析方法"展开方法选择面板 → 选择某方法后跳转到
+ *   对应分析表单（记录在首次自动保存时生成，避免空草稿残留）→ 列表展示已有分析（已完成/草稿）→
+ *   删除有"就地二次确认"保护 → 底部把已完成分析的根因结论汇总在一起，方便横向对比。
  */
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -12,22 +15,37 @@ import { useToast } from '../hooks/useToast';
 import { ProblemSummaryCard } from '../components/ProblemSummaryCard';
 import { TEMPLATE_COLORS } from '../constants/templateMeta';
 
+/**
+ * 问题详情页组件：问题摘要 + 该问题下的分析记录管理（添加/进入/删除）+ 根因汇总对比。
+ * props：无；问题 id 来自路由参数 problemId。
+ */
 export default function ProblemPage() {
+  // useParams 读取路由参数（问题 id）
   const { problemId } = useParams<{ problemId: string }>();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  // useProblem 读取问题；useRecordsByProblem 读取"只属于这个问题"的所有分析记录
   const { problem, loading } = useProblem(problemId);
   const { records, loading: recordsLoading } = useRecordsByProblem(problemId);
   const deleteRecord = useDeleteRecord();
+  // adding：是否展开"添加分析方法"面板；deletingId：当前待确认删除的记录 id（null 表示没有待确认项）
   const [adding, setAdding] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  /**
+   * 选择分析方法后跳转到对应分析表单。
+   * 注意这里不预创建记录：FormRenderer 会在用户首次自动保存时才创建 record，避免空草稿残留。
+   */
   function handleAddAnalysis(templateId: TemplateId) {
     if (!problem) return;
     // 直接进入分析页：FormRenderer 会在首次自动保存时创建 record（避免空草稿残留）
     navigate(`/analysis/${problem.id}/${templateId}`);
   }
 
+  /**
+   * 删除分析记录（就地二次确认）：第一次点击只把该记录置为"待确认"（按钮文字变成"确认删除？"），
+   * 再次点击才真正删除。比浏览器 confirm 弹窗更轻量，且能防止误删。
+   */
   async function handleDeleteAnalysis(id: string) {
     if (deletingId === id) {
       await deleteRecord(id);

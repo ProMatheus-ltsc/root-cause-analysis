@@ -1,5 +1,7 @@
 /**
  * 仪表盘布局：组合状态统计卡片、根因类型分布、高频经验教训、待跟进提醒与最近记录。
+ * 数据全部来自本地 IndexedDB 的分析记录（records），由 utils/dashboard 的纯函数派生，
+ * 本组件只负责排版与展示，不做任何数据加工。
  */
 import { lazy, Suspense } from 'react';
 import type { ReactNode } from 'react';
@@ -16,6 +18,7 @@ import { StatCard } from '../stats/StatCard';
 import { KeywordList } from '../stats/KeywordList';
 import { RecordRow } from '../stats/RecordRow';
 
+// 根因类型饼图体积较大（recharts），用 React.lazy 按需加载 + Suspense 兜底，加快首屏渲染
 const RootCauseTypePie = lazy(() =>
   import('../stats/RootCauseTypePie').then((m) => ({ default: m.RootCauseTypePie }))
 );
@@ -25,6 +28,11 @@ interface DashboardLayoutProps {
   templates: Record<TemplateId, FormTemplate>;
 }
 
+/**
+ * 仪表盘主组件。
+ * @param records 全部分析记录（来自 IndexedDB）
+ * @param templates 模板字典（TemplateId → 模板定义），用于按记录 templateId 取图标/名称
+ */
 export function DashboardLayout({ records, templates }: DashboardLayoutProps) {
   const todayISO = format(new Date(), 'yyyy-MM-dd');
   const statusCounts = countByDisplayStatus(records, templates, todayISO);
@@ -73,6 +81,7 @@ export function DashboardLayout({ records, templates }: DashboardLayoutProps) {
   );
 }
 
+/** 通用面板容器：统一卡片样式，可选右上角操作区（action），内容由 children 填充。 */
 function Panel({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
     <div className="rounded-xl border border-surface-200 bg-surface-0 p-5 shadow-sm">

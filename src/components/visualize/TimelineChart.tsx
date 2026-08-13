@@ -20,6 +20,9 @@ interface TimelineChartProps {
   entries: TimelineEntry[];
 }
 
+// 行动正确性 → 配色 + 中文标签：正确=绿、错误=红、可优化=橙、无法判断=灰。
+// 卡片内"■ 评估：xxx"那一行文字的颜色取自这里（stroke 用于文字色，fill 用于色块），
+// 保证"语义 → 颜色"一一对应，读者看到颜色就能判断当时行动的对错。
 const ACTION_COLORS: Record<string, { stroke: string; fill: string; label: string }> = {
   correct: { stroke: '#10b981', fill: '#d1fae5', label: '正确' },
   wrong: { stroke: '#ef4444', fill: '#fee2e2', label: '错误' },
@@ -35,7 +38,13 @@ function parseTime(t: string): number {
   return Number(m[1]) * 60 + Number(m[2]);
 }
 
+/**
+ * 时间线图组件：把事件按时间排序后画在横向主轴上，上下交替布置卡片避免重叠。
+ * 采用"拼 SVG 字符串 → dangerouslySetInnerHTML 注入"的方式渲染（见文件末尾 svg 模板）。
+ */
 export function TimelineChart({ eventSummary, entries }: TimelineChartProps) {
+  // 先把原始 entries 按时间排序：parseTime 把 "HH:MM" / "上午 9:30" 等文本换算成分钟数做比较；
+  // 时间相同（差值 === 0）时用原始下标 idx 兜底，保证排序稳定、不抖动。
   const sorted = useMemo(() => {
     return [...entries]
       .map((e, idx) => ({ entry: e, idx }))
@@ -43,16 +52,18 @@ export function TimelineChart({ eventSummary, entries }: TimelineChartProps) {
   }, [entries]);
 
   const nodeCount = sorted.length;
-  // 自适应宽度：每个节点 220px，最少 800px
+  // 自适应宽度：每个节点分配 220px（卡片宽 180px + 间距），再多给 120px 边距；最少 800px 保证单节点也不局促
   const width = Math.max(800, nodeCount * 220 + 120);
   const height = 360;
-  const padX = 60;
-  const padY = 80;
-  const lineY = height / 2;
-  const usable = width - padX * 2;
+  const padX = 60;   // 左右留白：防止首尾节点的卡片/文字贴到画布边缘
+  const padY = 80;   // 顶部留白：给上半区卡片和顶部摘要文字留出空间
+  const lineY = height / 2; // 主轴水平线画在画布正中，卡片在上下两侧
+  const usable = width - padX * 2; // 可用的横向布点区间（总宽扣除左右留白）
 
   if (nodeCount === 0) return null;
 
+  // 与鱼骨图类似的两类收集容器：lines 存 SVG 元素字符串（线段/圆/矩形），texts 存文字配置，
+  // 最后统一拼进 svg 模板字符串，经 dangerouslySetInnerHTML 渲染。
   const lines: string[] = [];
   const texts: Array<{ x: number; y: number; text: string; size: number; weight?: string; fill?: string; anchor?: string }> = [];
 
@@ -177,6 +188,10 @@ export function TimelineChart({ eventSummary, entries }: TimelineChartProps) {
   return <div dangerouslySetInnerHTML={{ __html: svg }} className="overflow-x-auto rounded-lg border border-slate-200 bg-white" />;
 }
 
+/**
+ * SVG 字符串转义：把 & < > " 替换成 XML 实体。原因：这些字符在 XML/SVG 里有特殊含义
+ * （比如描述里写了 "<" 会被解析成标签起始符，导致 SVG 结构错乱），转义后才能安全渲染。
+ */
 function escape(s: string): string {
   return s
     .replace(/&/g, '&amp;')
