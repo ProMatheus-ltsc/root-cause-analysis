@@ -34,11 +34,18 @@ export default function ProblemPage() {
 
   /**
    * 选择分析方法后跳转到对应分析表单。
-   * 注意这里不预创建记录：FormRenderer 会在用户首次自动保存时才创建 record，避免空草稿残留。
+   * 如果该问题下已存在同类分析记录，弹出确认提示避免误创建重复记录。
    */
   function handleAddAnalysis(templateId: TemplateId) {
     if (!problem) return;
-    // 直接进入分析页：FormRenderer 会在首次自动保存时创建 record（避免空草稿残留）
+    const existing = records.filter((r) => r.templateId === templateId);
+    if (existing.length > 0) {
+      const tpl = TEMPLATES[templateId];
+      const confirmed = window.confirm(
+        `该问题下已有 ${existing.length} 个"${tpl?.title || templateId}"分析记录（${existing.map((r) => r.status === 'completed' ? '已完成' : '草稿').join('、')}）。\n\n确定要再创建一个吗？`
+      );
+      if (!confirmed) return;
+    }
     navigate(`/analysis/${problem.id}/${templateId}`);
   }
 
