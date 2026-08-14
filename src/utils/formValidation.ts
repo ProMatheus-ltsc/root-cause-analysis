@@ -74,13 +74,32 @@ export function isCompletionFieldSatisfied(template: FormTemplate, fieldId: stri
   const { section } = found;
   if (section.repeatable) {
     const entries = (values[section.id] as Record<string, unknown>[] | undefined) ?? [];
-    const minEntries = section.minEntries ?? 1;
+    let minRequired = section.minEntries ?? 1;
+    if (section.stopAppendWhen) {
+      const { fieldId: stopFieldId, value: stopValue } = section.stopAppendWhen;
+      const stopped = entries.some((entry) => entry[stopFieldId] === stopValue);
+      if (stopped) minRequired = 1;
+    }
     const filledCount = entries.filter((entry) => !isEmptyValue(entry[fieldId])).length;
-    return filledCount >= minEntries;
+    return filledCount >= minRequired;
   }
   const field = section.fields.find((f) => f.id === fieldId);
   if (field?.type === 'table') {
-    return isTableFieldFilled(values[fieldId]);
+    if (!isTableFieldFilled(values[fieldId])) return false;
+    if (field.validation?.min !== undefined) {
+      const rows = Array.isArray(values[fieldId]) ? (values[fieldId] as unknown[]) : [];
+      let validCellCount = 0;
+      for (const row of rows) {
+        if (typeof row !== 'object' || row === null) continue;
+        for (const v of Object.values(row as Record<string, unknown>)) {
+          if (typeof v === 'string') { if (v.trim()) validCellCount++; }
+          else if (typeof v === 'number') { if (v !== 0 && !Number.isNaN(v)) validCellCount++; }
+          else if (v !== undefined && v !== null) { validCellCount++; }
+        }
+      }
+      return validCellCount >= field.validation.min;
+    }
+    return true;
   }
   return !isEmptyValue(values[fieldId]);
 }
