@@ -28,14 +28,14 @@ export function RootCauseTypePie({ data }: { data: RootCauseTypeCount[] }) {
             innerRadius={50}
             outerRadius={80}
             paddingAngle={data.length > 1 ? 2 : 0}
-            label={({ label, count }) => `${label} (${count})`}
+            label={({ name, value }) => `${name} (${value})`}
             labelLine={data.length > 1}
           >
             {data.map((entry, idx) => (
               <Cell key={entry.type} fill={COLORS[idx % COLORS.length]} />
             ))}
           </Pie>
-          <Tooltip formatter={(value: number) => [`${value} 条 (${Math.round((value / total) * 100)}%)`, '数量']} />
+          <Tooltip formatter={(value) => [`${value} 条 (${Math.round((Number(value) / total) * 100)}%)`, '数量']} />
           <Legend />
         </PieChart>
       </ResponsiveContainer>
