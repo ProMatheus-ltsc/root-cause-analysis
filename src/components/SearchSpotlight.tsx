@@ -52,7 +52,7 @@ export function SearchSpotlight({ open, onClose }: { open: boolean; onClose: () 
 
     for (const r of records) {
       const tpl = TEMPLATES[r.templateId as TemplateId];
-      const tplName = tpl?.title || r.templateId;
+      const tplName = tpl?.name || r.templateId;
       if (r.title.toLowerCase().includes(q) || tplName.toLowerCase().includes(q)) {
         const problemTitle = problems.find((p) => p.id === r.problemId)?.title;
         items.push({
