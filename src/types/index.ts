@@ -28,7 +28,8 @@ export type FieldType =
   | 'checkbox'
   | 'rating'
   | 'table'
-  | 'custom';
+  | 'custom'
+  | 'hidden';
 
 /** 单选项定义：value 是存储值（写入数据），label 是展示文案（用户看到的文字）。 */
 export interface FieldOption {
