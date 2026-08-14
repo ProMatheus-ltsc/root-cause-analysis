@@ -17,11 +17,12 @@ export function RecordRow({ record, template, rightText }: { record: FormRecord;
       to={`/form/${record.templateId}/${record.id}`}
       className="flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-slate-50"
     >
-      <span className="flex items-center gap-2 text-slate-700">
-        <span>{template.icon}</span>
-        <span className="font-medium">{record.title}</span>
+      <span className="flex items-center gap-2 text-slate-700 min-w-0">
+        <span className="shrink-0">{template.icon}</span>
+        <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">{template.title}</span>
+        <span className="font-medium truncate">{record.title}</span>
       </span>
-      {rightText && <span className="text-xs text-slate-400">{rightText}</span>}
+      {rightText && <span className="shrink-0 ml-2 text-xs text-slate-400">{rightText}</span>}
     </Link>
   );
 }
