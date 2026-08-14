@@ -65,6 +65,11 @@ export const systemThinkingTemplate: FormTemplate = {
           label: 'AI 辅助识别回路与杠杆点',
           type: 'custom',
         },
+        {
+          id: 'aiAnalysisRaw',
+          label: 'AI 分析原始数据',
+          type: 'hidden',
+        },
       ],
     },
     {
@@ -85,10 +90,8 @@ export const systemThinkingTemplate: FormTemplate = {
       id: 'causalAnalysis',
       label: '系统分析',
       icon: '🔄',
-      // sections: 0=相关因素, 1=回路与杠杆点（AI 模式完成即可）
       sectionIndices: [0, 1],
-      // AI 模式下无需手动录因果链；阶段完成仅看是否已 AI 分析
-      completionFields: [],
+      completionFields: ['aiAnalysisRaw'],
     },
     {
       id: 'intervention',
