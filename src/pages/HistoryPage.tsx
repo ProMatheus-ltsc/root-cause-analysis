@@ -196,6 +196,43 @@ export default function HistoryPage() {
         </select>
       </div>
 
+      {(templateFilter || severityFilter || rootCauseFilter || dateRangeFilter) && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-slate-400">已筛选：</span>
+          {templateFilter && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2.5 py-0.5 text-xs text-sky-700">
+              {ALL_TEMPLATE_LIST.find((t) => t.id === templateFilter)?.name || templateFilter}
+              <button type="button" onClick={() => setTemplateFilter('')} className="ml-0.5 text-sky-400 hover:text-sky-700">×</button>
+            </span>
+          )}
+          {severityFilter && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs text-amber-700">
+              {SEVERITY_OPTIONS.find((o) => o.value === severityFilter)?.label || severityFilter}
+              <button type="button" onClick={() => setSeverityFilter('')} className="ml-0.5 text-amber-400 hover:text-amber-700">×</button>
+            </span>
+          )}
+          {rootCauseFilter && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-0.5 text-xs text-violet-700">
+              {ROOT_CAUSE_TYPE_OPTIONS.find((o) => o.value === rootCauseFilter)?.label || rootCauseFilter}
+              <button type="button" onClick={() => setRootCauseFilter('')} className="ml-0.5 text-violet-400 hover:text-violet-700">×</button>
+            </span>
+          )}
+          {dateRangeFilter && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs text-emerald-700">
+              {DATE_RANGE_OPTIONS.find((o) => o.value === dateRangeFilter)?.label || dateRangeFilter}
+              <button type="button" onClick={() => setDateRangeFilter('')} className="ml-0.5 text-emerald-400 hover:text-emerald-700">×</button>
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => { setTemplateFilter(''); setSeverityFilter(''); setRootCauseFilter(''); setDateRangeFilter(''); }}
+            className="text-xs text-slate-400 hover:text-slate-600"
+          >
+            清除全部
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <p className="text-sm text-slate-400">加载中…</p>
       ) : sorted.length === 0 ? (
