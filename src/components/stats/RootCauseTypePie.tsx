@@ -16,16 +16,26 @@ export function RootCauseTypePie({ data }: { data: RootCauseTypeCount[] }) {
   if (data.length === 0) {
     return <p className="py-8 text-center text-sm text-slate-400">暂无根因类型数据</p>;
   }
+  const total = data.reduce((sum, d) => sum + d.count, 0);
   return (
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
-          <Pie data={data} dataKey="count" nameKey="label" innerRadius={50} outerRadius={80} paddingAngle={2}>
+          <Pie
+            data={data}
+            dataKey="count"
+            nameKey="label"
+            innerRadius={50}
+            outerRadius={80}
+            paddingAngle={data.length > 1 ? 2 : 0}
+            label={({ label, count }) => `${label} (${count})`}
+            labelLine={data.length > 1}
+          >
             {data.map((entry, idx) => (
               <Cell key={entry.type} fill={COLORS[idx % COLORS.length]} />
             ))}
           </Pie>
-          <Tooltip />
+          <Tooltip formatter={(value: number) => [`${value} 条 (${Math.round((value / total) * 100)}%)`, '数量']} />
           <Legend />
         </PieChart>
       </ResponsiveContainer>
