@@ -87,15 +87,8 @@ export const keyFactorTemplate: FormTemplate = {
       id: 'matrix',
       title: '② 因果关系强度矩阵',
       description:
-        '逐对判断因素间"谁影响谁、影响多强"。填完矩阵后，系统会自动告诉你：哪些因素是源头、哪些只是表象。如想跳过逐对判断的繁琐流程，可使用下方快捷通道让 AI 一次性给出所有因果方向与影响强度。',
+        '逐对判断因素间"谁影响谁、影响多强"。填完矩阵后，系统会自动告诉你：哪些因素是源头、哪些只是表象。',
       fields: [
-        {
-          // custom 类型字段：渲染"手动调 AI"快捷通道，让 AI 一次性给出
-          // 所有因果方向与影响强度并回填矩阵，省去逐对手填的繁琐。
-          id: 'keyFactorAiAnalysis',
-          label: '快捷通道：手动调 AI 一次性填入所有因果关系与影响强度',
-          type: 'custom',
-        },
         {
           id: 'matrix',
           label: `关系矩阵（${KEY_FACTOR_MAX}×${KEY_FACTOR_MAX}）`,
