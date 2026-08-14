@@ -6,11 +6,12 @@
  * 组件组织：App 是根组件，负责搭好路由骨架；AppShell 提供统一布局（顶栏+内容区），
  * 需要登录的页面都渲染在 AppShell 内部。
  */
-import { Suspense, lazy, type ReactNode } from 'react';
+import { Suspense, lazy, useState, useEffect, type ReactNode } from 'react';
 import { HashRouter, Link, Navigate, NavLink, Outlet, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './hooks/AuthProvider';
 import { useAuth } from './hooks/useAuth';
 import { ToastProvider } from './hooks/ToastProvider';
+import { SearchSpotlight } from './components/SearchSpotlight';
 
 // 用 lazy + Suspense 做路由级代码分割：每个页面独立打包，首次进入时才加载对应文件，
 // 避免首屏一次下载全部页面代码。配合 Suspense 的 fallback 在加载期间显示加载态。
@@ -42,6 +43,19 @@ function RequireAuth({ children }: { children: ReactNode }) {
 function TopNav() {
   const { account, logout } = useAuth();
   const navigate = useNavigate();
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // ⌘K / Ctrl+K 快捷键打开搜索弹窗
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen((v) => !v);
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // 登出后跳回登录页：replace 替换当前历史记录，用户按"返回"不会回到已登出的页面
   function handleLogout() {
@@ -53,40 +67,44 @@ function TopNav() {
   const linkClass = ({ isActive }: { isActive: boolean }) => (isActive ? 'text-brand-600 font-medium' : 'text-text-secondary hover:text-text-primary transition-colors');
 
   return (
-    <header className="no-print sticky top-0 z-40 border-b border-surface-200 bg-surface-0/80 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3">
-        <Link to="/" className="flex items-center gap-2 text-lg font-bold text-text-primary">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-600 text-xs text-white">R</span>
-          根因分析
-        </Link>
-        <nav className="flex items-center gap-6 text-sm">
-          <NavLink to="/" end className={linkClass}>
-            仪表盘
-          </NavLink>
-          <NavLink to="/history" className={linkClass}>
-            历史记录
-          </NavLink>
-          <NavLink to="/data" className={linkClass}>
-            数据管理
-          </NavLink>
-          <button
-            onClick={() => navigate('/history')}
-            className="rounded-lg border border-surface-200 bg-surface-50 px-2.5 py-1.5 text-text-tertiary hover:border-brand-300 hover:text-brand-600 transition"
-            title="全局搜索 (⌘K)"
-            aria-label="全局搜索"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
-            </svg>
-            <span className="ml-1.5 hidden sm:inline text-xs">搜索</span>
-          </button>
-          <span className="text-text-tertiary text-xs">{account?.username}</span>
-          <button onClick={handleLogout} className="rounded-md px-2 py-1 text-xs text-danger hover:bg-red-50 transition">
-            登出
-          </button>
-        </nav>
-      </div>
-    </header>
+    <>
+      <header className="no-print sticky top-0 z-40 border-b border-surface-200 bg-surface-0/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3">
+          <Link to="/" className="flex items-center gap-2 text-lg font-bold text-text-primary">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-600 text-xs text-white">R</span>
+            根因分析
+          </Link>
+          <nav className="flex items-center gap-6 text-sm">
+            <NavLink to="/" end className={linkClass}>
+              仪表盘
+            </NavLink>
+            <NavLink to="/history" className={linkClass}>
+              历史记录
+            </NavLink>
+            <NavLink to="/data" className={linkClass}>
+              数据管理
+            </NavLink>
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="rounded-lg border border-surface-200 bg-surface-50 px-2.5 py-1.5 text-text-tertiary hover:border-brand-300 hover:text-brand-600 transition"
+              title="全局搜索 (⌘K)"
+              aria-label="全局搜索"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
+              </svg>
+              <span className="ml-1.5 hidden sm:inline text-xs">搜索</span>
+              <kbd className="ml-1.5 hidden sm:inline rounded border border-surface-200 bg-surface-100 px-1 py-0.5 text-[10px]">⌘K</kbd>
+            </button>
+            <span className="text-text-tertiary text-xs">{account?.username}</span>
+            <button onClick={handleLogout} className="rounded-md px-2 py-1 text-xs text-danger hover:bg-red-50 transition">
+              登出
+            </button>
+          </nav>
+        </div>
+      </header>
+      <SearchSpotlight open={searchOpen} onClose={() => setSearchOpen(false)} />
+    </>
   );
 }
 
