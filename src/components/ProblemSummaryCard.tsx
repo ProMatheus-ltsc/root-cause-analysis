@@ -33,8 +33,8 @@ function getOptionLabel(options: { value: string; label: string }[], value: unkn
  * @param showLink 为 true 时显示"查看问题详情"跳转链接
  */
 export function ProblemSummaryCard({ problem, showLink = false }: ProblemSummaryCardProps) {
-  // 默认折叠，点击标题切换展开/收起
-  const [collapsed, setCollapsed] = useState(true);
+  // 默认展开，点击标题切换展开/收起
+  const [collapsed, setCollapsed] = useState(false);
   const data = problem.data ?? {};
   // 4W2H 表格行（二维表：维度 + 描述）
   const rows = Array.isArray(data['w2hTable']) ? (data['w2hTable'] as Array<{ dimension: string; description: string }>) : [];
