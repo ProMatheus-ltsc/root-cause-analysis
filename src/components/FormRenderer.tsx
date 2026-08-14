@@ -326,9 +326,17 @@ export function FormRenderer({ template, record, problemId, problemTitle, proble
           historyRecords={historyRecords}
           problem={problem}
           onAutoFilled={() => {
-            // 要因分析法：候选 ≤ 15 自动引入填满因素清单后，直接进入关系矩阵阶段
+            // 要因分析法：候选 ≤ 15 自动引入填满因素清单后，直接进入关系矩阵阶段。
+            // 不走 handleSelectPhase（async persist 中 onFirstSave→navigate 会干扰
+            // state 批处理，导致 activePhaseIndex 与 committedValues 不在同一 render
+            // 批次生效，关系矩阵阶段被 phaseLogic 判定为 locked→disabled=true）。
+            // 修复：先同步更新 committedValues + activePhaseIndex 让 UI 立即可用，
+            // 再异步 persist 保存数据（不阻塞 UI 切换）。
             if (activePhaseIndex === 0 && template.phases && template.phases.length > 1) {
-              handleSelectPhase(1);
+              const currentValues = getValues();
+              setCommittedValues(currentValues);
+              setActivePhaseIndex(1);
+              persist(statusRef.current);
             }
           }}
         />
