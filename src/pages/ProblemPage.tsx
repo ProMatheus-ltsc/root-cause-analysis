@@ -42,7 +42,7 @@ export default function ProblemPage() {
     if (existing.length > 0) {
       const tpl = TEMPLATES[templateId];
       const confirmed = window.confirm(
-        `该问题下已有 ${existing.length} 个"${tpl?.title || templateId}"分析记录（${existing.map((r) => r.status === 'completed' ? '已完成' : '草稿').join('、')}）。\n\n确定要再创建一个吗？`
+        `该问题下已有 ${existing.length} 个"${tpl?.name || templateId}"分析记录（${existing.map((r) => r.status === 'completed' ? '已完成' : '草稿').join('、')}）。\n\n确定要再创建一个吗？`
       );
       if (!confirmed) return;
     }
