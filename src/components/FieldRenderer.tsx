@@ -84,6 +84,8 @@ function FieldRendererImpl({ field, name, disabled, suggestions, problem }: Fiel
   const values = watch();
   const error = getErrorAtPath(formState.errors as Record<string, unknown>, name);
 
+  if (field.type === 'hidden') return null;
+
   if (field.computed) {
     const result = field.computed.formula(values as Record<string, unknown>);
     // 可写的自动汇总字段：textarea/input 让用户可编辑，但初始值与前序字段联动
@@ -126,7 +128,7 @@ function FieldRendererImpl({ field, name, disabled, suggestions, problem }: Fiel
 
   return (
     <div className="space-y-1">
-      <FieldLabel field={field} />
+      <FieldLabel field={field} disabled={disabled} />
       {hint && <p className="text-xs text-slate-400">{hint}</p>}
       <FieldInput field={field} name={name} disabled={disabled} suggestions={suggestions} problem={problem} />
       {error?.message && <p className="text-xs text-rose-600">{error.message}</p>}
@@ -135,10 +137,11 @@ function FieldRendererImpl({ field, name, disabled, suggestions, problem }: Fiel
 }
 
 /** 字段标题：label + 必填星号（*）+ 推荐完成徽标，emphasis 字段放大加粗。 */
-function FieldLabel({ field }: { field: FormField }) {
+function FieldLabel({ field, disabled }: { field: FormField; disabled?: boolean }) {
+  const displayLabel = disabled ? field.label.replace(/（自动汇总，可编辑修改）/g, '（自动汇总）') : field.label;
   return (
     <label className={clsx('block text-sm font-medium text-slate-700', field.emphasis && 'text-base text-slate-900')}>
-      {field.label}
+      {displayLabel}
       {field.required && <span className="ml-1 text-rose-500">*</span>}
       {field.priority === 'recommended' && <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">推荐完成</span>}
     </label>
@@ -168,7 +171,7 @@ function ComputedEditableTextarea({ field, name, disabled }: { field: FormField;
 
   return (
     <div className="space-y-1">
-      <FieldLabel field={field} />
+      <FieldLabel field={field} disabled={disabled} />
       {field.hint && <p className="text-xs text-slate-400">{field.hint}</p>}
       <textarea
         rows={4}
@@ -200,7 +203,7 @@ function ComputedEditableInput({ field, name, disabled }: { field: FormField; na
 
   return (
     <div className="space-y-1">
-      <FieldLabel field={field} />
+      <FieldLabel field={field} disabled={disabled} />
       {field.hint && <p className="text-xs text-slate-400">{field.hint}</p>}
       <input
         type="text"
