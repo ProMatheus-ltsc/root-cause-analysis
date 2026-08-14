@@ -7,7 +7,7 @@
  * 数据落点：全部结果写入表单值树的 matrix（二维数组，matrix[i]['c'+j] = i 对 j 的强度）。
  * 注意：本组件刻意不用 React.memo（见下方组件注释的解释），因为要靠 watch 驱动 UI 刷新。
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import clsx from 'clsx';
 import type { FormField } from '../../types';
@@ -70,6 +70,36 @@ export function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputPr
   const [step, setStep] = useState<Step>('direction');
   const [dirPairIndex, setDirPairIndex] = useState(0);
   const [strPairIndex, setStrPairIndex] = useState(0);
+
+  /**
+   * 挂载自愈：确保矩阵在表单值树中已初始化为 KEY_FACTOR_MAX×KEY_FACTOR_MAX 的全 0 矩阵。
+   *
+   * 为什么需要它（背景：用户反馈"从问题页跳到要因分析法时，必须刷新页面才能点选矩阵"）：
+   * 从问题页点击分析方法跳转属于"组件首挂"场景，个别情况下 React Hook Form 的
+   * defaultValues 还没来得及把 matrix 挂到表单值树（watch(name) 首次返回 undefined），
+   * 或 matrix 行数不足。此时若直接点击"因果判定"按钮，写入虽然发生了，但 UI 依赖的
+   * matrixValue 引用没有建立起来，看起来就像"点了没反应、必须刷新才好"。
+   * 这里的兜底逻辑在挂载后主动补齐 15 行全 0 矩阵（保留用户已填的行），
+   * 等效于"自动刷新一次矩阵状态"，让首次进入即可正常点选。
+   * 注意：只补缺失/不足的行，绝不覆盖用户已保存的完整数据（rows.length >= 15 时直接跳过）。
+   */
+  const matrixSelfHealRef = useRef(false);
+  useEffect(() => {
+    if (matrixSelfHealRef.current) return; // 只自愈一次，防止与用户后续操作互相干扰
+    matrixSelfHealRef.current = true;
+    const rows = Array.isArray(matrixValue) ? matrixValue : [];
+    if (rows.length >= KEY_FACTOR_MAX && rows[0] && typeof rows[0] === 'object') return; // 已就绪，无需处理
+    const full = Array.from({ length: KEY_FACTOR_MAX }, (_, i) => {
+      // 保留用户可能已填的部分行（如半途保存的记录），只把缺失行/缺失列补 0
+      const base = rows[i] && typeof rows[i] === 'object' ? { ...(rows[i] as Record<string, unknown>) } : {};
+      return Object.fromEntries(
+        Array.from({ length: KEY_FACTOR_MAX }, (_, k) => [`c${k}`, typeof base[`c${k}`] === 'number' ? base[`c${k}`] : 0]),
+      );
+    });
+    // shouldDirty: false —— 只是初始化兜底，不标记"有修改"，避免触发自动保存与 dirty 校验
+    setValue(name, full, { shouldDirty: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ---- 矩阵的四个核心读写函数（理解整个组件的关键） ----
   // 数据形态：matrixValue 是"行对象数组"，如 [{c0:0,c1:1,...}, {c0:0,c1:0,...}]，
