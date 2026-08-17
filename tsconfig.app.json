@@ -26,8 +26,9 @@
     },
 
     /* Linting */
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    // 注意：noUnusedLocals/noUnusedParameters 关闭 —— 编译图包含 @shared/core 源码
+    // （file: 链接的共享包），其自身的 lint 由公共包维护，不应阻塞消费方构建；
+    // 项目自身代码质量由 oxlint（npm run lint）把关。
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
