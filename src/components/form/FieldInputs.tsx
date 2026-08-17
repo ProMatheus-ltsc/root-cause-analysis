@@ -10,7 +10,7 @@
  * - 校验失败信息统一从 formState.errors[name] 读取，并配合 aria-* 属性做无障碍提示。
  */
 import { useFieldArray, useFormContext, useController, type Control } from 'react-hook-form';
-import type { FormField } from '../../types';
+import type { FormField, TableColumn } from '../../types';
 
 /** 统一样式类名（Tailwind 拼出的字符串），保证所有输入控件外观一致；独立导出便于其他文件复用。 */
 export const INPUT_CLASS =
@@ -350,11 +350,15 @@ function CellInput({
   control,
 }: {
   name: string;
-  col: { id: string; label: string; placeholder?: string; type?: string; options?: Array<{ value: string; label: string }> };
+  col: TableColumn;
   disabled?: boolean;
   control: Control<Record<string, unknown>>;
 }) {
   const { field } = useController({ name, control });
+  // 兼容表格列 options 的两种写法：string[]（简写）或 {value,label}[]（带文案）
+  const colOptions: Array<{ value: string; label: string }> = (col.options ?? []).map((o) =>
+    typeof o === 'string' ? { value: o, label: o } : { value: o.value, label: o.label },
+  );
   if (col.type === 'select') {
     return (
       <select
@@ -367,7 +371,7 @@ function CellInput({
         name={field.name}
       >
         <option value="">请选择</option>
-        {col.options?.map((opt) => (
+        {colOptions.map((opt) => (
           <option key={opt.value} value={opt.value}>
             {opt.label}
           </option>

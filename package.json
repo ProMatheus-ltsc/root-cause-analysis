@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
+    "@shared/core": "file:../shared-core",
     "@react-pdf/renderer": "^4.6.0",
     "@rolldown/binding-linux-x64-gnu": "^1.2.3",
     "@xyflow/react": "^12.11.2",

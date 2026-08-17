@@ -1,10 +1,16 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import path from 'path'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: process.env.GITHUB_ACTIONS ? '/root-cause-analysis/' : '/',
+  resolve: {
+    alias: {
+      '@shared/core': path.resolve(__dirname, '../shared-core/src'),
+    },
+  },
   build: {
     rollupOptions: {
       output: {
