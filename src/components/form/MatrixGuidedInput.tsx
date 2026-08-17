@@ -11,14 +11,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import clsx from 'clsx';
 import type { FormField } from '../../types';
-import { CAUSE_SCORE_ROOT, CAUSE_SCORE_SURFACE, KEY_FACTOR_MAX } from '../../templates/shared';
+import { CAUSE_SCORE_ROOT, CAUSE_SCORE_SURFACE, KEY_FACTOR_MAX, normalizeKeyFactorMatrix } from '../../templates/shared';
 
-/** 强度档位：value 是存进矩阵的值（也是"影响有多大"的等级），desc 是给用户的中文解释。 */
+/** 强度档位：value 是存进矩阵的值（也是"影响有多大"的等级），desc 是给用户的中文解释。
+ *  注意：0.5 是第一步"因果判定"写入的方向标记（表示"存在因果但强度未填"），
+ *  用 >= 1 可区分"已填强度"与"仅有方向标记"。 */
 const STRENGTH_OPTIONS = [
   { value: 1, label: '1 弱', desc: '单向弱关联' },
   { value: 2, label: '2 中', desc: '双向关联或单向强关联' },
   { value: 4, label: '4 强', desc: '互为强因果' },
 ];
+
+/** 第一步"因果判定"写入的方向标记值：仅表示"存在因果、方向已定"，强度未填。
+ *  刻意避开 1/2/4 三档强度值，避免与"已填强度 1（弱）"混淆。 */
+const DIRECTION_MARK = 0.5;
 
 /** 组件 props：field 是模板字段定义（用其 hint 提示文案），name 是矩阵在表单值树中的点路径。 */
 interface MatrixGuidedInputProps {
@@ -88,15 +94,36 @@ export function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputPr
     if (matrixSelfHealRef.current) return; // 只自愈一次，防止与用户后续操作互相干扰
     matrixSelfHealRef.current = true;
     const rows = Array.isArray(matrixValue) ? matrixValue : [];
-    if (rows.length >= KEY_FACTOR_MAX && rows[0] && typeof rows[0] === 'object') return; // 已就绪，无需处理
+
+    // ---- 历史数据归一化：修复旧版"填强度同步写反向"造成的双向污染 ----
+    // 旧实现（2026-08 前）在填强度 2/4 时会把反向也写成同值，导致 matrix[i][j] 与
+    // matrix[j][i] 同时 > 0，getDirectionValue 因此判定为 'none'，因果对消失、
+    // 定位得分错乱（根因/过因分析有误）。normalizeKeyFactorMatrix 把双向收敛为单向
+    // （保留较大方向），幂等：重复执行无副作用。
+    const normRows = normalizeKeyFactorMatrix(rows.map((r) => (typeof r === 'object' && r !== null ? r : {})) as Array<Record<string, unknown>>);
+    let normalized = false;
+    for (let i = 0; i < KEY_FACTOR_MAX && !normalized; i++) {
+      for (let j = i + 1; j < KEY_FACTOR_MAX; j++) {
+        const a = Number(normRows[i]?.[`c${j}`] ?? 0);
+        const b = Number(normRows[j]?.[`c${i}`] ?? 0);
+        if (a > 0 && b > 0) { normalized = true; break; }
+      }
+    }
+
+    // ---- 补齐 15 行全 0 矩阵（保留已填行），等效"自动刷新一次矩阵状态" ----
+    let needFull = false;
+    if (rows.length < KEY_FACTOR_MAX || !(rows[0] && typeof rows[0] === 'object')) {
+      needFull = true;
+    }
+    if (!normalized && !needFull) return; // 数据已干净且完整，无需处理
+
     const full = Array.from({ length: KEY_FACTOR_MAX }, (_, i) => {
-      // 保留用户可能已填的部分行（如半途保存的记录），只把缺失行/缺失列补 0
-      const base = rows[i] && typeof rows[i] === 'object' ? { ...(rows[i] as Record<string, unknown>) } : {};
+      const base = normRows[i] ?? {};
       return Object.fromEntries(
         Array.from({ length: KEY_FACTOR_MAX }, (_, k) => [`c${k}`, typeof base[`c${k}`] === 'number' ? base[`c${k}`] : 0]),
       );
     });
-    // shouldDirty: false —— 只是初始化兜底，不标记"有修改"，避免触发自动保存与 dirty 校验
+    // shouldDirty: false —— 只是初始化兜底/数据修复，不标记"有修改"，避免触发自动保存与 dirty 校验
     setValue(name, full, { shouldDirty: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -139,10 +166,10 @@ export function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputPr
 
   /**
    * 第一步"因果判定"的写入函数：一次写一对格子的两个方向。
-   * 方向语义：'i2j' = i 影响 j（写 matrix[i][j]=1，同时清掉反向 matrix[j][i]）；
+   * 方向语义：'i2j' = i 影响 j（写 matrix[i][j]=DIRECTION_MARK，同时清掉反向 matrix[j][i]）；
    *           'j2i' = j 影响 i（反过来）；'none' = 无关（两个方向都清 0）。
-   * 为什么方向先统一写 1（强度之后填）？因为第一步只关心"有没有、哪个方向"，
-   * 具体影响多大留给第三步"影响强度"再覆盖成 1/2/4。
+   * 为什么方向统一写 DIRECTION_MARK（0.5）而不是 1？因为第三步"影响强度"的弱档就是 1，
+   * 若方向也用 1 会与"已填强度 1"混淆；0.5 是非档位值，可与"已填强度（>=1）"严格区分。
    */
   const setDirectionPair = useCallback(
     (i: number, j: number, direction: 'i2j' | 'j2i' | 'none') => {
@@ -153,11 +180,11 @@ export function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputPr
       const rowI = { ...rows[i] };
       const rowJ = { ...rows[j] };
       if (direction === 'i2j') {
-        rowI[`c${j}`] = 1;
+        rowI[`c${j}`] = DIRECTION_MARK;
         rowJ[`c${i}`] = 0;
       } else if (direction === 'j2i') {
         rowI[`c${j}`] = 0;
-        rowJ[`c${i}`] = 1;
+        rowJ[`c${i}`] = DIRECTION_MARK;
       } else {
         rowI[`c${j}`] = 0;
         rowJ[`c${i}`] = 0;
@@ -203,7 +230,7 @@ export function MatrixGuidedInput({ field, name, disabled }: MatrixGuidedInputPr
 
   const strFilledCount = useMemo(() => {
     // "已填"按 cellValue >= 1 计数：1 弱 / 2 中 / 4 强 任何一档都算已填；
-    // 强度档在数据里 0 表示未填。
+    // 值 0.5 是第一步"因果判定"写入的方向标记（DIRECTION_MARK），不算"已填强度"。
     let count = 0;
     for (const cp of causalPairs) {
       if (getCellValue(cp.cause, cp.effect) >= 1) count++;
@@ -642,12 +669,10 @@ function StrengthStep({
   const effectName = factorNames[currentCP.effect];
 
   function handleSelect(value: number) {
+    // 只写正向（因→果），不写反向。反向由第一步"因果判定"独立决定。
+    // 之前的实现会在 value >= 2 时同步写反向，导致 matrix 双向同时 > 0，
+    // getDirectionValue 因此判定为 'none'，因果对消失、定位得分错乱（根因/过因分析有误）。
     setCellValue(currentCP.cause, currentCP.effect, value);
-    // 强度 2（双向关联）/ 4（互为强因果）语义包含反向影响：同步写反向，保证矩阵对称
-    // 强度 1（单向弱关联）保持只写正向，反向留 0
-    if (value >= 2) {
-      setCellValue(currentCP.effect, currentCP.cause, value);
-    }
     if (safeIndex < causalPairs.length - 1) {
       setCurrentPairIndex(safeIndex + 1);
     }
@@ -656,8 +681,7 @@ function StrengthStep({
   return (
     <div className="space-y-4">
       <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
-        对已确认存在因果关系的 {causalPairs.length} 组，逐个填写影响强度（因在前 → 果在后）。强度表示"影响有多大"：1 弱 / 2 中 / 4 强，用于自动标出优先关注的关键原因。
-        选「2 中 / 4 强」（双向关联 / 互为强因果）会自动同时写入反向强度，保证矩阵对称。
+        对已确认存在因果关系的 {causalPairs.length} 组，逐个填写影响强度（因在前 → 果在后）。强度表示"影响有多大"：1 弱 / 2 中 / 4 强，用于自动标出优先关注的关键原因。方向的确认始终以第一步"因果判定"为准，此处只填强度、不会改变方向。
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-5">
@@ -716,7 +740,7 @@ function StrengthStep({
                   'h-2 w-2 rounded-full transition',
                   idx === safeIndex
                     ? 'bg-brand-500'
-                    : getCellValue(cp.cause, cp.effect) >= 2
+                    : getCellValue(cp.cause, cp.effect) >= 1
                       ? 'bg-brand-200'
                       : 'bg-surface-200',
                 )}

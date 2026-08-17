@@ -460,6 +460,40 @@ export const KEY_FACTOR_THRESHOLD = 0.8;
 export const CAUSE_SCORE_ROOT = -2;
 export const CAUSE_SCORE_SURFACE = 2;
 
+/**
+ * 归一化关系矩阵：把"双向同时 > 0"的格子收敛为单向（保留较大方向）。
+ *
+ * 背景：旧版（2026-08 前）在填影响强度 2/4 时会同步写反向，导致 matrix[i][j] 与
+ * matrix[j][i] 同时 > 0，方向判定（谁影响谁）因此失效，定位得分错乱（根因/过因分析有误）。
+ * 本函数在读取历史数据时把这类污染收敛回单向：保留强度较大的方向，清除较小方向；
+ * 相等时保留 i→j。幂等：归一化后不再出现双向同时 > 0，重复执行无副作用。
+ *
+ * @param rows 行对象数组（matrix[i]['c'+j] = 值），缺失行按全 0 补齐到 KEY_FACTOR_MAX 行
+ * @returns 归一化后的新数组（不改动入参）；无污染时返回浅拷贝，值不变
+ */
+export function normalizeKeyFactorMatrix(rows: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+  const normRows = rows.map((r) => (typeof r === 'object' && r !== null ? { ...r } : {}));
+  while (normRows.length < KEY_FACTOR_MAX) {
+    normRows.push(Object.fromEntries(Array.from({ length: KEY_FACTOR_MAX }, (_, k) => [`c${k}`, 0])));
+  }
+  const getV = (i: number, j: number): number => {
+    const v = normRows[i]?.[`c${j}`];
+    const num = typeof v === 'number' ? v : Number(v);
+    return Number.isFinite(num) ? num : 0;
+  };
+  for (let i = 0; i < KEY_FACTOR_MAX; i++) {
+    for (let j = i + 1; j < KEY_FACTOR_MAX; j++) {
+      const vIJ = getV(i, j);
+      const vJI = getV(j, i);
+      if (vIJ > 0 && vJI > 0) {
+        if (vIJ >= vJI) normRows[j][`c${i}`] = 0; // 保留 i→j
+        else normRows[i][`c${j}`] = 0; // 保留 j→i
+      }
+    }
+  }
+  return normRows;
+}
+
 export function computeKeyFactors(values: Record<string, unknown>): KeyFactorResult[] {
   // ---- 1. 读取并清洗输入：因素清单 + 关系矩阵 ----
   // 表单里 factors 是条目数组（{name, description}），matrix 是行对象数组（{c0..c14}）。

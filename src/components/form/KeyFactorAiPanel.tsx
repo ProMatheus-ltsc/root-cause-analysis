@@ -139,12 +139,10 @@ export function KeyFactorAiPanel({ problem, disabled }: KeyFactorAiPanelProps) {
         const ei = factorNames.findIndex((n) => n === p.effect);
         if (ci < 0 || ei < 0) return;
         newMatrix[ci][`c${ei}`] = p.strength;
-        // 与手动填写一致：强度 2/4（双向关联/互为强因果）同步写反向，保证矩阵对称
-        if (p.strength >= 2) {
-          newMatrix[ei][`c${ci}`] = p.strength;
-        } else {
-          newMatrix[ei][`c${ci}`] = 0;
-        }
+        // 只写正向（因→果），不写反向——与手动填写一致：方向以因果对为准。
+        // 反向同步写会破坏方向判定（双向同时 > 0 → getDirectionValue 返回 'none'，
+        // 因果对消失、定位得分错乱，根因/过因分析有误）。
+        newMatrix[ei][`c${ci}`] = 0;
       });
       setValue('matrix', newMatrix, { shouldDirty: true });
       const summary = formatKeyFactorAnalysis(parsed);

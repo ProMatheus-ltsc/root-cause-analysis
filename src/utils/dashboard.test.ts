@@ -48,17 +48,17 @@ describe('getDisplayStatus', () => {
     expect(getDisplayStatus(fiveWhyTemplate, record, todayISO)).toBe('分析中');
   });
 
-  it('completed is 已关闭', () => {
+  it('completed is 已完成', () => {
     const record = makeRecord({
       status: 'completed',
       data: { rootCauseSummary: 'r' },
     });
-    expect(getDisplayStatus(fiveWhyTemplate, record, todayISO)).toBe('已关闭');
+    expect(getDisplayStatus(fiveWhyTemplate, record, todayISO)).toBe('已完成');
   });
 
   it('template without phases closes immediately once completed', () => {
     const record = makeRecord({ status: 'completed', data: {} });
-    expect(getDisplayStatus(PHASELESS_TEMPLATE, record, todayISO)).toBe('已关闭');
+    expect(getDisplayStatus(PHASELESS_TEMPLATE, record, todayISO)).toBe('已完成');
   });
 });
 
