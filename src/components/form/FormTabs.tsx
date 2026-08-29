@@ -69,8 +69,10 @@ function SectionBlock({
       onAutoFilled={onAutoFilled}
     />
   ) : (
-    <div className="grid gap-5 sm:grid-cols-2">
-      <FieldList fields={section.fields} basePath="" disabled={disabled} templateId={templateId} historyRecords={historyRecords} problem={problem} />
+    <div className="cq">
+      <div className="field-grid grid gap-5">
+        <FieldList fields={section.fields} basePath="" disabled={disabled} templateId={templateId} historyRecords={historyRecords} problem={problem} />
+      </div>
     </div>
   );
 

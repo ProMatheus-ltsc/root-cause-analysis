@@ -37,7 +37,7 @@ export function SnapshotList({ snapshots, loading, onRestore, onDelete, onCreate
         <button
           type="button"
           onClick={onCreateSnapshot}
-          className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-100 transition"
+          className="touch-target rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-100 transition"
         >
           创建快照
         </button>
@@ -62,14 +62,14 @@ export function SnapshotList({ snapshots, loading, onRestore, onDelete, onCreate
                 <button
                   type="button"
                   onClick={() => onRestore(snapshot)}
-                  className="rounded-md bg-brand-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-brand-700 transition"
+                  className="touch-target rounded-md bg-brand-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-brand-700 transition"
                 >
                   恢复
                 </button>
                 <button
                   type="button"
                   onClick={() => onDelete(snapshot.id)}
-                  className="rounded-md text-[11px] text-text-tertiary hover:text-danger-600 transition"
+                  className="touch-target rounded-md text-[11px] text-text-tertiary hover:text-danger-600 transition"
                   aria-label="删除快照"
                 >
                   ×

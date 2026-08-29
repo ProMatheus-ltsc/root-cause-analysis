@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useBodyScrollLock } from '@shared/core';
 import { useNavigate } from 'react-router-dom';
 import { useProblemStore } from '../stores/problemStore';
 import { useRecordStore } from '../stores/recordStore';
@@ -17,6 +18,8 @@ interface SearchResult {
 export function SearchSpotlight({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
+  // 弹窗打开期间锁定背景滚动（shared-core 引用计数实现，与其他弹窗嵌套安全）
+  useBodyScrollLock(open);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -107,10 +110,10 @@ export function SearchSpotlight({ open, onClose }: { open: boolean; onClose: () 
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]" onClick={onClose}>
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
       <div
-        className="relative w-full max-w-lg rounded-xl border border-surface-200 bg-surface-0 shadow-2xl"
+        className="modal-clamp relative mx-4 flex w-full max-w-lg flex-col overflow-hidden rounded-xl border border-surface-200 bg-surface-0 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-3 border-b border-surface-200 px-4 py-3">
+        <div className="flex shrink-0 items-center gap-3 border-b border-surface-200 px-4 py-3">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-text-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
           </svg>
@@ -127,7 +130,7 @@ export function SearchSpotlight({ open, onClose }: { open: boolean; onClose: () 
         </div>
 
         {query.trim() && (
-          <div className="max-h-80 overflow-y-auto p-2">
+          <div className="min-h-0 max-h-80 overflow-y-auto p-2">
             {results.length === 0 ? (
               <p className="px-3 py-6 text-center text-sm text-text-tertiary">未找到匹配结果</p>
             ) : (

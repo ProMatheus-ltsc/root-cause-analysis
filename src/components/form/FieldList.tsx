@@ -25,7 +25,7 @@ interface FieldListProps {
  * 字段列表容器：把 fields 数组按模板定义顺序逐字段渲染成"标签 + 输入控件"。
  * - 每个字段先包一层 ConditionalField：命中依赖条件才展示，否则整块不渲染；
  * - 实际输入控件由 FieldRenderer 按 field.type 分发到 FieldInputs 中对应的组件；
- * - 多行文本（textarea）和表格（table）字段独占两列（sm:col-span-2）。
+ * - 多行文本（textarea）和表格（table）字段独占两列（field-span-2，容器查询生效）。
  */
 export function FieldList({ fields, basePath, disabled, templateId, historyRecords, problem }: FieldListProps) {
   return (
@@ -33,7 +33,7 @@ export function FieldList({ fields, basePath, disabled, templateId, historyRecor
       {fields.map((field) => (
         // 每个字段都用 ConditionalField 包裹：字段定义了 condition 且未命中时整块隐藏
         <ConditionalField key={field.id} condition={field.condition} basePath={basePath}>
-          <div className={field.type === 'textarea' || field.type === 'table' ? 'sm:col-span-2' : ''}>
+          <div className={field.type === 'textarea' || field.type === 'table' ? 'field-span-2' : ''}>
             <FieldRenderer
               field={field}
               name={`${basePath}${field.id}`}

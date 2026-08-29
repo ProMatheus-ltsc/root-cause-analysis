@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* 扫描项目外的 shared-core 源码（Tailwind v4 自动内容检测不越项目根） */
+@source "../../shared-core/src";
+
 @theme {
   --color-brand-50: #eef2ff;
   --color-brand-100: #e0e7ff;
@@ -63,4 +66,17 @@ body {
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== 移动端响应式：表单字段网格容器查询 ===== */
+/* 外层 .cq 声明容器（shared-core responsive.css 提供）；内容区 ≥40rem 双列、更窄单列。
+   断点跟随内容实际宽度而非视口，侧边栏折叠 / 抽屉展开不影响表单布局 */
+@container (min-width: 40rem) {
+  .field-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* 多行文本 / 表格字段独占整行 */
+  .field-grid .field-span-2 {
+    grid-column: span 2 / span 2;
+  }
 }

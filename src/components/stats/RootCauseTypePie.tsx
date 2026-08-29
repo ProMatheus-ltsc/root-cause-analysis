@@ -3,6 +3,7 @@
  * 环形（donut）样式，颜色按顺序循环取自 COLORS。
  */
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { ResponsiveChart } from '@shared/core';
 import type { RootCauseTypeCount } from '../../utils/dashboard';
 
 /** 饼图配色盘：按数据顺序循环取色，保证每个类型都有不同颜色 */
@@ -18,7 +19,7 @@ export function RootCauseTypePie({ data }: { data: RootCauseTypeCount[] }) {
   }
   const total = data.reduce((sum, d) => sum + d.count, 0);
   return (
-    <div className="h-64 w-full">
+    <ResponsiveChart minHeight="12rem" maxHeight="16rem">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
@@ -39,6 +40,6 @@ export function RootCauseTypePie({ data }: { data: RootCauseTypeCount[] }) {
           <Legend />
         </PieChart>
       </ResponsiveContainer>
-    </div>
+    </ResponsiveChart>
   );
 }

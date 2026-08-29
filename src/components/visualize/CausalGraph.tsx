@@ -137,7 +137,7 @@ export function CausalGraph({ causalChain }: CausalGraphProps) {
   return (
     // ReactFlow 画布：nodes/edges 传入上一步算好的数据；fitView 自动缩放平移，让全部节点适配可视区域；
     // Background 画点阵背景便于观察坐标位置，Controls 提供画布缩放/平移按钮。
-    <div className="rounded-xl border border-surface-200 overflow-hidden" style={{ height: 400 }}>
+    <div className="rounded-xl border border-surface-200 overflow-hidden" style={{ height: 'clamp(20rem, 50vh, 25rem)' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}

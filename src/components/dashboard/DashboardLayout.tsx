@@ -7,6 +7,7 @@ import { lazy, Suspense } from 'react';
 import type { ReactNode } from 'react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
+import { ResponsiveGrid } from '@shared/core';
 import type { FormRecord, FormTemplate, TemplateId } from '../../types';
 import {
   countByDisplayStatus,
@@ -42,13 +43,13 @@ export function DashboardLayout({ records, templates }: DashboardLayoutProps) {
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      <ResponsiveGrid minItemWidth="220px" gap="1rem">
         <StatCard label="待分析" value={statusCounts.待分析} />
         <StatCard label="分析中" value={statusCounts.分析中} />
         <StatCard label="已完成" value={statusCounts.已完成} accentClassName="text-emerald-600" />
-      </div>
+      </ResponsiveGrid>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <ResponsiveGrid minItemWidth="360px" gap="1.5rem">
         <Panel title="根因类型分布">
           <Suspense fallback={<div className="flex h-48 items-center justify-center text-sm text-slate-400">加载图表中…</div>}>
             <RootCauseTypePie data={rootCauseDist} />
@@ -57,7 +58,7 @@ export function DashboardLayout({ records, templates }: DashboardLayoutProps) {
         <Panel title="高频经验教训">
           <KeywordList keywords={keywords} />
         </Panel>
-      </div>
+      </ResponsiveGrid>
 
       <Panel
         title="最近分析记录"

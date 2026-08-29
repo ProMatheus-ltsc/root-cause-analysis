@@ -5,6 +5,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+// 移动端响应式全局基线：触控目标 44px / 输入 16px 防聚焦缩放 / safe-area / dvh / modal-clamp / 容器查询
+import '@shared/core/styles/responsive.css'
 import App from './App.tsx'
 
 // createRoot 创建 React 根节点，render 挂载根组件 <App />。

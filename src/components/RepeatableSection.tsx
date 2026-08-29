@@ -1214,15 +1214,17 @@ function DefaultRepeatableSection({ section, disabled, templateId, historyRecord
                   values={values}
                 />
               )}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FieldList
-                  fields={section.fields}
-                  basePath={`${section.id}.${idx}.`}
-                  disabled={disabled}
-                  templateId={templateId}
-                  historyRecords={historyRecords}
-                  problem={problem}
-                />
+              <div className="cq">
+                <div className="field-grid grid gap-4">
+                  <FieldList
+                    fields={section.fields}
+                    basePath={`${section.id}.${idx}.`}
+                    disabled={disabled}
+                    templateId={templateId}
+                    historyRecords={historyRecords}
+                    problem={problem}
+                  />
+                </div>
               </div>
               {/* 上一条/下一条导航：填写完不必滚回顶部卡片条，直接切到相邻条目 */}
               <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
