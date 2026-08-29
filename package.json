@@ -15,12 +15,12 @@
   "dependencies": {
     "@shared/core": "file:../shared-core",
     "@react-pdf/renderer": "^4.6.0",
-    "@rolldown/binding-linux-x64-gnu": "^1.2.3",
     "@xyflow/react": "^12.11.2",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "flexsearch": "^0.8.212",
     "idb": "^8.0.3",
+    "lucide-react": "^0.525.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.85.0",
@@ -28,6 +28,9 @@
     "recharts": "^3.10.1",
     "uuid": "^14.0.1",
     "zustand": "^5.0.14"
+  },
+  "optionalDependencies": {
+    "@rolldown/binding-linux-x64-gnu": "^1.2.3"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
