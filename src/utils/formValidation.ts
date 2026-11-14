@@ -1,49 +1,35 @@
 /**
- * 表单引擎核心纯函数：默认值解析、阶段完成度判定、必填字段校验。
- * 所有函数不依赖 Date.now()/当前时间——需要"现在"时统一由调用方以 ISO 日期字符串注入，便于测试。
+ * 表单引擎核心纯函数（部分已下沉到 @shared/core）
+ *
+ * 已下沉：isEmptyValue（直接复用公共包实现，语义一致）
+ *
+ * 保留本地（与本项目数据/调用契约绑定）：
+ * - isCompletionFieldSatisfied / isPhaseCompletionSatisfied：基座版通过
+ *   readRepeatableEntries 读取 `_entries`/`_repeat_` 前缀键，而本项目重复段
+ *   直接以 section.id 为键（如 values.whyChain），复用会读不到条目。
+ * - resolveDefaultValue(field, existingValue, todayISO, nowISO)：基座版签名为
+ *   resolveDefaultValue(defaultValue)，本项目需要"传入字段与现值"的形态。
+ * - getCurrentPhaseIndex(template, values, context)：基座版接收 phases 数组，
+ *   本项目按 template + PhaseLockContext 调用（dashboard/usePhaseLogic 依赖）。
+ * - validateRequiredFields(...)：基座版返回 { valid, errors, missingFields }，
+ *   本项目消费方期望 MissingField[]（直接 .map(m => m.label)）。
  */
 import { addDays, format, parseISO } from 'date-fns';
 import type { FormField, FormSection, FormTemplate, PhaseConfig } from '../types';
 
-/**
- * 判断"空值"的统一定义（全项目共用，语义必须一致）：
- * - undefined / null → 空
- * - 字符串 → 去空白后为空才是空（"  " 视为空）
- * - 数组 → 长度 0 视为空（用于 repeatable 段判断有没有条目）
- * - 数字 → 永远不空（0 也是有效值，如矩阵里的"0 无关"，不能当空处理）
- */
-export function isEmptyValue(value: unknown): boolean {
-  if (value === undefined || value === null) return true;
-  if (typeof value === 'string') return value.trim() === '';
-  if (Array.isArray(value)) return value.length === 0;
-  return false;
-}
+import { isEmptyValue as isEmptyValueFromBase } from '@shared/core/utils/formValidation';
 
-/**
- * existingValue 非空则原样保留；否则按 field.defaultValue 解析：
- * - 'auto_today' / 'auto_today+N'：今天 / N 天后（格式 yyyy-MM-dd）
- * - 'auto_now' / 'auto_now+N'：当前时间 / N 天后（格式 yyyy-MM-ddTHH:mm）
- * - 其他字符串/对象：原样返回
- *
- * `nowISO` 形如 `yyyy-MM-ddTHH:mm`，默认按传入值；用于测试注入。`todayISO` 兼容只到日的旧调用。
- */
-export function resolveDefaultValue(field: FormField, existingValue: unknown, todayISO: string, nowISO?: string): unknown {
-  if (!isEmptyValue(existingValue)) return existingValue;
-  const now = nowISO ?? `${todayISO}T00:00`;
-  if (field.defaultValue === 'auto_today') return todayISO;
-  if (typeof field.defaultValue === 'string' && field.defaultValue.startsWith('auto_today+')) {
-    const days = parseInt(field.defaultValue.slice('auto_today+'.length), 10);
-    if (!isNaN(days)) return format(addDays(parseISO(todayISO), days), 'yyyy-MM-dd');
-  }
-  if (field.defaultValue === 'auto_now') return now;
-  if (typeof field.defaultValue === 'string' && field.defaultValue.startsWith('auto_now+')) {
-    const days = parseInt(field.defaultValue.slice('auto_now+'.length), 10);
-    if (!isNaN(days)) return format(addDays(parseISO(now.slice(0, 10)), days), "yyyy-MM-dd'T'HH:mm");
-  }
-  if (field.defaultValue !== undefined) return field.defaultValue;
-  return existingValue;
-}
+export const isEmptyValue = isEmptyValueFromBase;
 
+// 本地别名：供下方保留函数内部调用
+const isEmptyValueLocal = isEmptyValue;
+
+// 说明：isCompletionFieldSatisfied / isPhaseCompletionSatisfied 保留本地实现。
+// 基座版通过 readRepeatableEntries 读取 `_entries`/`_repeat_` 前缀键，
+// 而本项目重复段数据直接以 section.id 为键（如 values.whyChain），
+// 直接复用会读不到条目导致阶段判定回归（已由 formValidation.test 覆盖）。
+
+/** 查找字段所属 section。 */
 function findFieldSection(template: FormTemplate, fieldId: string): { section: FormSection; index: number } | undefined {
   for (let index = 0; index < template.sections.length; index++) {
     const section = template.sections[index];
@@ -80,7 +66,7 @@ export function isCompletionFieldSatisfied(template: FormTemplate, fieldId: stri
       const stopped = entries.some((entry) => entry[stopFieldId] === stopValue);
       if (stopped) minRequired = 1;
     }
-    const filledCount = entries.filter((entry) => !isEmptyValue(entry[fieldId])).length;
+    const filledCount = entries.filter((entry) => !isEmptyValueLocal(entry[fieldId])).length;
     return filledCount >= minRequired;
   }
   const field = section.fields.find((f) => f.id === fieldId);
@@ -101,16 +87,47 @@ export function isCompletionFieldSatisfied(template: FormTemplate, fieldId: stri
     }
     return true;
   }
-  return !isEmptyValue(values[fieldId]);
+  return !isEmptyValueLocal(values[fieldId]);
 }
 
 export function isPhaseCompletionSatisfied(template: FormTemplate, phase: PhaseConfig, values: Record<string, unknown>): boolean {
   return phase.completionFields.every((fieldId) => isCompletionFieldSatisfied(template, fieldId, values));
 }
 
+/**
+ * 默认值解析：existingValue 非空则原样保留；否则按 field.defaultValue 解析：
+ * - 'auto_today' / 'auto_today+N'：今天 / N 天后（格式 yyyy-MM-dd）
+ * - 'auto_now' / 'auto_now+N'：当前时间 / N 天后（格式 yyyy-MM-ddTHH:mm）
+ * - 其他字符串/对象：原样返回
+ *
+ * `nowISO` 形如 `yyyy-MM-ddTHH:mm`，默认按传入值；用于测试注入。`todayISO` 兼容只到日的旧调用。
+ */
+export function resolveDefaultValue(field: FormField, existingValue: unknown, todayISO: string, nowISO?: string): unknown {
+  if (!isEmptyValueLocal(existingValue)) return existingValue;
+  const now = nowISO ?? `${todayISO}T00:00`;
+  if (field.defaultValue === 'auto_today') return todayISO;
+  if (typeof field.defaultValue === 'string' && field.defaultValue.startsWith('auto_today+')) {
+    const days = parseInt(field.defaultValue.slice('auto_today+'.length), 10);
+    if (!isNaN(days)) return format(addDays(parseISO(todayISO), days), 'yyyy-MM-dd');
+  }
+  if (field.defaultValue === 'auto_now') return now;
+  if (typeof field.defaultValue === 'string' && field.defaultValue.startsWith('auto_now+')) {
+    const days = parseInt(field.defaultValue.slice('auto_now+'.length), 10);
+    if (!isNaN(days)) return format(addDays(parseISO(now.slice(0, 10)), days), "yyyy-MM-dd'T'HH:mm");
+  }
+  if (field.defaultValue !== undefined) return field.defaultValue;
+  return existingValue;
+}
+
 export interface PhaseLockContext {
   todayISO: string;
   createdAtISO: string;
+}
+
+export interface MissingField {
+  sectionId: string;
+  fieldId: string;
+  label: string;
 }
 
 /**
@@ -129,12 +146,6 @@ export function getCurrentPhaseIndex(template: FormTemplate, values: Record<stri
     }
   }
   return phases.length - 1;
-}
-
-export interface MissingField {
-  sectionId: string;
-  fieldId: string;
-  label: string;
 }
 
 /** 提交前的整体质量检查：列出所有必填字段（含重复段每条目）中仍为空的项，以及 table 类型字段的最少行数校验。 */
@@ -158,14 +169,14 @@ export function validateRequiredFields(template: FormTemplate, values: Record<st
           }
         }
         requiredFields.forEach((f) => {
-          if (isEmptyValue(entry[f.id])) {
+          if (isEmptyValueLocal(entry[f.id])) {
             missing.push({ sectionId: `${section.id}[${idx}]`, fieldId: f.id, label: f.label });
           }
         });
       });
     } else {
       requiredFields.forEach((f) => {
-        if (isEmptyValue(values[f.id])) {
+        if (isEmptyValueLocal(values[f.id])) {
           missing.push({ sectionId: section.id, fieldId: f.id, label: f.label });
         }
       });
@@ -174,7 +185,6 @@ export function validateRequiredFields(template: FormTemplate, values: Record<st
           const rows = Array.isArray(values[f.id]) ? (values[f.id] as unknown[]) : [];
           // 对 15×15 因果矩阵这类"行列数固定、每格是数字"的 table：
           // validation.min 视为"至少需要多少个有效单元格"（count 非零/非空），而不是"多少行有效"。
-          // 这样填写 N 对因果关系 → N 个有效单元格 → 满足阈值即可，不必强制 N 行都有数据。
           let validCellCount = 0;
           for (const row of rows) {
             if (typeof row !== 'object' || row === null) continue;
