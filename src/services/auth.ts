@@ -52,8 +52,19 @@ const driver = createLocalAuthDriver({
  * @throws 用户名已存在时抛出 Error
  */
 export async function registerAccount(username: string, password: string): Promise<Account> {
-  const account = await driver.register({ username, password });
-  return fromLocalAccount(account as LocalAccount);
+  if (!driver.register) throw new Error('当前系统未开放自助注册');
+  const result = await driver.register({ username, password });
+  // 本地注册一步到位：status 为 created，用户信息在 user 上
+  if (result.status !== 'created' || !result.user) {
+    throw new Error('注册未完成');
+  }
+  return {
+    id: result.user.id,
+    username: result.user.username,
+    passwordHash: '',
+    salt: '',
+    createdAt: new Date().toISOString(),
+  };
 }
 
 /**

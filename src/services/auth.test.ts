@@ -78,11 +78,13 @@ describe('本地统一认证（shared-core）', () => {
     const driver = createLocalAuthDriver({ store: memory.store, hashFormat: 'hex' });
 
     const created = await driver.register({ username: 'newuser', password: 'newpass' });
-    expect(created.username).toBe('newuser');
+    // 本地注册一步到位：status 为 created，用户信息在 user 上
+    expect(created.status).toBe('created');
+    expect(created.user?.username).toBe('newuser');
     expect(memory.accounts).toHaveLength(1);
     // 注册后应能直接登录
     const user = await driver.login({ username: 'newuser', password: 'newpass' });
-    expect(user.id).toBe(created.id);
+    expect(user.id).toBe(created.user?.id);
   });
 
   it('重名注册被拒绝', async () => {
