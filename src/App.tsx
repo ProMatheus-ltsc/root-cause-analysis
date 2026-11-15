@@ -50,17 +50,17 @@ function FullScreenLoading() {
 // 内部组件：认证守卫。包裹需要登录才能访问的页面——
 // 未登录且初始化完成时重定向到 /login；正在初始化时先显示加载态，避免登录态闪烁
 function RequireAuth({ children }: { children: ReactNode }) {
-  const { account, initializing } = useAuth();
-  if (initializing) return <FullScreenLoading />;
-  if (!account) return <Navigate to="/login" replace />;
+  const { state } = useAuth();
+  if (state === 'loading') return <FullScreenLoading />;
+  if (state !== 'authenticated') return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
 // 内部组件：登录后的整体布局外壳——shared-core Layout 统一 UI 风格
 // （可折叠侧边栏 + 移动端 Drawer + 分组导航 + ⌘K）。
-// 认证体系为项目自有 useAuth，通过 user/onLogout 注入，不依赖 shared-core AuthProvider。
+// 认证走 shared-core 的统一 AuthProvider，Layout 通过 user/onLogout 注入，不依赖包内 useAuth。
 function AppShell() {
-  const { account, logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -77,8 +77,8 @@ function AppShell() {
   }, []);
 
   // 登出后跳回登录页：replace 替换当前历史记录，用户按"返回"不会回到已登出的页面
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
     navigate('/login', { replace: true });
   }
 
@@ -88,7 +88,7 @@ function AppShell() {
         navItems={NAV_ITEMS}
         appConfig={APP_CONFIG}
         enableSearch={false}
-        user={account ? { username: account.username } : null}
+        user={user ? { username: user.username } : null}
         onLogout={handleLogout}
       >
         <Outlet />

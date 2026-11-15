@@ -42,7 +42,7 @@ const MODE_TITLE: Record<Mode, string> = {
  */
 export default function LoginPage() {
   // useAuth 提供本地账户的登录/注册/重置密码函数，以及当前登录账户信息
-  const { login, register, resetPassword, account } = useAuth();
+  const { login, register, resetPassword, user } = useAuth();
   const navigate = useNavigate();
   // mode：当前模式；username/password/confirmPassword：表单输入；
   // error：提交失败时的错误提示文案；showPassword/showConfirmPassword：两个密码框的明文显示开关
@@ -54,8 +54,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // 已经登录（account 存在）时直接用 <Navigate> 重定向到首页，避免已登录用户还看到登录页
-  if (account) {
+  // 已经登录（user 存在）时直接用 <Navigate> 重定向到首页，避免已登录用户还看到登录页
+  if (user) {
     return <Navigate to="/" replace />;
   }
 

@@ -75,8 +75,8 @@ export default function DataPage() {
   }
 
   /** 登出：清除本地登录态，再跳回登录页；replace 表示替换当前历史记录，用户点"返回"不会回到已登出的页面。 */
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
     navigate('/login', { replace: true });
   }
 
